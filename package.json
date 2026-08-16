@@ -1,0 +1,27 @@
+{
+  "name": "llm-bench-arcade",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "games/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "check": "npm run build && npm test",
+    "bench": "npm run bench --workspace=@arcadebench/cli --",
+    "dev:partition": "npm run dev --workspace=@arcadebench/partition",
+    "dev:board": "npm run dev --workspace=@arcadebench/board"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}
+
