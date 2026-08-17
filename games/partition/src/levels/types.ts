@@ -2,7 +2,7 @@ import type { DifficultyId, Edge, PartitionScenario, Point } from '../core/types
 
 export type PartitionDifficultyId = DifficultyId;
 
-/** A fully-authored scenario. These fields are required for campaign levels. */
+/** A fully-authored scenario. These fields are required for catalog stages. */
 export interface PartitionLevelScenario extends PartitionScenario {
   difficultyId: PartitionDifficultyId;
   sparkStart: Point;
@@ -27,6 +27,9 @@ export interface PartitionCampaignLevel {
   metadata: PartitionLevelMetadata;
   scenario: PartitionLevelScenario;
 }
+
+/** Preferred V1 name; the older campaign-level name remains API-compatible. */
+export type PartitionStage = PartitionCampaignLevel;
 
 export interface BoardMask {
   width: number;

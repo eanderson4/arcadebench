@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   PARTITION_CAMPAIGN_SEED,
+  STANDARD_PARTITION_PROGRESSION,
   asciiMask,
   cloneCampaignLevel,
   createPartitionCampaign,
   getCampaignLevel,
   listCampaignLevels,
   playableCellCount,
+  resolvePartitionProgression,
   spawnDeterministicAnomalies,
   validateCampaign,
   validateLevel,
@@ -150,5 +152,61 @@ describe('Partition campaign catalog', () => {
     expect(result.errors.join(' ')).toMatch(/Spark must start/);
     expect(result.errors.join(' ')).toMatch(/duplicated/);
     expect(validateCampaign([])).toMatchObject({ valid: false, errors: ['A campaign needs at least one level.'] });
+  });
+});
+
+describe('Partition progression playlists', () => {
+  it('resolves the default ten-stage arcade run with a steep pressure curve', () => {
+    const stages = resolvePartitionProgression();
+
+    expect(stages).toHaveLength(10);
+    expect(stages.map((stage) => stage.metadata.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(stages.map((stage) => stage.scenario.anomalies.length)).toEqual([1, 2, 2, 3, 4, 4, 5, 7, 8, 9]);
+    expect(stages.every((stage) => stage.scenario.targetFraction === 0.75)).toBe(true);
+    expect(STANDARD_PARTITION_PROGRESSION.stages).toHaveLength(10);
+  });
+
+  it('supports ordered reuse and per-entry stage overrides without mutating the catalog', () => {
+    const progression = {
+      id: 'test-progression',
+      name: 'Test progression',
+      description: 'Fixture',
+      stages: [
+        'first-light',
+        {
+          stageId: 'twin-drift',
+          overrides: {
+            title: 'Twin Drift Turbo',
+            anomalySpeedMultiplier: 2,
+            anomalyCount: 1,
+            targetFraction: 0.8,
+            lives: 1,
+            timeLimitTicks: 900,
+          },
+        },
+      ],
+    } as const;
+    const stages = resolvePartitionProgression(progression, 42);
+
+    expect(stages.map((stage) => stage.metadata.number)).toEqual([1, 2]);
+    expect(stages[1]).toMatchObject({
+      metadata: { title: 'Twin Drift Turbo' },
+      scenario: { name: 'Twin Drift Turbo', targetFraction: 0.8, integrity: 1, timeLimitTicks: 900 },
+    });
+    expect(stages[1]?.scenario.anomalies).toHaveLength(1);
+    expect(Math.hypot(...stages[1]!.scenario.anomalies[0]!.velocity)).toBeGreaterThan(0.16);
+    expect(getCampaignLevel('twin-drift')?.metadata.title).toBe('Twin Drift');
+  });
+
+  it('rejects invalid stage references and overrides', () => {
+    expect(() => resolvePartitionProgression({
+      id: 'missing-stage', name: 'Missing', description: 'Fixture', stages: ['not-a-stage'],
+    })).toThrow(/unknown stage/);
+    expect(() => resolvePartitionProgression({
+      id: 'too-many',
+      name: 'Too many',
+      description: 'Fixture',
+      stages: [{ stageId: 'first-light', overrides: { anomalyCount: 2 } }],
+    })).toThrow(/cannot exceed/);
   });
 });

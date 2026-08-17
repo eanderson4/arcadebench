@@ -31,16 +31,17 @@
 
           <form id="field-launcher" class="field-launcher">
             <div class="launcher-heading">
-              <span id="home-level-number">FIELD 01 / 20</span>
-              <b id="home-level-tier">EASY CAMPAIGN</b>
+              <span id="home-level-number">STAGE 01 / 10</span>
+              <b id="home-level-tier">EASY STAGE</b>
             </div>
             <h2 id="home-level-title">First Light</h2>
             <p id="home-level-tagline">One field. One anomaly. One clean cut.</p>
 
-            <label>
-              <span>SELECT FIELD</span>
-              <select id="level-select" name="level"></select>
-            </label>
+            <div class="run-manifest">
+              <span>ARCADE RUN</span>
+              <b>10 STAGES · RESET ON LOSS</b>
+            </div>
+            <select id="level-select" name="level" hidden aria-hidden="true" tabindex="-1"></select>
             <label>
               <span>DIFFICULTY</span>
               <select id="difficulty-select" name="difficulty">
@@ -59,7 +60,7 @@
               <span><small>LIVES</small><b id="home-lives">03</b></span>
             </div>
             <p id="difficulty-summary" class="difficulty-summary">Three lives and the intended field timing.</p>
-            <button id="launch-field" class="launch-button" type="submit"><span>START FIELD</span><b>→</b></button>
+            <button id="launch-field" class="launch-button" type="submit"><span>START ARCADE RUN</span><b>→</b></button>
           </form>
         </div>
 
@@ -94,7 +95,7 @@
       <section class="workspace">
         <div class="field-column">
           <div class="stage">
-            <div class="stage-label"><span class="live-dot"></span><b id="stage-field-label">FIELD 01</b><em id="stage-field-name">FIRST LIGHT</em></div>
+            <div class="stage-label"><span class="live-dot"></span><b id="stage-field-label">STAGE 01</b><em id="stage-field-name">FIRST LIGHT</em></div>
             <div class="stage-stats" aria-hidden="true">
               <span><small>STABLE</small><b id="stage-capture">0%</b></span>
               <span><small>LIVES</small><b id="stage-integrity">03</b></span>
@@ -108,7 +109,17 @@
             <div class="scanlines" aria-hidden="true"></div>
             <div class="corner corner-nw"></div><div class="corner corner-ne"></div>
             <div class="corner corner-sw"></div><div class="corner corner-se"></div>
-            <div id="message" class="message hidden"></div>
+            <div id="message" class="message hidden" role="dialog" aria-live="polite" aria-label="Field result">
+              <div class="message-card">
+                <div id="message-kicker" class="message-kicker">FIELD COMPLETE</div>
+                <span id="message-title">FIELD STABILIZED</span>
+                <small id="message-detail">capture threshold reached</small>
+                <div class="message-next">
+                  <em id="message-countdown"></em>
+                  <button id="message-action" class="primary-button" type="button">GO NEXT NOW <b>→</b></button>
+                </div>
+              </div>
+            </div>
             <div id="play-intro" class="play-intro">
               <div class="intro-kicker"><span></span>HUMAN PLAY</div>
               <h2>Cut the field.<br />Box in the chaos.</h2>

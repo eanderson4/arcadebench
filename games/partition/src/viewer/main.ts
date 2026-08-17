@@ -2,7 +2,7 @@ import { PartitionEngine } from '../core/engine';
 import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
 import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
-import { createPartitionCampaign, type PartitionCampaignLevel } from '../levels';
+import { resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
 import { PartitionRenderer } from './renderer';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
@@ -28,6 +28,11 @@ const stageTimeEl = query<HTMLElement>('#stage-time');
 const stageTickEl = query<HTMLElement>('#stage-tick');
 const fitScreenButton = query<HTMLButtonElement>('#fit-screen');
 const messageEl = query<HTMLElement>('#message');
+const messageKicker = query<HTMLElement>('#message-kicker');
+const messageTitle = query<HTMLElement>('#message-title');
+const messageDetail = query<HTMLElement>('#message-detail');
+const messageCountdown = query<HTMLElement>('#message-countdown');
+const messageAction = query<HTMLButtonElement>('#message-action');
 const playIntro = query<HTMLElement>('#play-intro');
 const startPlayButton = query<HTMLButtonElement>('#start-play');
 const howToPlayButton = query<HTMLButtonElement>('#how-to-play');
@@ -70,11 +75,8 @@ const controlTarget = query<HTMLElement>('#control-target');
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
 if (!Number.isFinite(seed)) seed = 11;
-let campaign = createPartitionCampaign(seed);
-const requestedLevel = Number(params.get('level') ?? 1);
-let selectedLevelIndex = Number.isInteger(requestedLevel)
-  ? Math.max(0, Math.min(campaign.length - 1, requestedLevel - 1))
-  : 0;
+let campaign = resolvePartitionProgression(undefined, seed);
+let selectedLevelIndex = 0;
 const requestedDifficulty = params.get('difficulty');
 let selectedDifficulty: DifficultyId = requestedDifficulty && requestedDifficulty in DIFFICULTY_PRESETS
   ? requestedDifficulty as DifficultyId
@@ -104,6 +106,12 @@ let lastAnimationTime = performance.now();
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 let damageTimer: ReturnType<typeof setTimeout> | undefined;
 let introTimer: ReturnType<typeof setTimeout> | undefined;
+let autoAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
+let countdownTimer: ReturnType<typeof setInterval> | undefined;
+let autoAdvanceScenarioId: string | null = null;
+let autoAdvanceDeadline = 0;
+
+const AUTO_ADVANCE_SECONDS = 8;
 
 function selectedLevel(): PartitionCampaignLevel {
   return campaign[selectedLevelIndex]!;
@@ -116,7 +124,7 @@ function configureFieldSurface(state: Pick<PartitionState, 'width' | 'height'>):
 
 function updateFieldIdentity(): void {
   const level = selectedLevel();
-  stageFieldLabel.textContent = `FIELD ${String(level.metadata.number).padStart(2, '0')}`;
+  stageFieldLabel.textContent = `STAGE ${String(level.metadata.number).padStart(2, '0')}`;
   stageFieldName.textContent = level.metadata.title.toUpperCase();
   controlTarget.textContent = `CAPTURE ${Math.round(engine.scenario.targetFraction * 100)}%`;
 }
@@ -134,8 +142,8 @@ function updateHomeSelection(): void {
   const scenario = applyDifficulty(level.scenario, selectedDifficulty);
   levelSelect.value = String(level.metadata.number);
   difficultySelect.value = selectedDifficulty;
-  homeLevelNumber.textContent = `FIELD ${String(level.metadata.number).padStart(2, '0')} / ${campaign.length}`;
-  homeLevelTier.textContent = `${level.metadata.tier.toUpperCase()} CAMPAIGN`;
+  homeLevelNumber.textContent = `STAGE ${String(level.metadata.number).padStart(2, '0')} / ${campaign.length}`;
+  homeLevelTier.textContent = `${level.metadata.tier.toUpperCase()} STAGE`;
   homeLevelTitle.textContent = level.metadata.title;
   homeLevelTagline.textContent = level.metadata.tagline;
   homeLevelChallenge.textContent = level.metadata.challenge;
@@ -149,6 +157,7 @@ function updateHomeSelection(): void {
 }
 
 function resetLiveSession(): void {
+  cancelAutoAdvance();
   clearHumanControls();
   direction = 'idle';
   liveReplayTicks = [];
@@ -165,6 +174,64 @@ function launchSelectedField(): void {
   playIntro.classList.add('hidden');
   playIntro.classList.remove('leaving');
   setMode('live');
+}
+
+function startArcadeRun(): void {
+  selectedLevelIndex = 0;
+  levelSelect.value = '1';
+  updateHomeSelection();
+  launchSelectedField();
+}
+
+function cancelAutoAdvance(): void {
+  clearTimeout(autoAdvanceTimer);
+  clearInterval(countdownTimer);
+  autoAdvanceTimer = undefined;
+  countdownTimer = undefined;
+  autoAdvanceScenarioId = null;
+  autoAdvanceDeadline = 0;
+}
+
+function advanceProgression(): void {
+  cancelAutoAdvance();
+  if (selectedLevelIndex >= campaign.length - 1) {
+    setMode('home');
+    showNotice('Arcade run complete · all stages stabilized');
+    return;
+  }
+  selectedLevelIndex++;
+  levelSelect.value = String(selectedLevel().metadata.number);
+  updateHomeSelection();
+  launchSelectedField();
+  showNotice(
+    `Stage ${String(selectedLevel().metadata.number).padStart(2, '0')} · ${selectedLevel().metadata.tier.toUpperCase()}`,
+  );
+}
+
+function updateAutoAdvanceCountdown(): void {
+  if (autoAdvanceScenarioId === null) return;
+  const seconds = Math.max(0, Math.ceil((autoAdvanceDeadline - Date.now()) / 1000));
+  const next = campaign[selectedLevelIndex + 1];
+  messageCountdown.textContent = next
+    ? `AUTO-LAUNCHING STAGE ${String(next.metadata.number).padStart(2, '0')} IN ${seconds}`
+    : '';
+}
+
+function scheduleAutoAdvance(state: PartitionState): void {
+  if (mode !== 'live' || selectedLevelIndex >= campaign.length - 1) return;
+  if (autoAdvanceScenarioId === state.scenarioId) return;
+  cancelAutoAdvance();
+  autoAdvanceScenarioId = state.scenarioId;
+  autoAdvanceDeadline = Date.now() + AUTO_ADVANCE_SECONDS * 1000;
+  updateAutoAdvanceCountdown();
+  countdownTimer = setInterval(updateAutoAdvanceCountdown, 200);
+  autoAdvanceTimer = setTimeout(() => {
+    if (
+      mode === 'live'
+      && autoAdvanceScenarioId === state.scenarioId
+      && engine.snapshot().status === 'won'
+    ) advanceProgression();
+  }, AUTO_ADVANCE_SECONDS * 1000);
 }
 
 function selectDirection(): Direction {
@@ -234,6 +301,7 @@ function startHumanPlay(): void {
 }
 
 function showHowToPlay(): void {
+  cancelAutoAdvance();
   liveStarted = false;
   clearHumanControls();
   clearTimeout(introTimer);
@@ -366,22 +434,54 @@ function updateStats(state: PartitionState): void {
   statusEl.textContent = state.status;
   statusEl.dataset.status = state.status;
   const restartLabel = state.status === 'won'
-    ? 'NEXT FIELD <span>→</span>'
+    ? 'NEXT STAGE <span>→</span>'
     : state.status === 'lost'
-      ? 'RETRY FIELD <span>↻</span>'
-      : 'RESTART FIELD <span>↻</span>';
+      ? 'START OVER <span>↻</span>'
+      : 'RESTART RUN <span>↻</span>';
   if (restartButton.dataset.label !== restartLabel) {
     restartButton.dataset.label = restartLabel;
     restartButton.innerHTML = restartLabel;
   }
   if (state.status !== 'running') {
-    messageEl.innerHTML = state.status === 'won'
-      ? '<span>FIELD STABILIZED</span><small>capture threshold reached</small>'
-      : state.failureReason === 'timeout'
-        ? '<span>TIME EXPIRED</span><small>field remained unstable</small>'
-        : '<span>SIGNAL LOST</span><small>all lives depleted</small>';
+    if (mode === 'replay') {
+      cancelAutoAdvance();
+      messageKicker.textContent = 'REPLAY RESULT';
+      messageTitle.textContent = state.status === 'won' ? 'FIELD STABILIZED' : 'SIGNAL LOST';
+      messageDetail.textContent = state.status === 'won'
+        ? 'capture threshold reached'
+        : state.failureReason === 'timeout'
+          ? 'field clock expired'
+          : 'all lives depleted';
+      messageCountdown.textContent = '';
+      messageAction.hidden = true;
+    } else if (state.status === 'won') {
+      const next = campaign[selectedLevelIndex + 1];
+      messageKicker.textContent = next ? 'FIELD COMPLETE' : 'ARCADE RUN COMPLETE';
+      messageTitle.textContent = 'FIELD STABILIZED';
+      messageDetail.textContent = next
+        ? `NEXT · STAGE ${String(next.metadata.number).padStart(2, '0')} · ${next.metadata.title} · ${next.metadata.tier}`
+        : `ALL ${campaign.length} STAGES STABILIZED`;
+      messageAction.hidden = false;
+      messageAction.innerHTML = next ? 'GO NEXT NOW <b>→</b>' : 'RETURN HOME <b>→</b>';
+      if (next) scheduleAutoAdvance(state);
+      else {
+        cancelAutoAdvance();
+        messageCountdown.textContent = 'RUN COMPLETE';
+      }
+    } else {
+      cancelAutoAdvance();
+      messageKicker.textContent = 'RUN OVER';
+      messageTitle.textContent = state.failureReason === 'timeout' ? 'TIME EXPIRED' : 'SIGNAL LOST';
+      messageDetail.textContent = state.failureReason === 'timeout'
+        ? 'field remained unstable'
+        : 'all lives depleted';
+      messageCountdown.textContent = 'ARCADE RUN RESET TO STAGE 01';
+      messageAction.hidden = false;
+      messageAction.innerHTML = 'START OVER <b>↻</b>';
+    }
     messageEl.classList.remove('hidden');
   } else {
+    messageAction.hidden = false;
     messageEl.classList.add('hidden');
   }
 }
@@ -469,10 +569,12 @@ function jumpReplayEvent(direction: -1 | 1): void {
 }
 
 function setMode(nextMode: ViewMode): void {
+  if (nextMode !== 'live') cancelAutoAdvance();
   mode = nextMode;
   if (mode === 'home') {
     liveStarted = false;
     clearHumanControls();
+    selectedLevelIndex = 0;
     updateHomeSelection();
   }
   document.body.dataset.mode = mode;
@@ -483,7 +585,7 @@ function setMode(nextMode: ViewMode): void {
   const queryParams = new URLSearchParams(location.search);
   queryParams.set('mode', mode);
   queryParams.set('seed', String(seed));
-  queryParams.set('level', String(selectedLevel().metadata.number));
+  queryParams.delete('level');
   queryParams.set('difficulty', selectedDifficulty);
   if (mode === 'replay') queryParams.set('tick', String(replayTransport.current.state.tick));
   else queryParams.delete('tick');
@@ -622,13 +724,14 @@ startPlayButton.addEventListener('click', startHumanPlay);
 howToPlayButton.addEventListener('click', showHowToPlay);
 returnHomeButton.addEventListener('click', () => setMode('home'));
 homeReplayButton.addEventListener('click', () => setMode('replay'));
+messageAction.addEventListener('click', () => {
+  const state = engine.snapshot();
+  if (state.status === 'won') advanceProgression();
+  else if (state.status === 'lost') startArcadeRun();
+});
 fieldLauncher.addEventListener('submit', (event) => {
   event.preventDefault();
-  launchSelectedField();
-});
-levelSelect.addEventListener('change', () => {
-  selectedLevelIndex = Math.max(0, Math.min(campaign.length - 1, Number(levelSelect.value) - 1));
-  updateHomeSelection();
+  startArcadeRun();
 });
 difficultySelect.addEventListener('change', () => {
   selectedDifficulty = difficultySelect.value as DifficultyId;
@@ -646,12 +749,11 @@ watchRunButton.addEventListener('click', () => {
 
 restartButton.addEventListener('click', () => {
   const completed = engine.snapshot().status === 'won';
-  if (completed && selectedLevelIndex < campaign.length - 1) {
-    selectedLevelIndex++;
-    levelSelect.value = String(selectedLevel().metadata.number);
+  if (completed) advanceProgression();
+  else {
+    startArcadeRun();
+    showNotice('Arcade run restarted · Stage 01');
   }
-  launchSelectedField();
-  showNotice(completed ? `Field ${selectedLevel().metadata.number} loaded` : 'Field restarted');
 });
 
 playButton.addEventListener('click', () => {
@@ -727,7 +829,7 @@ query<HTMLButtonElement>('#copy-link').addEventListener('click', async () => {
   const url = new URL(location.href);
   url.searchParams.set('mode', mode);
   url.searchParams.set('seed', String(seed));
-  url.searchParams.set('level', String(selectedLevel().metadata.number));
+  url.searchParams.delete('level');
   url.searchParams.set('difficulty', selectedDifficulty);
   try {
     await navigator.clipboard.writeText(url.toString());
