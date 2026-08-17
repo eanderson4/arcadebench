@@ -32,6 +32,7 @@ function query<T extends Element>(selector: string): T {
 
 const canvas = query<HTMLCanvasElement>('#game');
 const stage = query<HTMLElement>('.stage');
+const stageHomeButton = query<HTMLButtonElement>('#stage-home');
 const renderer = new PartitionRenderer(canvas);
 const captureEl = query<HTMLElement>('#capture');
 const integrityEl = query<HTMLElement>('#integrity');
@@ -207,6 +208,11 @@ const leaderboardService = new LeaderboardService(
 );
 
 const AUTO_ADVANCE_SECONDS = 5;
+
+function isFormControl(target: EventTarget | null): target is HTMLElement {
+  return target instanceof HTMLElement
+    && (target.matches('input, textarea, select, button') || target.isContentEditable);
+}
 
 function selectedLevel(): PartitionCampaignLevel {
   return campaign[selectedLevelIndex]!;
@@ -584,6 +590,8 @@ function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubm
   scoreEntryStatus.textContent = leaderboardService.mode === 'public'
     ? 'CALLSIGN MODERATED · SCORE VERIFIED FROM REPLAY'
     : 'LOCAL PREVIEW · PUBLIC BOARD CONNECTS AT DEPLOYMENT';
+  clearHumanControls();
+  canvas.blur();
 }
 
 function recordStageResult(state: PartitionState): void {
@@ -989,7 +997,9 @@ function setImmersive(next: boolean): void {
   fitScreenButton.querySelector('span')!.textContent = immersive ? 'EXIT VIEW' : 'FIT SCREEN';
   if (immersive) {
     window.scrollTo({ top: 0, behavior: 'instant' });
-    requestAnimationFrame(() => canvas.focus({ preventScroll: true }));
+    requestAnimationFrame(() => {
+      if (scoreEntry.hidden && !isFormControl(document.activeElement)) canvas.focus({ preventScroll: true });
+    });
   }
 }
 
@@ -1215,8 +1225,7 @@ window.addEventListener('keydown', (event) => {
     setImmersive(false);
     return;
   }
-  if (target?.matches('input, select')) return;
-  if (target?.matches('button') && (event.code === 'Space' || event.code === 'Enter')) return;
+  if (isFormControl(target)) return;
   if (mode === 'home' || mode === 'catalog') return;
   if (mode === 'replay') {
     switch (event.code) {
@@ -1286,6 +1295,7 @@ window.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keyup', (event) => {
+  if (isFormControl(event.target)) return;
   keys.delete(event.code);
   const releasedDirection = directionForCode(event.code);
   if (releasedDirection) {
@@ -1338,6 +1348,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')
 startPlayButton.addEventListener('click', startHumanPlay);
 howToPlayButton.addEventListener('click', showHowToPlay);
 returnHomeButton.addEventListener('click', () => setMode('home'));
+stageHomeButton.addEventListener('click', () => setMode('home'));
 homeReplayButton.addEventListener('click', () => setMode('replay'));
 openCatalogButton.addEventListener('click', () => setMode('catalog'));
 openLeaderboardButton.addEventListener('click', () => {
@@ -1415,6 +1426,9 @@ scoreEntry.addEventListener('submit', async (event) => {
     scoreEntryStatus.textContent = error instanceof Error ? error.message : 'Could not enter score.';
   }
 });
+scoreEntry.addEventListener('focusin', clearHumanControls);
+scoreEntry.addEventListener('keydown', (event) => event.stopPropagation());
+scoreEntry.addEventListener('keyup', (event) => event.stopPropagation());
 scoreBoardLink.addEventListener('click', () => setMode('leaderboard'));
 fieldLauncher.addEventListener('submit', (event) => {
   event.preventDefault();

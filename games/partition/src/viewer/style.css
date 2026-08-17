@@ -442,7 +442,7 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; }
   position: absolute;
   z-index: 4;
   top: 14px;
-  left: 17px;
+  left: 148px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -453,6 +453,28 @@ canvas { display: block; width: 100%; height: auto; touch-action: none; }
   letter-spacing: 0.11em;
   backdrop-filter: blur(8px);
 }
+
+.stage-home {
+  position: absolute;
+  z-index: 8;
+  top: 14px;
+  left: 17px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 6px 9px;
+  border: 1px solid rgba(110, 233, 245, 0.22);
+  background: rgba(3, 8, 13, 0.68);
+  color: #78969c;
+  font: 500 8px 'DM Mono', monospace;
+  letter-spacing: 0.09em;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  transition: color 150ms, border-color 150ms, background 150ms;
+}
+.stage-home i { color: var(--cyan); font-style: normal; }
+.stage-home:hover { color: #e1fcff; border-color: rgba(110, 233, 245, 0.5); background: rgba(17, 48, 56, 0.78); }
 
 .stage-label b { color: #a5bec3; font-weight: 500; }
 .stage-label em { font-style: normal; }
@@ -1061,6 +1083,9 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
   .score-entry-control input { border-right: 1px solid rgba(110, 233, 245, 0.32); }
   .score-entry-control .primary-button { min-height: 40px; }
   .stage-label em { display: none; }
+  .stage-home { left: 12px; }
+  .stage-home span { display: none; }
+  .stage-label { left: 54px; }
   .live-controls { flex-direction: column; }
   .actions { width: 100%; }
   .actions button { flex: 1; }
