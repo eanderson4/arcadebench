@@ -16,6 +16,7 @@
         <header class="home-nav">
           <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
           <div class="home-nav-actions">
+            <button id="open-leaderboard" class="quiet-button leaderboard-link" type="button">HIGH SCORES <span>↗</span></button>
             <button id="open-catalog" class="quiet-button catalog-link" type="button">EXPLORE 20 FIELDS <span>→</span></button>
             <button id="home-replay" class="quiet-button" type="button">OPEN REPLAY LAB <span>↗</span></button>
           </div>
@@ -78,7 +79,10 @@
         <header class="catalog-nav">
           <button id="catalog-home" class="text-button" type="button"><span>←</span> PARTITION HOME</button>
           <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> FIELD CATALOG</div>
-          <button id="catalog-replay" class="quiet-button" type="button">REPLAY LAB <span>↗</span></button>
+          <div class="catalog-nav-actions">
+            <button id="catalog-leaderboard" class="quiet-button" type="button">HIGH SCORES <span>↗</span></button>
+            <button id="catalog-replay" class="quiet-button" type="button">REPLAY LAB <span>↗</span></button>
+          </div>
         </header>
 
         <div class="catalog-hero">
@@ -117,6 +121,57 @@
         <div id="catalog-grid" class="catalog-grid" aria-live="polite"></div>
       </section>
 
+      <section id="leaderboard-screen" class="leaderboard-screen" aria-label="Partition high scores">
+        <header class="leaderboard-nav">
+          <button id="leaderboard-home" class="text-button" type="button"><span>←</span> PARTITION HOME</button>
+          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> HIGH SCORES</div>
+          <button id="leaderboard-catalog" class="quiet-button" type="button">FIELD CATALOG <span>→</span></button>
+        </header>
+
+        <div class="leaderboard-hero">
+          <div>
+            <div class="home-kicker"><span>HUMAN ARCADE SIGNALS</span><b>PARTITION / V1</b></div>
+            <h1>HIGH<br />SCORES</h1>
+          </div>
+          <div class="leaderboard-intro">
+            <p>Arcade runs rank by the deepest stage reached, then elapsed time. Field boards rank completed stabilizations by time and retain every partition as inspectable run evidence.</p>
+            <div class="leaderboard-legend">
+              <span><b>01</b> STAGE REACHED</span>
+              <span><b>02</b> ELAPSED TIME</span>
+              <span><b>03</b> PARTITIONS</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="leaderboard-console">
+          <div class="leaderboard-toolbar">
+            <div class="leaderboard-tabs" role="tablist" aria-label="Scoreboard type">
+              <button type="button" data-leaderboard-scope="arcade" role="tab" aria-selected="true">ARCADE RUN</button>
+              <button type="button" data-leaderboard-scope="level" role="tab" aria-selected="false">INDIVIDUAL FIELD</button>
+            </div>
+            <div class="leaderboard-filters">
+              <label id="leaderboard-level-filter" hidden><span>FIELD</span><select id="leaderboard-level"></select></label>
+              <label><span>DIFFICULTY</span><select id="leaderboard-difficulty">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+                <option value="impossible">Impossible</option>
+              </select></label>
+            </div>
+          </div>
+          <div class="leaderboard-status-line">
+            <span id="leaderboard-board-title">ARCADE RUN · MEDIUM</span>
+            <b id="leaderboard-storage-mode">LOCAL PREVIEW</b>
+          </div>
+          <div id="leaderboard-head" class="leaderboard-row leaderboard-head" aria-hidden="true"></div>
+          <ol id="leaderboard-list" class="leaderboard-list" aria-live="polite"></ol>
+          <div id="leaderboard-empty" class="leaderboard-empty" hidden>
+            <span>NO SIGNALS RECORDED</span>
+            <p>Finish a run and put the first callsign on this board.</p>
+          </div>
+        </div>
+      </section>
+
       <header class="masthead">
         <div class="identity">
           <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
@@ -146,6 +201,7 @@
               <span><small>STABLE / GOAL</small><b id="stage-capture">0 / 75%</b></span>
               <span><small>LIVES</small><b id="stage-integrity">03</b></span>
               <span><small>TIME</small><b id="stage-time">3:00</b></span>
+              <span><small>PARTITIONS</small><b id="stage-partitions">00</b></span>
               <span><small>TICK</small><b id="stage-tick">0000</b></span>
             </div>
             <div id="time-pressure-hud" class="time-pressure-hud" aria-live="polite" aria-hidden="true">
@@ -185,6 +241,20 @@
                   <em id="message-countdown"></em>
                   <button id="message-action" class="primary-button" type="button">GO NEXT NOW <b>→</b></button>
                 </div>
+                <form id="score-entry" class="score-entry" hidden>
+                  <div class="score-entry-stats">
+                    <span><small id="score-stage-label">STAGE REACHED</small><b id="score-stage">01</b></span>
+                    <span><small>ELAPSED</small><b id="score-time">0:00.0</b></span>
+                    <span><small>PARTITIONS</small><b id="score-partitions">00</b></span>
+                  </div>
+                  <label for="player-name">ENTER YOUR CALLSIGN</label>
+                  <div class="score-entry-control">
+                    <input id="player-name" name="player-name" type="text" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="SPARK PILOT" />
+                    <button id="submit-score" class="primary-button" type="submit">ENTER SCORE <b>→</b></button>
+                  </div>
+                  <p id="score-entry-status" aria-live="polite">PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY</p>
+                  <button id="score-board-link" class="text-button" type="button" hidden>VIEW HIGH SCORES →</button>
+                </form>
               </div>
             </div>
             <div id="play-intro" class="play-intro">

@@ -28,6 +28,8 @@ See [the architecture](docs/ARCHITECTURE.md) and
 [run format](docs/RUN-FORMAT.md) for the platform contracts. The opt-in
 [replay sharing contract](docs/REPLAY-SHARING.md) keeps public links independent
 from the storage provider.
+The [Partition leaderboard contract](docs/LEADERBOARD.md) defines replay-backed
+human score submission, ranking, storage, and callsign moderation.
 
 ## Workspace
 

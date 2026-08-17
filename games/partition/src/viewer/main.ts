@@ -3,14 +3,26 @@ import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
 import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
 import { createPartitionCampaign, resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
+import {
+  elapsedMilliseconds,
+  LeaderboardService,
+  LocalLeaderboardStore,
+  reviewPlayerName,
+  type LeaderboardDraft,
+  type LeaderboardEntry,
+  type LeaderboardQuery,
+  type LeaderboardStageResult,
+  type LeaderboardSubmitProof,
+} from './leaderboard';
 import { PartitionRenderer } from './renderer';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
 import { resolveTimePressure } from './time-pressure';
 
-type ViewMode = 'home' | 'catalog' | 'live' | 'replay';
+type ViewMode = 'home' | 'catalog' | 'leaderboard' | 'live' | 'replay';
 type PlayContext = 'arcade' | 'catalog';
 type CatalogTier = DifficultyId | 'all';
+type LeaderboardScope = 'arcade' | 'level';
 
 function query<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -28,6 +40,7 @@ const statusEl = query<HTMLElement>('#status');
 const stageCaptureEl = query<HTMLElement>('#stage-capture');
 const stageIntegrityEl = query<HTMLElement>('#stage-integrity');
 const stageTimeEl = query<HTMLElement>('#stage-time');
+const stagePartitionsEl = query<HTMLElement>('#stage-partitions');
 const stageTickEl = query<HTMLElement>('#stage-tick');
 const timePressureHud = query<HTMLElement>('#time-pressure-hud');
 const timePressureLabel = query<HTMLElement>('#time-pressure-label');
@@ -66,8 +79,10 @@ const difficultySelect = query<HTMLSelectElement>('#difficulty-select');
 const fieldLauncher = query<HTMLFormElement>('#field-launcher');
 const homeReplayButton = query<HTMLButtonElement>('#home-replay');
 const openCatalogButton = query<HTMLButtonElement>('#open-catalog');
+const openLeaderboardButton = query<HTMLButtonElement>('#open-leaderboard');
 const catalogHomeButton = query<HTMLButtonElement>('#catalog-home');
 const catalogReplayButton = query<HTMLButtonElement>('#catalog-replay');
+const catalogLeaderboardButton = query<HTMLButtonElement>('#catalog-leaderboard');
 const catalogGrid = query<HTMLElement>('#catalog-grid');
 const catalogDifficultySelect = query<HTMLSelectElement>('#catalog-difficulty-select');
 const returnHomeButton = query<HTMLButtonElement>('#return-home');
@@ -92,6 +107,25 @@ const stabilityGoalMarker = query<HTMLElement>('#stability-goal-marker');
 const captureFeedback = query<HTMLElement>('#capture-feedback');
 const captureGain = query<HTMLElement>('#capture-gain');
 const captureTotal = query<HTMLElement>('#capture-total');
+const leaderboardHomeButton = query<HTMLButtonElement>('#leaderboard-home');
+const leaderboardCatalogButton = query<HTMLButtonElement>('#leaderboard-catalog');
+const leaderboardDifficultySelect = query<HTMLSelectElement>('#leaderboard-difficulty');
+const leaderboardLevelSelect = query<HTMLSelectElement>('#leaderboard-level');
+const leaderboardLevelFilter = query<HTMLElement>('#leaderboard-level-filter');
+const leaderboardStorageMode = query<HTMLElement>('#leaderboard-storage-mode');
+const leaderboardBoardTitle = query<HTMLElement>('#leaderboard-board-title');
+const leaderboardHead = query<HTMLElement>('#leaderboard-head');
+const leaderboardList = query<HTMLOListElement>('#leaderboard-list');
+const leaderboardEmpty = query<HTMLElement>('#leaderboard-empty');
+const scoreEntry = query<HTMLFormElement>('#score-entry');
+const scoreStageLabel = query<HTMLElement>('#score-stage-label');
+const scoreStage = query<HTMLElement>('#score-stage');
+const scoreTime = query<HTMLElement>('#score-time');
+const scorePartitions = query<HTMLElement>('#score-partitions');
+const playerNameInput = query<HTMLInputElement>('#player-name');
+const submitScoreButton = query<HTMLButtonElement>('#submit-score');
+const scoreEntryStatus = query<HTMLElement>('#score-entry-status');
+const scoreBoardLink = query<HTMLButtonElement>('#score-board-link');
 
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
@@ -123,6 +157,8 @@ let selectedDifficulty: DifficultyId = requestedDifficulty && requestedDifficult
 let engine = new PartitionEngine(applyDifficulty(campaign[selectedLevelIndex]!.scenario, selectedDifficulty));
 let mode: ViewMode = params.get('mode') === 'replay'
   ? 'replay'
+  : params.get('mode') === 'leaderboard'
+    ? 'leaderboard'
   : params.get('mode') === 'catalog'
     ? 'catalog'
   : params.get('mode') === 'live' || params.get('autostart') === '1'
@@ -142,6 +178,7 @@ let bufferedDraw = false;
 
 let loadedReplay: PartitionReplay = createShowcaseReplay();
 let replayFrames: PartitionReplayFrame[] = replayPartitionFrames(loadedReplay);
+let replayPartitionCounts: number[] = [];
 let replayTransport = new ReplayTransport(replayFrames, loadedReplay.scenario.ticksPerSecond);
 let lastAnimationTime = performance.now();
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
@@ -153,6 +190,21 @@ let countdownTimer: ReturnType<typeof setInterval> | undefined;
 let autoAdvanceScenarioId: string | null = null;
 let autoAdvanceDeadline = 0;
 let lastPressureSecond: number | null = null;
+let currentPartitionCount = 0;
+let recordedScenarioId: string | null = null;
+let runStageResults: LeaderboardStageResult[] = [];
+let runStageReplays: PartitionReplay[] = [];
+let pendingLeaderboardSubmission: { draft: LeaderboardDraft; proof: LeaderboardSubmitProof } | null = null;
+let leaderboardScope: LeaderboardScope = params.get('board') === 'level' ? 'level' : 'arcade';
+const requestedBoardLevel = params.get('field');
+let leaderboardLevelId = levelCatalog.some((level) => level.metadata.slug === requestedBoardLevel)
+  ? requestedBoardLevel!
+  : levelCatalog[0]!.metadata.slug;
+
+const leaderboardService = new LeaderboardService(
+  new LocalLeaderboardStore(localStorage),
+  import.meta.env.VITE_PARTITION_LEADERBOARD_API_URL ?? '',
+);
 
 const AUTO_ADVANCE_SECONDS = 5;
 
@@ -178,6 +230,20 @@ function formatFieldClock(ticks: number, ticksPerSecond: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return seconds === 0 ? `${minutes}m` : `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function formatLeaderboardTime(elapsedMs: number): string {
+  const tenths = Math.floor(elapsedMs / 100) % 10;
+  const totalSeconds = Math.floor(elapsedMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}.${tenths}`;
+}
+
+function resetRunRecord(): void {
+  runStageResults = [];
+  runStageReplays = [];
+  pendingLeaderboardSubmission = null;
 }
 
 function catalogStat(label: string, value: string): HTMLElement {
@@ -254,7 +320,17 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
   launch.append(launchLabel, launchArrow);
   launch.addEventListener('click', () => launchCatalogField(level));
 
-  card.append(preview, heading, tagline, challenge, features, stats, launch);
+  const leaders = document.createElement('button');
+  leaders.className = 'catalog-leaders';
+  leaders.type = 'button';
+  leaders.textContent = 'VIEW FIELD LEADERS';
+  leaders.addEventListener('click', () => openLevelLeaderboard(level));
+
+  const actions = document.createElement('div');
+  actions.className = 'catalog-card-actions';
+  actions.append(launch, leaders);
+
+  card.append(preview, heading, tagline, challenge, features, stats, actions);
   const previewEngine = new PartitionEngine(scenario);
   new PartitionRenderer(previewCanvas).render(previewEngine.snapshot(), {
     ambientTime: level.metadata.number * 0.73,
@@ -294,8 +370,18 @@ function resetLiveSession(): void {
   clearHumanControls();
   direction = 'idle';
   liveReplayTicks = [];
+  currentPartitionCount = 0;
+  recordedScenarioId = null;
+  pendingLeaderboardSubmission = null;
   watchRunButton.disabled = true;
   messageEl.classList.add('hidden');
+  messageEl.classList.remove('has-score-entry');
+  scoreEntry.hidden = true;
+  scoreBoardLink.hidden = true;
+  submitScoreButton.disabled = false;
+  playerNameInput.disabled = false;
+  scoreEntryStatus.dataset.tone = 'normal';
+  scoreEntryStatus.textContent = 'PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY';
   captureFeedback.classList.remove('visible');
   stage.classList.remove('capture-pulse');
   updateFieldIdentity();
@@ -312,6 +398,7 @@ function launchSelectedField(): void {
 }
 
 function launchCatalogField(level: PartitionCampaignLevel): void {
+  resetRunRecord();
   campaign = [level];
   playContext = 'catalog';
   selectedLevelIndex = 0;
@@ -320,6 +407,7 @@ function launchCatalogField(level: PartitionCampaignLevel): void {
 }
 
 function startArcadeRun(): void {
+  resetRunRecord();
   campaign = arcadeCampaign;
   playContext = 'arcade';
   selectedLevelIndex = 0;
@@ -437,6 +525,83 @@ function humanReplay(): PartitionReplay {
     ticks: structuredClone(liveReplayTicks),
     finalState: engine.snapshot(),
   };
+}
+
+function buildLeaderboardSubmission(state: PartitionState): {
+  draft: LeaderboardDraft;
+  proof: LeaderboardSubmitProof;
+} | null {
+  const result = runStageResults.at(-1);
+  if (!result) return null;
+  if (playContext === 'catalog') {
+    return {
+      draft: {
+        scope: 'level',
+        difficulty: selectedDifficulty,
+        levelId: result.levelId,
+        levelNumber: result.levelNumber,
+        levelTitle: result.levelTitle,
+        won: result.won,
+        capturedFraction: result.capturedFraction,
+        elapsedMs: elapsedMilliseconds([result]),
+        partitions: result.partitions,
+      },
+      proof: { replays: structuredClone(runStageReplays) },
+    };
+  }
+  const runFinished = state.status === 'lost' || selectedLevelIndex === campaign.length - 1;
+  if (!runFinished) return null;
+  return {
+    draft: {
+      scope: 'arcade',
+      difficulty: selectedDifficulty,
+      stageReached: selectedLevelIndex + 1,
+      stagesCleared: runStageResults.filter((stageResult) => stageResult.won).length,
+      completed: state.status === 'won' && selectedLevelIndex === campaign.length - 1,
+      elapsedMs: elapsedMilliseconds(runStageResults),
+      partitions: runStageResults.reduce((sum, stageResult) => sum + stageResult.partitions, 0),
+    },
+    proof: { replays: structuredClone(runStageReplays) },
+  };
+}
+
+function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubmission>): void {
+  pendingLeaderboardSubmission = submission;
+  const draft = submission.draft;
+  scoreEntry.hidden = false;
+  messageEl.classList.add('has-score-entry');
+  scoreBoardLink.hidden = true;
+  scoreStageLabel.textContent = draft.scope === 'arcade' ? 'STAGE REACHED' : 'FIELD RESULT';
+  scoreStage.textContent = draft.scope === 'arcade'
+    ? `${String(draft.stageReached).padStart(2, '0')} / ${String(campaign.length).padStart(2, '0')}`
+    : draft.won ? 'STABLE' : `${Math.floor(draft.capturedFraction * 100)}%`;
+  scoreTime.textContent = formatLeaderboardTime(draft.elapsedMs);
+  scorePartitions.textContent = String(draft.partitions).padStart(2, '0');
+  submitScoreButton.innerHTML = 'ENTER SCORE <b>→</b>';
+  submitScoreButton.disabled = false;
+  playerNameInput.disabled = false;
+  scoreEntryStatus.dataset.tone = 'normal';
+  scoreEntryStatus.textContent = leaderboardService.mode === 'public'
+    ? 'CALLSIGN MODERATED · SCORE VERIFIED FROM REPLAY'
+    : 'LOCAL PREVIEW · PUBLIC BOARD CONNECTS AT DEPLOYMENT';
+}
+
+function recordStageResult(state: PartitionState): void {
+  if (state.status === 'running' || recordedScenarioId === state.scenarioId) return;
+  recordedScenarioId = state.scenarioId;
+  runStageResults.push({
+    levelId: selectedLevel().metadata.slug,
+    levelNumber: selectedLevel().metadata.number,
+    levelTitle: selectedLevel().metadata.title,
+    won: state.status === 'won',
+    elapsedTicks: state.tick,
+    ticksPerSecond: engine.scenario.ticksPerSecond,
+    partitions: currentPartitionCount,
+    capturedFraction: state.capturedFraction,
+  });
+  runStageReplays.push(humanReplay());
+  const submission = buildLeaderboardSubmission(state);
+  if (submission) prepareScoreEntry(submission);
 }
 
 function startHumanPlay(): void {
@@ -731,6 +896,10 @@ function updateStats(state: PartitionState): void {
   stageTimeEl.textContent = state.timeRemainingTicks === null
     ? 'OPEN'
     : formatFieldClock(state.timeRemainingTicks, ticksPerSecond);
+  const visiblePartitions = mode === 'replay'
+    ? replayPartitionCounts[replayTransport.index] ?? 0
+    : currentPartitionCount;
+  stagePartitionsEl.textContent = String(visiblePartitions).padStart(2, '0');
   updateTimePressure(state, ticksPerSecond);
   stageTickEl.textContent = tick;
   statusEl.textContent = state.status;
@@ -868,6 +1037,11 @@ function installReplay(replay: PartitionReplay, name: string): void {
   const retainedLoop = replayTransport.loop;
   loadedReplay = replay;
   replayFrames = frames;
+  let replayPartitions = 0;
+  replayPartitionCounts = frames.map((frame) => {
+    replayPartitions += frame.events.filter((event) => event.type === 'trace_completed').length;
+    return replayPartitions;
+  });
   replayTransport = new ReplayTransport(frames, replay.scenario.ticksPerSecond);
   replayTransport.setSpeed(retainedSpeed);
   replayTransport.setLoop(retainedLoop);
@@ -895,6 +1069,99 @@ function jumpReplayEvent(direction: -1 | 1): void {
   syncReplayPlayButton();
 }
 
+let leaderboardRenderVersion = 0;
+
+function currentLeaderboardQuery(): LeaderboardQuery {
+  return leaderboardScope === 'arcade'
+    ? { scope: 'arcade', difficulty: selectedDifficulty }
+    : { scope: 'level', difficulty: selectedDifficulty, levelId: leaderboardLevelId };
+}
+
+function leaderboardCell(label: string, value: string, className = ''): HTMLElement {
+  const cell = document.createElement('span');
+  if (className) cell.className = className;
+  cell.dataset.label = label;
+  cell.textContent = value;
+  return cell;
+}
+
+function createLeaderboardRow(entry: LeaderboardEntry, rank: number): HTMLLIElement {
+  const row = document.createElement('li');
+  row.className = `leaderboard-row${rank <= 3 ? ` top-${rank}` : ''}`;
+  const rankCell = leaderboardCell('RANK', String(rank).padStart(2, '0'), 'leaderboard-rank');
+  const nameCell = leaderboardCell('CALLSIGN', entry.name, 'leaderboard-name');
+  if (entry.scope === 'arcade') {
+    const stage = entry.completed ? `CLEAR ${String(entry.stageReached).padStart(2, '0')}` : `STAGE ${String(entry.stageReached).padStart(2, '0')}`;
+    row.append(
+      rankCell,
+      nameCell,
+      leaderboardCell('STAGE', stage, entry.completed ? 'leaderboard-clear' : ''),
+      leaderboardCell('TIME', formatLeaderboardTime(entry.elapsedMs)),
+      leaderboardCell('PARTITIONS', String(entry.partitions).padStart(2, '0')),
+    );
+  } else {
+    row.append(
+      rankCell,
+      nameCell,
+      leaderboardCell('RESULT', entry.won ? 'STABLE' : 'ATTEMPT', entry.won ? 'leaderboard-clear' : ''),
+      leaderboardCell('TIME', formatLeaderboardTime(entry.elapsedMs)),
+      leaderboardCell('PARTITIONS', String(entry.partitions).padStart(2, '0')),
+      leaderboardCell('STABILITY', `${Math.floor(entry.capturedFraction * 100)}%`),
+    );
+  }
+  return row;
+}
+
+async function renderLeaderboard(): Promise<void> {
+  const renderVersion = ++leaderboardRenderVersion;
+  const query = currentLeaderboardQuery();
+  leaderboardDifficultySelect.value = selectedDifficulty;
+  leaderboardLevelSelect.value = leaderboardLevelId;
+  leaderboardLevelFilter.hidden = leaderboardScope !== 'level';
+  leaderboardHead.parentElement!.dataset.scope = leaderboardScope;
+  if (mode === 'leaderboard') {
+    const queryParams = new URLSearchParams(location.search);
+    queryParams.set('board', leaderboardScope);
+    if (leaderboardScope === 'level') queryParams.set('field', leaderboardLevelId);
+    else queryParams.delete('field');
+    history.replaceState(null, '', `${location.pathname}?${queryParams}`);
+  }
+  for (const tab of document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-scope]')) {
+    tab.setAttribute('aria-selected', String(tab.dataset.leaderboardScope === leaderboardScope));
+  }
+  const level = levelCatalog.find((candidate) => candidate.metadata.slug === leaderboardLevelId) ?? levelCatalog[0]!;
+  leaderboardBoardTitle.textContent = leaderboardScope === 'arcade'
+    ? `ARCADE RUN · ${selectedDifficulty.toUpperCase()}`
+    : `FIELD ${String(level.metadata.number).padStart(2, '0')} · ${level.metadata.title.toUpperCase()} · ${selectedDifficulty.toUpperCase()}`;
+  leaderboardStorageMode.textContent = leaderboardService.mode === 'public' ? 'PUBLIC BOARD · VERIFIED' : 'LOCAL PREVIEW · THIS DEVICE';
+  leaderboardStorageMode.dataset.mode = leaderboardService.mode;
+  leaderboardHead.innerHTML = leaderboardScope === 'arcade'
+    ? '<span>RANK</span><span>CALLSIGN</span><span>STAGE</span><span>TIME</span><span>PARTITIONS</span>'
+    : '<span>RANK</span><span>CALLSIGN</span><span>RESULT</span><span>TIME</span><span>PARTITIONS</span><span>STABILITY</span>';
+  leaderboardList.replaceChildren();
+  leaderboardEmpty.hidden = true;
+  leaderboardList.setAttribute('aria-busy', 'true');
+  try {
+    const entries = await leaderboardService.list(query);
+    if (renderVersion !== leaderboardRenderVersion) return;
+    leaderboardList.replaceChildren(...entries.map((entry, index) => createLeaderboardRow(entry, index + 1)));
+    leaderboardEmpty.hidden = entries.length !== 0;
+  } catch (error) {
+    if (renderVersion !== leaderboardRenderVersion) return;
+    leaderboardEmpty.hidden = false;
+    leaderboardEmpty.querySelector('span')!.textContent = 'BOARD OFFLINE';
+    leaderboardEmpty.querySelector('p')!.textContent = error instanceof Error ? error.message : 'Could not load high scores.';
+  } finally {
+    if (renderVersion === leaderboardRenderVersion) leaderboardList.setAttribute('aria-busy', 'false');
+  }
+}
+
+function openLevelLeaderboard(level: PartitionCampaignLevel): void {
+  leaderboardScope = 'level';
+  leaderboardLevelId = level.metadata.slug;
+  setMode('leaderboard');
+}
+
 function setMode(nextMode: ViewMode): void {
   if (nextMode !== 'live') cancelAutoAdvance();
   mode = nextMode;
@@ -909,6 +1176,10 @@ function setMode(nextMode: ViewMode): void {
     liveStarted = false;
     clearHumanControls();
     renderCatalogCards();
+  } else if (mode === 'leaderboard') {
+    liveStarted = false;
+    clearHumanControls();
+    void renderLeaderboard();
   }
   document.body.dataset.mode = mode;
   setImmersive(mode === 'live' && liveStarted);
@@ -920,6 +1191,14 @@ function setMode(nextMode: ViewMode): void {
   queryParams.set('seed', String(seed));
   if (mode === 'live' && playContext === 'catalog') queryParams.set('level', selectedLevel().metadata.slug);
   else queryParams.delete('level');
+  if (mode === 'leaderboard') {
+    queryParams.set('board', leaderboardScope);
+    if (leaderboardScope === 'level') queryParams.set('field', leaderboardLevelId);
+    else queryParams.delete('field');
+  } else {
+    queryParams.delete('board');
+    queryParams.delete('field');
+  }
   if (mode === 'catalog' && catalogTier !== 'all') queryParams.set('tier', catalogTier);
   else queryParams.delete('tier');
   queryParams.set('difficulty', selectedDifficulty);
@@ -1061,16 +1340,82 @@ howToPlayButton.addEventListener('click', showHowToPlay);
 returnHomeButton.addEventListener('click', () => setMode('home'));
 homeReplayButton.addEventListener('click', () => setMode('replay'));
 openCatalogButton.addEventListener('click', () => setMode('catalog'));
+openLeaderboardButton.addEventListener('click', () => {
+  leaderboardScope = 'arcade';
+  setMode('leaderboard');
+});
 catalogHomeButton.addEventListener('click', () => setMode('home'));
 catalogReplayButton.addEventListener('click', () => setMode('replay'));
+catalogLeaderboardButton.addEventListener('click', () => setMode('leaderboard'));
+leaderboardHomeButton.addEventListener('click', () => setMode('home'));
+leaderboardCatalogButton.addEventListener('click', () => setMode('catalog'));
 messageAction.addEventListener('click', () => {
   const state = engine.snapshot();
   if (playContext === 'catalog') {
     if (state.status === 'won') setMode('catalog');
-    else if (state.status === 'lost') launchSelectedField();
+    else if (state.status === 'lost') {
+      resetRunRecord();
+      launchSelectedField();
+    }
   } else if (state.status === 'won') advanceProgression();
   else if (state.status === 'lost') startArcadeRun();
 });
+
+for (const tab of document.querySelectorAll<HTMLButtonElement>('[data-leaderboard-scope]')) {
+  tab.addEventListener('click', () => {
+    leaderboardScope = tab.dataset.leaderboardScope as LeaderboardScope;
+    void renderLeaderboard();
+  });
+}
+leaderboardDifficultySelect.addEventListener('change', () => {
+  selectedDifficulty = leaderboardDifficultySelect.value as DifficultyId;
+  difficultySelect.value = selectedDifficulty;
+  catalogDifficultySelect.value = selectedDifficulty;
+  updateHomeSelection();
+  void renderLeaderboard();
+});
+leaderboardLevelSelect.addEventListener('change', () => {
+  leaderboardLevelId = leaderboardLevelSelect.value;
+  void renderLeaderboard();
+});
+
+scoreEntry.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const submission = pendingLeaderboardSubmission;
+  if (!submission) return;
+  const review = reviewPlayerName(playerNameInput.value);
+  if (!review.allowed || !review.normalizedName) {
+    scoreEntryStatus.dataset.tone = 'error';
+    scoreEntryStatus.textContent = review.reason ?? 'Choose another callsign.';
+    playerNameInput.focus();
+    return;
+  }
+  submitScoreButton.disabled = true;
+  playerNameInput.disabled = true;
+  scoreEntryStatus.dataset.tone = 'normal';
+  scoreEntryStatus.textContent = leaderboardService.mode === 'public'
+    ? 'MODERATING CALLSIGN · VERIFYING REPLAY…'
+    : 'RECORDING VERIFIED LOCAL SCORE…';
+  try {
+    const entry = await leaderboardService.submit(review.normalizedName, submission.draft, submission.proof);
+    localStorage.setItem('arcadebench.partition.player-name', entry.name);
+    leaderboardScope = entry.scope;
+    selectedDifficulty = entry.difficulty;
+    if (entry.scope === 'level') leaderboardLevelId = entry.levelId;
+    scoreEntryStatus.dataset.tone = 'success';
+    scoreEntryStatus.textContent = leaderboardService.mode === 'public'
+      ? 'SCORE VERIFIED · CALLSIGN ACCEPTED'
+      : 'SCORE SAVED ON THIS DEVICE';
+    submitScoreButton.innerHTML = 'SCORE ENTERED <b>✓</b>';
+    scoreBoardLink.hidden = false;
+  } catch (error) {
+    submitScoreButton.disabled = false;
+    playerNameInput.disabled = false;
+    scoreEntryStatus.dataset.tone = 'error';
+    scoreEntryStatus.textContent = error instanceof Error ? error.message : 'Could not enter score.';
+  }
+});
+scoreBoardLink.addEventListener('click', () => setMode('leaderboard'));
 fieldLauncher.addEventListener('submit', (event) => {
   event.preventDefault();
   startArcadeRun();
@@ -1114,6 +1459,7 @@ restartButton.addEventListener('click', () => {
   if (playContext === 'catalog') {
     if (completed) setMode('catalog');
     else {
+      resetRunRecord();
       launchSelectedField();
       showNotice(`${selectedLevel().metadata.title} restarted`);
     }
@@ -1224,12 +1570,14 @@ setInterval(() => {
     if (traceHit?.type === 'trace_hit') showDamage(traceHit.integrity);
     const traceCompleted = result.events.find((event) => event.type === 'trace_completed');
     if (traceCompleted?.type === 'trace_completed') {
+      currentPartitionCount++;
       showCaptureFeedback(
         traceCompleted.capturedCells,
         result.state,
         newlyStabilizedCells(applied, result.state),
       );
     }
+    recordStageResult(result.state);
     watchRunButton.disabled = false;
   }
 }, 1000 / engine.scenario.ticksPerSecond);
@@ -1294,6 +1642,16 @@ for (const tier of ['easy', 'medium', 'hard', 'impossible'] as const) {
   }
   levelSelect.append(group);
 }
+
+for (const level of levelCatalog) {
+  const option = document.createElement('option');
+  option.value = level.metadata.slug;
+  option.textContent = `${String(level.metadata.number).padStart(2, '0')} · ${level.metadata.title}`;
+  leaderboardLevelSelect.append(option);
+}
+playerNameInput.value = localStorage.getItem('arcadebench.partition.player-name') ?? '';
+leaderboardDifficultySelect.value = selectedDifficulty;
+leaderboardLevelSelect.value = leaderboardLevelId;
 
 installReplay(loadedReplay, 'Showcase controller');
 catalogDifficultySelect.value = selectedDifficulty;
