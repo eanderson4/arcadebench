@@ -265,7 +265,8 @@ function catalogStat(label: string, value: string): HTMLElement {
 function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
   const scenario = applyDifficulty(level.scenario, selectedDifficulty);
   const filaments = scenario.anomalies.filter((anomaly) => anomaly.kind === 'filament').length;
-  const drifters = scenario.anomalies.length - filaments;
+  const drifters = scenario.anomalies.filter((anomaly) => anomaly.kind !== 'filament').length;
+  const hazardCount = scenario.anomalies.length;
   const card = document.createElement('article');
   card.className = `catalog-card tier-${level.metadata.tier}`;
 
@@ -279,7 +280,13 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
   previewLabel.textContent = `FIELD ${String(level.metadata.number).padStart(2, '0')}`;
   const hazardBadge = document.createElement('b');
   hazardBadge.className = filaments > 0 ? 'has-filament' : '';
-  hazardBadge.textContent = filaments > 0 ? `${filaments} FILAMENT${filaments === 1 ? '' : 'S'}` : 'DRIFTERS';
+  hazardBadge.textContent = `${String(hazardCount).padStart(2, '0')} ${hazardCount === 1 ? 'HAZARD' : 'HAZARDS'}`;
+  const hazardBreakdown = [
+    `${drifters} drifter${drifters === 1 ? '' : 's'}`,
+    `${filaments} filament${filaments === 1 ? '' : 's'}`,
+  ].join(', ');
+  hazardBadge.title = hazardBreakdown;
+  hazardBadge.setAttribute('aria-label', `${hazardCount} total hazards: ${hazardBreakdown}`);
   preview.append(previewCanvas, previewLabel, hazardBadge);
 
   const heading = document.createElement('div');
