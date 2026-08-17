@@ -111,7 +111,7 @@ let countdownTimer: ReturnType<typeof setInterval> | undefined;
 let autoAdvanceScenarioId: string | null = null;
 let autoAdvanceDeadline = 0;
 
-const AUTO_ADVANCE_SECONDS = 8;
+const AUTO_ADVANCE_SECONDS = 5;
 
 function selectedLevel(): PartitionCampaignLevel {
   return campaign[selectedLevelIndex]!;

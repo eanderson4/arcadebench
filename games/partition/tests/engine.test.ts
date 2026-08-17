@@ -106,6 +106,46 @@ describe('PartitionEngine', () => {
     expect(engine.snapshot().spark.drawing).toBe(true);
   });
 
+  it('cannot draw from a partition wall into stabilized space', () => {
+    const scenario: PartitionScenario = {
+      id: 'stabilized-frontier-test',
+      name: 'Stabilized frontier test',
+      width: 4,
+      height: 4,
+      ticksPerSecond: 30,
+      targetFraction: 0.99,
+      integrity: 1,
+      anomalies: [{ id: 'a1', position: [0.5, 0.5], velocity: [0, 0] }],
+    };
+    const engine = new PartitionEngine(scenario);
+
+    // Split the field vertically. The anomaly keeps the left side active and
+    // the empty right side becomes stabilized.
+    engine.setInput({ direction: 'up', draw: 'fast' });
+    for (let index = 0; index < 4; index++) engine.step();
+    expect(engine.snapshot().capturedFraction).toBe(0.5);
+
+    // Travel to the middle of the new wall and try to turn into the captured side.
+    engine.setInput({ direction: 'down', draw: 'off' });
+    engine.step();
+    engine.step();
+    expect(engine.snapshot().spark.position).toEqual({ x: 2, y: 2 });
+
+    engine.setInput({ direction: 'right', draw: 'fast' });
+    const rejected = engine.step();
+    expect(rejected.state.spark.position).toEqual({ x: 2, y: 2 });
+    expect(rejected.state.spark.drawing).toBe(false);
+    expect(rejected.state.trace).toHaveLength(0);
+    expect(rejected.events).toEqual([]);
+
+    // The opposite turn still opens a valid trace into the active side.
+    engine.setInput({ direction: 'left', draw: 'fast' });
+    const accepted = engine.step();
+    expect(accepted.state.spark.position).toEqual({ x: 1, y: 2 });
+    expect(accepted.state.spark.drawing).toBe(true);
+    expect(accepted.events.some((event) => event.type === 'trace_started')).toBe(true);
+  });
+
   it('loses integrity when an anomaly crosses the active trace', () => {
     const scenario: PartitionScenario = {
       id: 'collision-test',

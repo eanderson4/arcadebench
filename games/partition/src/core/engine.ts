@@ -176,6 +176,21 @@ export class PartitionEngine {
     this.wallPoints.add(pointKey({ x: edge.bx, y: edge.by }));
   }
 
+  private activeCell(x: number, y: number): boolean {
+    if (x < 0 || y < 0 || x >= this.scenario.width || y >= this.scenario.height) return false;
+    const index = cellIndex(x, y, this.scenario.width);
+    return !this.blocked.has(index) && !this.stabilized.has(index);
+  }
+
+  private edgeTouchesActiveField(edge: Edge): boolean {
+    if (edge.ay === edge.by) {
+      const x = Math.min(edge.ax, edge.bx);
+      return this.activeCell(x, edge.ay - 1) || this.activeCell(x, edge.ay);
+    }
+    const y = Math.min(edge.ay, edge.by);
+    return this.activeCell(edge.ax - 1, y) || this.activeCell(edge.ax, y);
+  }
+
   private moveSpark(events: GameEvent[]): void {
     const direction = this.input.direction;
     if (direction === 'idle') return;
@@ -195,11 +210,12 @@ export class PartitionEngine {
         return;
       }
       if (this.input.draw === 'off' || this.drawRequiresRelease || onTrace) return;
+      if (!this.edgeTouchesActiveField(edge)) return;
       this.drawing = true;
       this.drawMode = this.input.draw;
       this.traceStart = { ...this.sparkPosition };
       events.push({ tick: this.tickNumber, type: 'trace_started', at: { ...this.sparkPosition } });
-    } else if (onTrace || onExistingWall) {
+    } else if (onTrace || onExistingWall || !this.edgeTouchesActiveField(edge)) {
       return;
     }
 
