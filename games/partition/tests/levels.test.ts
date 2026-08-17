@@ -173,6 +173,13 @@ describe('Partition campaign catalog', () => {
     expect(getCampaignLevel(1)).toEqual(cloneCampaignLevel(campaign[0]!));
   });
 
+  it('gives Event Horizon its expanded field clock', () => {
+    const eventHorizon = getCampaignLevel('event-horizon')!;
+
+    expect(eventHorizon.scenario.timeLimitTicks).toBe(2_645);
+    expect(eventHorizon.scenario.ticksPerSecond).toBe(30);
+  });
+
   it('reports invalid authored data with actionable errors', () => {
     const invalid = cloneCampaignLevel(campaign[0]!);
     invalid.scenario.anomalies[0]!.position = [-1, 2];

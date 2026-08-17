@@ -338,7 +338,7 @@ export function createPartitionCampaign(seed = PARTITION_CAMPAIGN_SEED): Partiti
       slug: 'event-horizon', title: 'Event Horizon', tier: 'impossible', tagline: 'A ring of walls bends every forecast.',
       challenge: 'Plan around a hollow ring that repeatedly redirects eight anomalies.', features: ['ring-silhouette', 'eight-anomalies', 'complex-ricochets'],
       board: EVENT_HORIZON, anomalyCount: 8, filamentCount: 3, anomalySpeed: [0.215, 0.28], targetFraction: 0.75, integrity: 2,
-      sparkMoveEveryTicks: 3, timeLimitTicks: 2_300, parTicks: 1_600,
+      sparkMoveEveryTicks: 3, timeLimitTicks: 2_645, parTicks: 1_600,
     }),
     authoredLevel(18, seed, {
       slug: 'shattered-circuit', title: 'Shattered Circuit', tier: 'impossible', tagline: 'The board is a diagram with missing connections.',
