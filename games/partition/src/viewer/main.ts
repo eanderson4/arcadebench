@@ -568,6 +568,15 @@ function actionOverlapsStabilityHud(state: PartitionState): boolean {
   );
 }
 
+function actionOverlapsTimeHud(state: PartitionState): boolean {
+  const inUpperRight = (x: number, y: number): boolean =>
+    x >= state.width * 0.64 && y <= state.height * 0.34;
+  if (inUpperRight(state.spark.position.x, state.spark.position.y)) return true;
+  return state.trace.some((edge) =>
+    inUpperRight(edge.ax, edge.ay) || inUpperRight(edge.bx, edge.by),
+  );
+}
+
 function updateTimePressure(state: PartitionState, ticksPerSecond: number): void {
   const scenario = mode === 'replay' ? loadedReplay.scenario : engine.scenario;
   const pressureState = resolveTimePressure(
@@ -590,12 +599,12 @@ function updateTimePressure(state: PartitionState, ticksPerSecond: number): void
   timePressureLabel.textContent = pressure === 'critical'
     ? 'FIELD COLLAPSE IMMINENT'
     : pressure === 'pulse'
-      ? 'TIME CHECK'
+      ? 'TIME REMAINING'
       : 'TIME WINDOW CLOSING';
   timePressureDetail.textContent = pressure === 'critical'
     ? 'CLOSE A PARTITION NOW'
     : pressure === 'pulse'
-      ? `${Math.floor(state.capturedFraction * 100)}% STABLE · GOAL ${Math.round(state.targetFraction * 100)}%`
+      ? `${Math.floor(state.capturedFraction * 100)}% STABLE / ${Math.round(state.targetFraction * 100)}% GOAL`
       : 'STABILIZE THE FIELD';
   timePressureClock.textContent = formatFieldClock(state.timeRemainingTicks!, ticksPerSecond);
   timePressureFill.style.width = pressure === 'pulse'
@@ -714,6 +723,7 @@ function updateStats(state: PartitionState): void {
   stabilityGoalMarker.style.left = `${Math.min(100, state.targetFraction * 100)}%`;
   stabilityHud.setAttribute('aria-label', `${capture} stabilized, ${targetPercentage}% goal`);
   stabilityHud.classList.toggle('action-nearby', actionOverlapsStabilityHud(state));
+  timePressureHud.classList.toggle('action-nearby', actionOverlapsTimeHud(state));
   stageIntegrityEl.textContent = integrity;
   const ticksPerSecond = mode === 'replay'
     ? loadedReplay.scenario.ticksPerSecond

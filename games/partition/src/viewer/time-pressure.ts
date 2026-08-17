@@ -32,7 +32,7 @@ export function resolveTimePressure(
       : 'none';
   if (level === 'none') {
     const pulseEveryTicks = ticksPerSecond * 30;
-    const pulseDurationTicks = Math.round(ticksPerSecond * 1.25);
+    const pulseDurationTicks = Math.round(ticksPerSecond * 4);
     const elapsedTicks = totalTicks - remainingTicks;
     const ticksSinceMilestone = (pulseEveryTicks - (remainingTicks % pulseEveryTicks)) % pulseEveryTicks;
     if (elapsedTicks >= ticksPerSecond * 10 && ticksSinceMilestone <= pulseDurationTicks) level = 'pulse';
