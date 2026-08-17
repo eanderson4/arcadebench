@@ -1,8 +1,9 @@
 import { PartitionEngine } from '../core/engine';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
 import { createClassicScenario } from '../core/scenarios';
-import type { ControlInput, Direction, GameEvent, PartitionReplay, PartitionState } from '../core/types';
+import type { ControlInput, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
 import { PartitionRenderer } from './renderer';
+import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
 
 type ViewMode = 'live' | 'replay';
@@ -14,17 +15,29 @@ function query<T extends Element>(selector: string): T {
 }
 
 const canvas = query<HTMLCanvasElement>('#game');
+const stage = query<HTMLElement>('.stage');
 const renderer = new PartitionRenderer(canvas);
 const captureEl = query<HTMLElement>('#capture');
 const integrityEl = query<HTMLElement>('#integrity');
 const tickEl = query<HTMLElement>('#tick');
 const statusEl = query<HTMLElement>('#status');
+const stageCaptureEl = query<HTMLElement>('#stage-capture');
+const stageIntegrityEl = query<HTMLElement>('#stage-integrity');
+const stageTickEl = query<HTMLElement>('#stage-tick');
+const fitScreenButton = query<HTMLButtonElement>('#fit-screen');
 const messageEl = query<HTMLElement>('#message');
+const playIntro = query<HTMLElement>('#play-intro');
+const startPlayButton = query<HTMLButtonElement>('#start-play');
+const howToPlayButton = query<HTMLButtonElement>('#how-to-play');
+const watchRunButton = query<HTMLButtonElement>('#watch-run');
 const restartButton = query<HTMLButtonElement>('#restart');
 const playButton = query<HTMLButtonElement>('#play-pause');
 const timeline = query<HTMLInputElement>('#timeline');
 const timelineCurrent = query<HTMLElement>('#timeline-current');
 const timelineEnd = query<HTMLElement>('#timeline-end');
+const timelineTime = query<HTMLElement>('#timeline-time');
+const eventTrack = query<HTMLElement>('#event-track');
+const loopButton = query<HTMLButtonElement>('#loop-replay');
 const replayName = query<HTMLElement>('#replay-name');
 const replayDetail = query<HTMLElement>('#replay-detail');
 const eventList = query<HTMLOListElement>('#event-list');
@@ -39,20 +52,22 @@ let seed = Number(params.get('seed') ?? 11);
 if (!Number.isFinite(seed)) seed = 11;
 let engine = new PartitionEngine(createClassicScenario(seed));
 let mode: ViewMode = params.get('mode') === 'replay' ? 'replay' : 'live';
+let immersive = false;
 let direction: Direction = 'idle';
 let drawing = false;
 let touchDirection: Direction = 'idle';
 let touchDrawing = false;
+let liveStarted = params.get('autostart') === '1';
+let liveReplayTicks: ReplayTick[] = [];
 const keys = new Set<string>();
 
 let loadedReplay: PartitionReplay = createShowcaseReplay();
 let replayFrames: PartitionReplayFrame[] = replayPartitionFrames(loadedReplay);
-let replayFrameIndex = 0;
-let replayPlaying = false;
-let replaySpeed = 1;
-let replayAccumulator = 0;
+let replayTransport = new ReplayTransport(replayFrames, loadedReplay.scenario.ticksPerSecond);
 let lastAnimationTime = performance.now();
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+let damageTimer: ReturnType<typeof setTimeout> | undefined;
+let introTimer: ReturnType<typeof setTimeout> | undefined;
 
 function selectDirection(): Direction {
   if (keys.has('ArrowUp')) return 'up';
@@ -67,12 +82,52 @@ function currentInput(): ControlInput {
   return { direction, draw: drawing || touchDrawing ? 'fast' : 'off' };
 }
 
+function humanReplay(): PartitionReplay {
+  return {
+    version: 1,
+    scenario: structuredClone(engine.scenario),
+    ticks: structuredClone(liveReplayTicks),
+    finalState: engine.snapshot(),
+  };
+}
+
+function startHumanPlay(): void {
+  liveStarted = true;
+  playIntro.classList.add('leaving');
+  clearTimeout(introTimer);
+  introTimer = setTimeout(() => {
+    playIntro.classList.add('hidden');
+    playIntro.classList.remove('leaving');
+  }, 420);
+  setImmersive(true);
+}
+
+function showHowToPlay(): void {
+  liveStarted = false;
+  engine.setInput({ direction: 'idle', draw: 'off' });
+  keys.clear();
+  drawing = false;
+  clearTimeout(introTimer);
+  playIntro.classList.remove('leaving');
+  playIntro.classList.remove('hidden');
+  setImmersive(false);
+}
+
 function showNotice(text: string, tone: 'normal' | 'error' = 'normal'): void {
   notice.textContent = text;
   notice.dataset.tone = tone;
   notice.classList.add('visible');
   clearTimeout(noticeTimer);
   noticeTimer = setTimeout(() => notice.classList.remove('visible'), 3000);
+}
+
+function showDamage(integrity: number): void {
+  stage.classList.remove('damage-hit');
+  void stage.offsetWidth;
+  stage.classList.add('damage-hit');
+  clearTimeout(damageTimer);
+  damageTimer = setTimeout(() => stage.classList.remove('damage-hit'), 520);
+  showNotice(`Trace severed · ${integrity} integrity remaining`, 'error');
 }
 
 function eventLabel(event: GameEvent): string {
@@ -88,6 +143,37 @@ function eventLabel(event: GameEvent): string {
 
 function allReplayEvents(): GameEvent[] {
   return loadedReplay.ticks.flatMap((record) => [...(record.controlEvents ?? []), ...record.events]);
+}
+
+function formatReplayTime(tick: number): string {
+  const totalMs = Math.round((tick / loadedReplay.scenario.ticksPerSecond) * 1000);
+  const minutes = Math.floor(totalMs / 60_000);
+  const seconds = Math.floor((totalMs % 60_000) / 1000);
+  const milliseconds = totalMs % 1000;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`;
+}
+
+function replayEventTicks(): number[] {
+  return [...new Set(allReplayEvents().map((event) => event.tick))].sort((a, b) => a - b);
+}
+
+function renderEventTrack(): void {
+  eventTrack.replaceChildren();
+  const finalTick = replayFrames.at(-1)!.state.tick;
+  if (finalTick === 0) return;
+  for (const tick of replayEventTicks()) {
+    const marker = document.createElement('button');
+    marker.type = 'button';
+    marker.style.left = `${(tick / finalTick) * 100}%`;
+    marker.title = `Jump to event at tick ${tick}`;
+    marker.setAttribute('aria-label', `Jump to replay event at tick ${tick}`);
+    marker.addEventListener('click', () => {
+      replayTransport.pause();
+      seekReplay(replayTransport.seekTick(tick), true);
+      syncReplayPlayButton();
+    });
+    eventTrack.append(marker);
+  }
 }
 
 function renderEvents(tick: number): void {
@@ -113,14 +199,34 @@ function renderEvents(tick: number): void {
     tickLabel.textContent = `T${event.tick}`;
     copy.append(tickLabel, document.createTextNode(eventLabel(event)));
     item.append(marker, copy);
+    item.tabIndex = 0;
+    item.setAttribute('role', 'button');
+    item.addEventListener('click', () => {
+      replayTransport.pause();
+      seekReplay(replayTransport.seekTick(event.tick), true);
+      syncReplayPlayButton();
+    });
+    item.addEventListener('keydown', (keyEvent) => {
+      if (keyEvent.code === 'Enter' || keyEvent.code === 'Space') {
+        keyEvent.preventDefault();
+        keyEvent.stopPropagation();
+        item.click();
+      }
+    });
     eventList.append(item);
   }
 }
 
 function updateStats(state: PartitionState): void {
-  captureEl.textContent = `${Math.floor(state.capturedFraction * 100)}%`;
-  integrityEl.textContent = String(state.spark.integrity).padStart(2, '0');
-  tickEl.textContent = String(state.tick).padStart(4, '0');
+  const capture = `${Math.floor(state.capturedFraction * 100)}%`;
+  const integrity = String(state.spark.integrity).padStart(2, '0');
+  const tick = String(state.tick).padStart(4, '0');
+  captureEl.textContent = capture;
+  integrityEl.textContent = integrity;
+  tickEl.textContent = tick;
+  stageCaptureEl.textContent = capture;
+  stageIntegrityEl.textContent = integrity;
+  stageTickEl.textContent = tick;
   statusEl.textContent = state.status;
   statusEl.dataset.status = state.status;
   if (state.status !== 'running') {
@@ -133,10 +239,25 @@ function updateStats(state: PartitionState): void {
   }
 }
 
+function setImmersive(next: boolean): void {
+  immersive = next;
+  document.body.dataset.immersive = String(immersive);
+  fitScreenButton.setAttribute('aria-pressed', String(immersive));
+  fitScreenButton.setAttribute('aria-label', immersive ? 'Exit fitted game view' : 'Fit game field to screen');
+  fitScreenButton.querySelector('span')!.textContent = immersive ? 'EXIT VIEW' : 'FIT SCREEN';
+  if (immersive) {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    requestAnimationFrame(() => canvas.focus({ preventScroll: true }));
+  }
+}
+
+fitScreenButton.addEventListener('click', () => setImmersive(!immersive));
+
 function updateReplayInspector(frame: PartitionReplayFrame): void {
   const state = frame.state;
-  timeline.value = String(replayFrameIndex);
+  timeline.value = String(replayTransport.index);
   timelineCurrent.textContent = String(state.tick);
+  timelineTime.textContent = formatReplayTime(state.tick);
   inputDirection.textContent = state.currentInput.direction;
   inputDraw.textContent = state.currentInput.draw;
   controllerVersion.textContent = `v${state.controllerVersion}`;
@@ -144,28 +265,38 @@ function updateReplayInspector(frame: PartitionReplayFrame): void {
 }
 
 function seekReplay(index: number, reflectInUrl = false): void {
-  replayFrameIndex = Math.max(0, Math.min(replayFrames.length - 1, Math.round(index)));
-  replayAccumulator = 0;
-  updateReplayInspector(replayFrames[replayFrameIndex]);
+  replayTransport.seekFrame(index);
+  updateReplayInspector(replayTransport.current);
   if (reflectInUrl && mode === 'replay') {
     const queryParams = new URLSearchParams(location.search);
-    queryParams.set('tick', String(replayFrames[replayFrameIndex].state.tick));
+    queryParams.set('tick', String(replayTransport.current.state.tick));
     history.replaceState(null, '', `${location.pathname}?${queryParams}`);
   }
 }
 
-function setReplayPlaying(playing: boolean): void {
-  replayPlaying = playing;
+function syncReplayPlayButton(): void {
+  const playing = replayTransport.isPlaying;
   playButton.dataset.playing = String(playing);
   playButton.querySelector('span')!.textContent = playing ? 'PAUSE' : 'PLAY';
   playButton.setAttribute('aria-label', playing ? 'Pause replay' : 'Play replay');
 }
 
+function setReplayPlaying(playing: boolean): void {
+  if (playing) replayTransport.play();
+  else replayTransport.pause();
+  updateReplayInspector(replayTransport.current);
+  syncReplayPlayButton();
+}
+
 function installReplay(replay: PartitionReplay, name: string): void {
   const frames = replayPartitionFrames(replay);
+  const retainedSpeed = replayTransport.speed;
+  const retainedLoop = replayTransport.loop;
   loadedReplay = replay;
   replayFrames = frames;
-  replayFrameIndex = 0;
+  replayTransport = new ReplayTransport(frames, replay.scenario.ticksPerSecond);
+  replayTransport.setSpeed(retainedSpeed);
+  replayTransport.setLoop(retainedLoop);
   timeline.min = '0';
   timeline.max = String(frames.length - 1);
   timeline.value = '0';
@@ -173,45 +304,95 @@ function installReplay(replay: PartitionReplay, name: string): void {
   replayName.textContent = name;
   replayDetail.textContent = `${replay.scenario.name} · ${replay.scenario.ticksPerSecond} Hz · ${replay.scenario.anomalies.length} anomalies`;
   setReplayPlaying(false);
+  loopButton.setAttribute('aria-pressed', String(replayTransport.loop));
+  renderEventTrack();
   updateReplayInspector(frames[0]);
+}
+
+function jumpReplayEvent(direction: -1 | 1): void {
+  const currentTick = replayTransport.current.state.tick;
+  const ticks = replayEventTicks();
+  const target = direction === 1
+    ? ticks.find((tick) => tick > currentTick) ?? replayFrames.at(-1)!.state.tick
+    : ticks.filter((tick) => tick < currentTick).at(-1) ?? 0;
+  replayTransport.pause();
+  seekReplay(replayTransport.seekTick(target), true);
+  syncReplayPlayButton();
 }
 
 function setMode(nextMode: ViewMode): void {
   mode = nextMode;
   document.body.dataset.mode = mode;
+  setImmersive(mode === 'live' && liveStarted);
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
     button.setAttribute('aria-selected', String(button.dataset.mode === mode));
   }
   const queryParams = new URLSearchParams(location.search);
   queryParams.set('mode', mode);
   queryParams.set('seed', String(seed));
-  if (mode === 'replay') queryParams.set('tick', String(replayFrames[replayFrameIndex].state.tick));
+  if (mode === 'replay') queryParams.set('tick', String(replayTransport.current.state.tick));
   else queryParams.delete('tick');
   history.replaceState(null, '', `${location.pathname}?${queryParams}`);
-  if (mode === 'replay') updateReplayInspector(replayFrames[replayFrameIndex]);
+  if (mode === 'replay') updateReplayInspector(replayTransport.current);
 }
 
 window.addEventListener('keydown', (event) => {
   const target = event.target as HTMLElement | null;
-  if (target?.matches('input, select, button')) return;
+  if (event.code === 'Escape' && immersive) {
+    event.preventDefault();
+    setImmersive(false);
+    return;
+  }
+  if (target?.matches('input, select')) return;
+  if (target?.matches('button') && (event.code === 'Space' || event.code === 'Enter')) return;
   if (mode === 'replay') {
-    if (event.code === 'Space') {
-      event.preventDefault();
-      setReplayPlaying(!replayPlaying);
-    }
-    if (event.code === 'ArrowLeft') {
-      event.preventDefault();
-      setReplayPlaying(false);
-      seekReplay(replayFrameIndex - 1, true);
-    }
-    if (event.code === 'ArrowRight') {
-      event.preventDefault();
-      setReplayPlaying(false);
-      seekReplay(replayFrameIndex + 1, true);
+    switch (event.code) {
+      case 'Space':
+      case 'KeyK':
+        event.preventDefault();
+        setReplayPlaying(!replayTransport.isPlaying);
+        break;
+      case 'ArrowLeft':
+        event.preventDefault();
+        if (event.shiftKey) jumpReplayEvent(-1);
+        else {
+          replayTransport.step(-1);
+          seekReplay(replayTransport.index, true);
+          syncReplayPlayButton();
+        }
+        break;
+      case 'ArrowRight':
+        event.preventDefault();
+        if (event.shiftKey) jumpReplayEvent(1);
+        else {
+          replayTransport.step(1);
+          seekReplay(replayTransport.index, true);
+          syncReplayPlayButton();
+        }
+        break;
+      case 'KeyJ':
+        event.preventDefault();
+        jumpReplayEvent(-1);
+        break;
+      case 'KeyL':
+        event.preventDefault();
+        jumpReplayEvent(1);
+        break;
+      case 'Home':
+        event.preventDefault();
+        setReplayPlaying(false);
+        seekReplay(0, true);
+        break;
+      case 'End':
+        event.preventDefault();
+        setReplayPlaying(false);
+        seekReplay(replayFrames.length - 1, true);
+        break;
     }
     return;
   }
   if (event.code.startsWith('Arrow') || event.code === 'Space') event.preventDefault();
+  if (!liveStarted && (event.code.startsWith('Arrow') || event.code === 'Space')) startHumanPlay();
   keys.add(event.code);
   if (event.code === 'Space') drawing = true;
 });
@@ -225,6 +406,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-directi
   const selected = button.dataset.direction as Direction;
   const begin = (event: Event) => {
     event.preventDefault();
+    if (!liveStarted) startHumanPlay();
     touchDirection = selected;
   };
   const end = (event: Event) => {
@@ -240,6 +422,7 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-directi
 const traceButton = query<HTMLButtonElement>('[data-trace]');
 traceButton.addEventListener('pointerdown', (event) => {
   event.preventDefault();
+  if (!liveStarted) startHumanPlay();
   touchDrawing = true;
 });
 for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
@@ -253,6 +436,18 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')
   button.addEventListener('click', () => setMode(button.dataset.mode as ViewMode));
 }
 
+startPlayButton.addEventListener('click', startHumanPlay);
+howToPlayButton.addEventListener('click', showHowToPlay);
+watchRunButton.addEventListener('click', () => {
+  if (liveReplayTicks.length === 0) {
+    showNotice('Start playing to create a replay', 'error');
+    return;
+  }
+  installReplay(humanReplay(), `Your run · seed ${seed}`);
+  setMode('replay');
+  setReplayPlaying(true);
+});
+
 restartButton.addEventListener('click', () => {
   seed++;
   engine = new PartitionEngine(createClassicScenario(seed));
@@ -261,24 +456,31 @@ restartButton.addEventListener('click', () => {
   touchDirection = 'idle';
   touchDrawing = false;
   keys.clear();
+  liveReplayTicks = [];
+  watchRunButton.disabled = true;
+  startHumanPlay();
   setMode('live');
   showNotice(`New seeded field · ${seed}`);
 });
 
 playButton.addEventListener('click', () => {
-  if (replayFrameIndex >= replayFrames.length - 1) seekReplay(0);
-  setReplayPlaying(!replayPlaying);
+  setReplayPlaying(!replayTransport.isPlaying);
 });
 
 query<HTMLButtonElement>('#step-back').addEventListener('click', () => {
-  setReplayPlaying(false);
-  seekReplay(replayFrameIndex - 1, true);
+  replayTransport.step(-1);
+  seekReplay(replayTransport.index, true);
+  syncReplayPlayButton();
 });
 
 query<HTMLButtonElement>('#step-forward').addEventListener('click', () => {
-  setReplayPlaying(false);
-  seekReplay(replayFrameIndex + 1, true);
+  replayTransport.step(1);
+  seekReplay(replayTransport.index, true);
+  syncReplayPlayButton();
 });
+
+query<HTMLButtonElement>('#previous-event').addEventListener('click', () => jumpReplayEvent(-1));
+query<HTMLButtonElement>('#next-event').addEventListener('click', () => jumpReplayEvent(1));
 
 timeline.addEventListener('input', () => {
   setReplayPlaying(false);
@@ -287,12 +489,17 @@ timeline.addEventListener('input', () => {
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('[data-speed]')) {
   button.addEventListener('click', () => {
-    replaySpeed = Number(button.dataset.speed);
+    replayTransport.setSpeed(Number(button.dataset.speed));
     for (const speedButton of document.querySelectorAll<HTMLButtonElement>('[data-speed]')) {
       speedButton.setAttribute('aria-pressed', String(speedButton === button));
     }
   });
 }
+
+loopButton.addEventListener('click', () => {
+  replayTransport.setLoop(!replayTransport.loop);
+  loopButton.setAttribute('aria-pressed', String(replayTransport.loop));
+});
 
 query<HTMLButtonElement>('#load-replay').addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', async () => {
@@ -338,25 +545,33 @@ query<HTMLButtonElement>('#copy-link').addEventListener('click', async () => {
 });
 
 setInterval(() => {
-  if (mode === 'live' && engine.snapshot().status === 'running') {
+  if (mode === 'live' && liveStarted && engine.snapshot().status === 'running') {
     engine.setInput(currentInput());
-    engine.step();
+    const applied = engine.snapshot();
+    const result = engine.step();
+    liveReplayTicks.push({
+      tick: result.state.tick,
+      input: { ...applied.currentInput },
+      controllerVersion: applied.controllerVersion,
+      controlEvents: [],
+      events: structuredClone(result.events),
+    });
+    const traceHit = result.events.find((event) => event.type === 'trace_hit');
+    if (traceHit?.type === 'trace_hit') showDamage(traceHit.integrity);
+    watchRunButton.disabled = false;
   }
 }, 1000 / engine.scenario.ticksPerSecond);
 
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && replayTransport.isPlaying) setReplayPlaying(false);
+});
+
 function frame(animationTime: number): void {
   if (mode === 'replay') {
-    if (replayPlaying && replayFrameIndex < replayFrames.length - 1) {
-      const elapsedSeconds = Math.min(0.1, (animationTime - lastAnimationTime) / 1000);
-      replayAccumulator += elapsedSeconds * loadedReplay.scenario.ticksPerSecond * replaySpeed;
-      if (replayAccumulator >= 1) {
-        const advance = Math.floor(replayAccumulator);
-        replayAccumulator -= advance;
-        seekReplay(replayFrameIndex + advance);
-      }
-      if (replayFrameIndex >= replayFrames.length - 1) setReplayPlaying(false);
-    }
-    const replayFrame = replayFrames[replayFrameIndex];
+    const advance = replayTransport.advance(animationTime - lastAnimationTime);
+    if (advance.changed) updateReplayInspector(replayTransport.current);
+    if (advance.reachedEnd) syncReplayPlayButton();
+    const replayFrame = replayTransport.current;
     renderer.render(replayFrame.state, { ambientTime: animationTime / 1000 });
     updateStats(replayFrame.state);
   } else {
@@ -393,6 +608,7 @@ if (Number.isFinite(requestedTick) && requestedTick > 0) {
   seekReplay(requestedFrame === -1 ? replayFrames.length - 1 : requestedFrame);
 }
 setMode(mode);
+if (liveStarted) playIntro.classList.add('hidden');
 if (mode === 'replay' && params.get('autoplay') === '1') setReplayPlaying(true);
 void loadReplayFromUrl();
 requestAnimationFrame(frame);

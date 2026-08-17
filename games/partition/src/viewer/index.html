@@ -36,11 +36,30 @@
         <div class="field-column">
           <div class="stage">
             <div class="stage-label"><span class="live-dot"></span><b>FIELD 01</b><em>DETERMINISTIC SIMULATION</em></div>
-            <canvas id="game" width="960" height="640" aria-label="Partition game field"></canvas>
+            <div class="stage-stats" aria-hidden="true">
+              <span><small>STABLE</small><b id="stage-capture">0%</b></span>
+              <span><small>INTEGRITY</small><b id="stage-integrity">03</b></span>
+              <span><small>TICK</small><b id="stage-tick">0000</b></span>
+            </div>
+            <button id="fit-screen" class="fit-screen" type="button" aria-pressed="false" aria-label="Fit game field to screen">
+              <i aria-hidden="true"></i><span>FIT SCREEN</span>
+            </button>
+            <canvas id="game" width="960" height="640" tabindex="-1" aria-label="Partition game field"></canvas>
             <div class="scanlines" aria-hidden="true"></div>
             <div class="corner corner-nw"></div><div class="corner corner-ne"></div>
             <div class="corner corner-sw"></div><div class="corner corner-se"></div>
             <div id="message" class="message hidden"></div>
+            <div id="play-intro" class="play-intro">
+              <div class="intro-kicker"><span></span>HUMAN PLAY</div>
+              <h2>Cut the field.<br />Box in the chaos.</h2>
+              <p>Travel the cyan boundary, then hold <kbd>Space</kbd> and steer into the field. Reach another wall to stabilize the side without an Anomaly.</p>
+              <div class="intro-rules">
+                <span><b>01</b> ARROWS MOVE</span>
+                <span><b>02</b> SPACE + ARROW CUTS</span>
+                <span><b>03</b> CAPTURE 75%</span>
+              </div>
+              <button id="start-play" class="primary-button" type="button">START FIELD <span>→</span></button>
+            </div>
             <div class="touch-controls" aria-label="Touch controls">
               <button class="direction up" data-direction="up" aria-label="Move up">↑</button>
               <button class="direction left" data-direction="left" aria-label="Move left">←</button>
@@ -53,6 +72,8 @@
           <div class="live-controls">
             <p><kbd>ARROWS</kbd> MOVE <span>·</span> HOLD <kbd>SPACE</kbd> TO TRACE <span>·</span> CAPTURE 75%</p>
             <div class="actions">
+              <button id="how-to-play" class="quiet-button" type="button">HOW TO PLAY</button>
+              <button id="watch-run" class="quiet-button" type="button" disabled>WATCH RUN</button>
               <button id="copy-link" class="quiet-button" type="button">COPY LINK</button>
               <button id="restart" class="primary-button" type="button">NEW FIELD <span>↗</span></button>
             </div>
@@ -60,13 +81,22 @@
 
           <div class="replay-controls">
             <div class="transport">
+              <button id="previous-event" class="icon-button event-jump" type="button" aria-label="Previous replay event">⇤</button>
               <button id="step-back" class="icon-button" type="button" aria-label="Step backward">←</button>
               <button id="play-pause" class="play-button" type="button" data-playing="false"><i></i><span>PLAY</span></button>
               <button id="step-forward" class="icon-button" type="button" aria-label="Step forward">→</button>
+              <button id="next-event" class="icon-button event-jump" type="button" aria-label="Next replay event">⇥</button>
             </div>
             <div class="timeline-wrap">
-              <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Replay timeline" />
-              <div class="timeline-labels"><span>TICK <b id="timeline-current">0</b></span><span id="timeline-end">0</span></div>
+              <div class="timeline-slider">
+                <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Replay timeline" />
+                <div id="event-track" class="event-track" aria-label="Replay event markers"></div>
+              </div>
+              <div class="timeline-labels">
+                <span>TICK <b id="timeline-current">0</b></span>
+                <span id="timeline-time">00:00.000</span>
+                <span id="timeline-end">0</span>
+              </div>
             </div>
             <div class="speed-controls" aria-label="Playback speed">
               <button type="button" data-speed="0.25" aria-pressed="false">.25</button>
@@ -74,6 +104,7 @@
               <button type="button" data-speed="1" aria-pressed="true">1×</button>
               <button type="button" data-speed="2" aria-pressed="false">2×</button>
               <button type="button" data-speed="4" aria-pressed="false">4×</button>
+              <button id="loop-replay" class="loop-button" type="button" aria-pressed="false">LOOP</button>
             </div>
           </div>
         </div>
@@ -95,7 +126,7 @@
           </section>
 
           <section class="event-panel">
-            <div class="panel-title"><h3>EVENT STREAM</h3><span>LIVE INDEX</span></div>
+            <div class="panel-title"><h3>EVENT STREAM</h3><span>J / K / L</span></div>
             <ol id="event-list"></ol>
           </section>
 

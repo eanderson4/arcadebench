@@ -22,6 +22,10 @@ Sets the latched joystick directly:
 The signal remains active until replaced. Direct control is possible but model
 latency makes it deliberately weak for precise play.
 
+Trace completion and Trace hits disarm drawing until the engine observes
+`draw: "off"`. Controllers should include an off tick between deliberate cuts;
+a continuously held draw signal will not pass through the wall it just reached.
+
 ### `update_controller`
 
 Atomically installs a resident timed program. The old controller remains
@@ -79,4 +83,3 @@ interface PartitionController<Memory> {
 
 It will run in a separately terminable sandbox with no network, filesystem,
 wall clock, process environment, or hidden seed access.
-

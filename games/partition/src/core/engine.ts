@@ -34,6 +34,7 @@ export class PartitionEngine {
   private sparkPosition: Point;
   private sparkHeading: Direction = 'idle';
   private drawing = false;
+  private drawRequiresRelease = false;
   private drawMode: ControlInput['draw'] = 'off';
   private integrity: number;
   private traceStart: Point | null = null;
@@ -62,6 +63,7 @@ export class PartitionEngine {
   }
 
   setInput(input: ControlInput): void {
+    if (input.draw === 'off') this.drawRequiresRelease = false;
     this.input = { ...input };
   }
 
@@ -135,7 +137,7 @@ export class PartitionEngine {
         this.sparkHeading = direction;
         return;
       }
-      if (this.input.draw === 'off' || onTrace) return;
+      if (this.input.draw === 'off' || this.drawRequiresRelease || onTrace) return;
       this.drawing = true;
       this.drawMode = this.input.draw;
       this.traceStart = { ...this.sparkPosition };
@@ -165,6 +167,7 @@ export class PartitionEngine {
     this.trace = [];
     this.traceStart = null;
     this.drawing = false;
+    this.drawRequiresRelease = true;
     this.drawMode = 'off';
     this.input = { direction: this.input.direction, draw: 'off' };
     events.push({ tick: this.tickNumber, type: 'trace_completed', capturedCells: result.newlyStabilized });
@@ -209,6 +212,14 @@ export class PartitionEngine {
 
       anomaly.position.x = Math.max(1, Math.min(this.scenario.width * FIXED_SCALE - 1, nextX));
       anomaly.position.y = Math.max(1, Math.min(this.scenario.height * FIXED_SCALE - 1, nextY));
+      if (this.drawing) {
+        const dx = anomaly.position.x - this.sparkPosition.x * FIXED_SCALE;
+        const dy = anomaly.position.y - this.sparkPosition.y * FIXED_SCALE;
+        const tipCollisionRadius = FIXED_SCALE / 3;
+        if (dx * dx + dy * dy <= tipCollisionRadius * tipCollisionRadius) {
+          this.hitTrace(anomaly.id, events);
+        }
+      }
     }
   }
 
@@ -218,6 +229,7 @@ export class PartitionEngine {
     this.sparkPosition = { ...this.traceStart };
     this.sparkHeading = 'idle';
     this.drawing = false;
+    this.drawRequiresRelease = true;
     this.drawMode = 'off';
     this.traceStart = null;
     this.trace = [];

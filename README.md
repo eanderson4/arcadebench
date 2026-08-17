@@ -25,7 +25,9 @@ and frozen protocol generations.
   remains responsible for the player while the model thinks.
 
 See [the architecture](docs/ARCHITECTURE.md) and
-[run format](docs/RUN-FORMAT.md) for the platform contracts.
+[run format](docs/RUN-FORMAT.md) for the platform contracts. The opt-in
+[replay sharing contract](docs/REPLAY-SHARING.md) keeps public links independent
+from the storage provider.
 
 ## Workspace
 
@@ -51,6 +53,11 @@ Play Partition locally:
 npm run dev:partition
 # http://127.0.0.1:5183/src/viewer/?seed=11
 ```
+
+Choose **Play** for the paused human start. Arrow keys move along walls; hold
+Space with a direction to cut through the field. **Fit Screen** letterboxes the
+full 3:2 field, and **Watch Run** sends the current human attempt directly into
+the same Replay Lab used for benchmark artifacts.
 
 Inspect the benchmark installation or start a tracked model run:
 

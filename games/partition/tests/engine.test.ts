@@ -57,6 +57,55 @@ describe('PartitionEngine', () => {
     expect(events.some((event) => event.type === 'trace_completed')).toBe(true);
   });
 
+  it('stops at an existing wall until draw is released and rearmed', () => {
+    const scenario: PartitionScenario = {
+      id: 'wall-stop-test',
+      name: 'Wall stop test',
+      width: 6,
+      height: 6,
+      ticksPerSecond: 30,
+      targetFraction: 0.99,
+      integrity: 1,
+      anomalies: [
+        { id: 'a1', position: [1, 1], velocity: [0, 0] },
+        { id: 'a2', position: [5, 5], velocity: [0, 0] },
+      ],
+    };
+    const engine = new PartitionEngine(scenario);
+
+    // Build the first permanent wall from bottom to top at x=3.
+    engine.setInput({ direction: 'up', draw: 'fast' });
+    for (let index = 0; index < 6; index++) engine.step();
+    engine.setInput({ direction: 'idle', draw: 'off' });
+    engine.step();
+
+    // Travel to the left boundary, then cut right into that previous wall.
+    engine.setInput({ direction: 'left', draw: 'off' });
+    for (let index = 0; index < 3; index++) engine.step();
+    engine.setInput({ direction: 'down', draw: 'off' });
+    for (let index = 0; index < 3; index++) engine.step();
+    engine.setInput({ direction: 'right', draw: 'fast' });
+    for (let index = 0; index < 3; index++) engine.step();
+
+    expect(engine.snapshot().spark.position).toEqual({ x: 3, y: 3 });
+    expect(engine.snapshot().trace).toHaveLength(0);
+
+    // A held/reapplied draw signal must not continue through the wall.
+    engine.setInput({ direction: 'right', draw: 'fast' });
+    engine.step();
+    expect(engine.snapshot().spark.position).toEqual({ x: 3, y: 3 });
+    expect(engine.snapshot().spark.drawing).toBe(false);
+    expect(engine.snapshot().trace).toHaveLength(0);
+
+    // Releasing draw rearms it for a deliberate new cut on the other side.
+    engine.setInput({ direction: 'idle', draw: 'off' });
+    engine.step();
+    engine.setInput({ direction: 'right', draw: 'fast' });
+    engine.step();
+    expect(engine.snapshot().spark.position).toEqual({ x: 4, y: 3 });
+    expect(engine.snapshot().spark.drawing).toBe(true);
+  });
+
   it('loses integrity when an anomaly crosses the active trace', () => {
     const scenario: PartitionScenario = {
       id: 'collision-test',
@@ -75,5 +124,29 @@ describe('PartitionEngine', () => {
     expect(result.events.some((event) => event.type === 'trace_hit')).toBe(true);
     expect(result.state.spark.integrity).toBe(1);
     expect(result.state.trace).toHaveLength(0);
+  });
+
+  it('enters the terminal failure state at zero integrity', () => {
+    const scenario: PartitionScenario = {
+      id: 'failure-test',
+      name: 'Failure test',
+      width: 4,
+      height: 4,
+      ticksPerSecond: 30,
+      targetFraction: 0.75,
+      integrity: 1,
+      anomalies: [{ id: 'a1', position: [2, 3.2], velocity: [0, 0] }],
+    };
+    const engine = new PartitionEngine(scenario);
+    engine.setInput({ direction: 'up', draw: 'fast' });
+    const result = engine.step();
+
+    expect(result.state.spark.integrity).toBe(0);
+    expect(result.state.status).toBe('lost');
+    expect(result.events.map((event) => event.type)).toEqual([
+      'trace_started',
+      'trace_hit',
+      'game_lost',
+    ]);
   });
 });
