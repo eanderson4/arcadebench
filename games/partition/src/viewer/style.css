@@ -58,20 +58,17 @@ button { color: inherit; }
   padding: 34px 34px 22px;
 }
 
-.home-screen, .level-catalog, .leaderboard-screen { display: none; min-height: calc(100vh - 56px); }
+.home-screen, .level-catalog, .leaderboard-screen { display: none; min-height: calc(100vh - 100px); }
 body[data-mode='home'] .home-screen { display: block; }
 body:not([data-mode='home']) .home-screen { display: none; }
 body[data-mode='catalog'] .level-catalog { display: block; }
 body[data-mode='leaderboard'] .leaderboard-screen { display: block; }
 body[data-mode='home'] .masthead,
 body[data-mode='home'] .workspace,
-body[data-mode='home'] .site-footer,
 body[data-mode='catalog'] .masthead,
 body[data-mode='catalog'] .workspace,
-body[data-mode='catalog'] .site-footer,
 body[data-mode='leaderboard'] .masthead,
-body[data-mode='leaderboard'] .workspace,
-body[data-mode='leaderboard'] .site-footer { display: none; }
+body[data-mode='leaderboard'] .workspace { display: none; }
 
 .home-nav {
   display: flex;
@@ -941,7 +938,10 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
   font: 500 8px 'DM Mono', monospace;
   letter-spacing: 0.11em;
 }
-.site-footer p { margin: 0; color: #52676d; text-transform: uppercase; }
+.math-vs-vibes-badge { display: block; border-radius: 7px; line-height: 0; opacity: 0.72; transition: opacity 160ms ease, transform 160ms ease; }
+.math-vs-vibes-badge:hover { opacity: 1; transform: translateY(-1px); }
+.math-vs-vibes-badge:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
+.math-vs-vibes-badge img { display: block; width: 172px; height: auto; }
 
 .notice {
   position: fixed;
@@ -1040,11 +1040,14 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
   .live-controls p { line-height: 1.7; }
   .replay-controls { flex-wrap: wrap; }
   .timeline-wrap { order: 3; flex-basis: 100%; }
-  .site-footer { align-items: flex-start; }
-  .site-footer p { display: none; }
+  .site-footer { align-items: center; }
+  .math-vs-vibes-badge img { width: 150px; }
 }
 
 @media (max-width: 620px) {
+  .site-footer { justify-content: center; flex-wrap: wrap; }
+  .site-footer > span { display: none; }
+  .home-copy h1 { font-size: 19.5vw; }
   .home-nav { align-items: flex-start; gap: 18px; }
   .home-nav-actions { align-items: stretch; flex-direction: column; }
   .home-nav .quiet-button { max-width: 150px; }
@@ -1092,6 +1095,13 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
   body[data-mode='replay'] .inspector { display: flex; }
   .event-panel { border-left: 0; border-top: 1px solid var(--line); }
   .speed-controls button { min-width: 27px; }
+}
+
+@media (max-width: 420px) {
+  .home-nav { flex-direction: column; }
+  .home-nav-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .home-nav .quiet-button { width: 100%; max-width: none; }
+  .home-nav .quiet-button:last-child { grid-column: 1 / -1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

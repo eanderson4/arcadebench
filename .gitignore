@@ -1,5 +1,6 @@
 node_modules/
 dist/
+.wrangler/
 coverage/
 .DS_Store
 *.log
@@ -10,4 +11,3 @@ coverage/
 # Local benchmark output. Published fixtures belong under fixtures/.
 runs/
 artifacts/
-

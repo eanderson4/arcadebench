@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="206" height="44" viewBox="0 0 206 44" role="img" aria-labelledby="title description">
+  <title id="title">Math vs Vibes</title>
+  <desc id="description">An ArcadeBench project by Math vs Vibes</desc>
+  <rect x="0.75" y="0.75" width="204.5" height="42.5" rx="7.25" fill="#0f1216" stroke="#334148" stroke-width="1.5"/>
+  <text x="12" y="13" fill="#7f8a92" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="6.5" font-weight="700" letter-spacing="1.4">A PROJECT BY</text>
+  <text x="12" y="34" fill="#6f91ff" font-family="Inter, Helvetica, Arial, sans-serif" font-size="17" font-weight="800" letter-spacing="-0.4">MATH</text>
+  <rect x="61" y="18" width="27" height="19" rx="4" fill="#f4f6f7"/>
+  <text x="74.5" y="32" fill="#121317" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" font-weight="800">VS</text>
+  <text x="96" y="34" fill="#ff7a51" font-family="Inter, Helvetica, Arial, sans-serif" font-size="17" font-weight="800" letter-spacing="-0.4">VIBES</text>
+  <path d="M169 27h7l3-7 5 14 4-7h7" fill="none" stroke="#6ee9f5" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"/>
+</svg>

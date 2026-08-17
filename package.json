@@ -11,17 +11,20 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
+    "build:site": "npm run build --workspace=@arcadebench/partition && node scripts/build-site.mjs",
     "test": "npm test --workspaces --if-present",
     "check": "npm run build && npm test",
     "bench": "npm run bench --workspace=@arcadebench/cli --",
     "dev:partition": "npm run dev --workspace=@arcadebench/partition",
-    "dev:board": "npm run dev --workspace=@arcadebench/board"
+    "dev:board": "npm run dev --workspace=@arcadebench/board",
+    "preview:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler dev",
+    "deploy:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "tsx": "^4.23.1",
     "typescript": "^7.0.2",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.123.0"
   }
 }
-

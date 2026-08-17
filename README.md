@@ -73,3 +73,18 @@ npm run bench -- run --game partition --generation dev-0 \
 Partition's current model interface is documented in
 [docs/PARTITION-SDK.md](docs/PARTITION-SDK.md). `dev-0` is intentionally
 unfrozen; results from it are development evidence, not leaderboard entries.
+
+## Production site
+
+Build the static Cloudflare artifact locally:
+
+```sh
+npm run build:site
+```
+
+The output is written to `dist/site`. See
+[the deployment guide](docs/DEPLOYMENT.md) for CI/CD and custom-domain setup.
+
+---
+
+<a href="https://mathvsvibes.com"><img src="games/partition/public/math-vs-vibes-badge.svg" width="206" alt="A Math vs Vibes project"></a>
