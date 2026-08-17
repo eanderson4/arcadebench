@@ -583,18 +583,24 @@ function updateTimePressure(state: PartitionState, ticksPerSecond: number): void
     return;
   }
 
-  const { level: pressure, remainingSeconds, warningAtSeconds } = pressureState;
+  const { level: pressure, remainingSeconds, warningAtSeconds, remainingFraction } = pressureState;
   stage.dataset.timePressure = pressure;
   timePressureHud.setAttribute('aria-hidden', 'false');
 
   timePressureLabel.textContent = pressure === 'critical'
     ? 'FIELD COLLAPSE IMMINENT'
-    : 'TIME WINDOW CLOSING';
+    : pressure === 'pulse'
+      ? 'TIME CHECK'
+      : 'TIME WINDOW CLOSING';
   timePressureDetail.textContent = pressure === 'critical'
     ? 'CLOSE A PARTITION NOW'
-    : 'STABILIZE THE FIELD';
+    : pressure === 'pulse'
+      ? `${Math.floor(state.capturedFraction * 100)}% STABLE · GOAL ${Math.round(state.targetFraction * 100)}%`
+      : 'STABILIZE THE FIELD';
   timePressureClock.textContent = formatFieldClock(state.timeRemainingTicks!, ticksPerSecond);
-  timePressureFill.style.width = `${Math.max(0, Math.min(100, (remainingSeconds / warningAtSeconds) * 100))}%`;
+  timePressureFill.style.width = pressure === 'pulse'
+    ? `${remainingFraction * 100}%`
+    : `${Math.max(0, Math.min(100, (remainingSeconds / warningAtSeconds) * 100))}%`;
   if (lastPressureSecond !== remainingSeconds) {
     timePressureHud.classList.remove('clock-tick');
     void timePressureHud.offsetWidth;

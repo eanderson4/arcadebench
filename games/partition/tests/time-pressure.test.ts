@@ -21,6 +21,15 @@ describe('time pressure HUD thresholds', () => {
     });
   });
 
+  it('briefly pulses the clock at thirty-second countdown milestones', () => {
+    const ticksPerSecond = 30;
+    const totalTicks = 180 * ticksPerSecond;
+    expect(resolveTimePressure(totalTicks, 151 * ticksPerSecond, ticksPerSecond, 'running').level).toBe('none');
+    expect(resolveTimePressure(totalTicks, 150 * ticksPerSecond, ticksPerSecond, 'running').level).toBe('pulse');
+    expect(resolveTimePressure(totalTicks, 149 * ticksPerSecond, ticksPerSecond, 'running').level).toBe('pulse');
+    expect(resolveTimePressure(totalTicks, 148 * ticksPerSecond, ticksPerSecond, 'running').level).toBe('none');
+  });
+
   it('removes pressure treatment once the field is terminal or untimed', () => {
     expect(resolveTimePressure(undefined, null, 30, 'running').level).toBe('none');
     expect(resolveTimePressure(900, 30, 30, 'won').level).toBe('none');

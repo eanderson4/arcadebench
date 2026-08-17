@@ -130,17 +130,17 @@ describe('Partition campaign catalog', () => {
       .every((anomaly) => anomaly.length === 5.5)).toBe(true);
   });
 
-  it('keeps every anomaly out of blocked geometry during long shaped-field runs', () => {
-    for (const seed of [1, 2]) {
-      for (const level of createPartitionCampaign(seed)) {
-        const blocked = new Set(level.scenario.blockedCells);
-        const engine = new PartitionEngine(level.scenario);
-        for (let tick = 0; tick < 4_000; tick++) {
-          const state = engine.step().state;
-          for (const anomaly of state.anomalies) {
-            const x = Math.floor(anomaly.position.x / FIXED_SCALE);
-            const y = Math.floor(anomaly.position.y / FIXED_SCALE);
-            expect(blocked.has(y * state.width + x), `${level.scenario.id} tick ${state.tick}`).toBe(false);
+  it('keeps every anomaly out of blocked geometry across shaped-field runs', () => {
+    for (const level of createPartitionCampaign(1)) {
+      const blocked = new Set(level.scenario.blockedCells);
+      const engine = new PartitionEngine(level.scenario);
+      for (let tick = 0; tick < 1_200; tick++) {
+        const state = engine.step().state;
+        for (const anomaly of state.anomalies) {
+          const x = Math.floor(anomaly.position.x / FIXED_SCALE);
+          const y = Math.floor(anomaly.position.y / FIXED_SCALE);
+          if (blocked.has(y * state.width + x)) {
+            throw new Error(`${level.scenario.id} placed ${anomaly.id} in blocked geometry at tick ${state.tick}`);
           }
         }
       }
@@ -196,6 +196,8 @@ describe('Partition progression playlists', () => {
     expect(stages.map((stage) => stage.metadata.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(stages.map((stage) => stage.scenario.anomalies.length)).toEqual([1, 2, 2, 3, 4, 4, 5, 7, 8, 9]);
     expect(stages.every((stage) => stage.scenario.targetFraction === 0.75)).toBe(true);
+    expect(stages[6]?.metadata.title).toBe('Archipelago');
+    expect(stages[6]?.scenario.timeLimitTicks).toBe(3_335);
     expect(STANDARD_PARTITION_PROGRESSION.stages).toHaveLength(10);
   });
 

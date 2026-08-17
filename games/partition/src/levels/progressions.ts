@@ -34,7 +34,12 @@ export const ARCADE_PARTITION_PROGRESSION: PartitionProgression = {
     'crosswind',
     'broken-compass',
     'razor-frame',
-    'archipelago',
+    {
+      stageId: 'archipelago',
+      // Stage 07 needs more routing time than the raw catalog field because it
+      // arrives after six no-save stages in the arcade run.
+      overrides: { timeLimitTicks: 3_335 },
+    },
     'bow-tie',
     'shattered-circuit',
     'last-partition',
