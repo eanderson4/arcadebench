@@ -6,6 +6,7 @@ import { createPartitionCampaign, resolvePartitionProgression, type PartitionCam
 import { PartitionRenderer } from './renderer';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
+import { resolveTimePressure } from './time-pressure';
 
 type ViewMode = 'home' | 'catalog' | 'live' | 'replay';
 type PlayContext = 'arcade' | 'catalog';
@@ -28,6 +29,11 @@ const stageCaptureEl = query<HTMLElement>('#stage-capture');
 const stageIntegrityEl = query<HTMLElement>('#stage-integrity');
 const stageTimeEl = query<HTMLElement>('#stage-time');
 const stageTickEl = query<HTMLElement>('#stage-tick');
+const timePressureHud = query<HTMLElement>('#time-pressure-hud');
+const timePressureLabel = query<HTMLElement>('#time-pressure-label');
+const timePressureClock = query<HTMLElement>('#time-pressure-clock');
+const timePressureDetail = query<HTMLElement>('#time-pressure-detail');
+const timePressureFill = query<HTMLElement>('#time-pressure-fill');
 const fitScreenButton = query<HTMLButtonElement>('#fit-screen');
 const messageEl = query<HTMLElement>('#message');
 const messageKicker = query<HTMLElement>('#message-kicker');
@@ -146,6 +152,7 @@ let autoAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
 let countdownTimer: ReturnType<typeof setInterval> | undefined;
 let autoAdvanceScenarioId: string | null = null;
 let autoAdvanceDeadline = 0;
+let lastPressureSecond: number | null = null;
 
 const AUTO_ADVANCE_SECONDS = 5;
 
@@ -561,6 +568,41 @@ function actionOverlapsStabilityHud(state: PartitionState): boolean {
   );
 }
 
+function updateTimePressure(state: PartitionState, ticksPerSecond: number): void {
+  const scenario = mode === 'replay' ? loadedReplay.scenario : engine.scenario;
+  const pressureState = resolveTimePressure(
+    scenario.timeLimitTicks,
+    state.timeRemainingTicks,
+    ticksPerSecond,
+    state.status,
+  );
+  if (pressureState.level === 'none') {
+    stage.dataset.timePressure = 'none';
+    timePressureHud.setAttribute('aria-hidden', 'true');
+    lastPressureSecond = null;
+    return;
+  }
+
+  const { level: pressure, remainingSeconds, warningAtSeconds } = pressureState;
+  stage.dataset.timePressure = pressure;
+  timePressureHud.setAttribute('aria-hidden', 'false');
+
+  timePressureLabel.textContent = pressure === 'critical'
+    ? 'FIELD COLLAPSE IMMINENT'
+    : 'TIME WINDOW CLOSING';
+  timePressureDetail.textContent = pressure === 'critical'
+    ? 'CLOSE A PARTITION NOW'
+    : 'STABILIZE THE FIELD';
+  timePressureClock.textContent = formatFieldClock(state.timeRemainingTicks!, ticksPerSecond);
+  timePressureFill.style.width = `${Math.max(0, Math.min(100, (remainingSeconds / warningAtSeconds) * 100))}%`;
+  if (lastPressureSecond !== remainingSeconds) {
+    timePressureHud.classList.remove('clock-tick');
+    void timePressureHud.offsetWidth;
+    timePressureHud.classList.add('clock-tick');
+    lastPressureSecond = remainingSeconds;
+  }
+}
+
 function eventLabel(event: GameEvent): string {
   switch (event.type) {
     case 'trace_started': return `Trace opened at ${event.at.x}, ${event.at.y}`;
@@ -667,12 +709,13 @@ function updateStats(state: PartitionState): void {
   stabilityHud.setAttribute('aria-label', `${capture} stabilized, ${targetPercentage}% goal`);
   stabilityHud.classList.toggle('action-nearby', actionOverlapsStabilityHud(state));
   stageIntegrityEl.textContent = integrity;
+  const ticksPerSecond = mode === 'replay'
+    ? loadedReplay.scenario.ticksPerSecond
+    : engine.scenario.ticksPerSecond;
   stageTimeEl.textContent = state.timeRemainingTicks === null
     ? 'OPEN'
-    : formatFieldClock(
-      state.timeRemainingTicks,
-      mode === 'replay' ? loadedReplay.scenario.ticksPerSecond : engine.scenario.ticksPerSecond,
-    );
+    : formatFieldClock(state.timeRemainingTicks, ticksPerSecond);
+  updateTimePressure(state, ticksPerSecond);
   stageTickEl.textContent = tick;
   statusEl.textContent = state.status;
   statusEl.dataset.status = state.status;

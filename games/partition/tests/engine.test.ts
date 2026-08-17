@@ -223,6 +223,27 @@ describe('PartitionEngine', () => {
     expect(result.state.trace).toEqual([]);
   });
 
+  it('cannot tunnel diagonally through the corner of blocked geometry', () => {
+    const scenario: PartitionScenario = {
+      id: 'blocked-corner-test',
+      name: 'Blocked corner test',
+      width: 4,
+      height: 4,
+      ticksPerSecond: 30,
+      targetFraction: 0.9,
+      integrity: 2,
+      blockedCells: [2 * 4 + 2],
+      anomalies: [{ id: 'a1', position: [1.8, 1.8], velocity: [0.3, 0.3] }],
+    };
+    const state = new PartitionEngine(scenario).step().state;
+    const anomaly = state.anomalies[0]!;
+    const cell = Math.floor(anomaly.position.y / 1024) * state.width
+      + Math.floor(anomaly.position.x / 1024);
+
+    expect(cell).not.toBe(10);
+    expect(anomaly.velocity.y).toBeLessThan(0);
+  });
+
   it('enters the terminal failure state at zero integrity', () => {
     const scenario: PartitionScenario = {
       id: 'failure-test',

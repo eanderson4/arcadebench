@@ -271,37 +271,22 @@ export class PartitionEngine {
 
   private moveAnomalies(events: GameEvent[]): void {
     for (const anomaly of this.anomalies) {
-      let nextX = anomaly.position.x + anomaly.velocity.x;
-      let nextY = anomaly.position.y + anomaly.velocity.y;
-      const crossedVertical = Math.floor(anomaly.position.x / FIXED_SCALE) !== Math.floor(nextX / FIXED_SCALE);
-      const crossedHorizontal = Math.floor(anomaly.position.y / FIXED_SCALE) !== Math.floor(nextY / FIXED_SCALE);
+      const previousPosition = { ...anomaly.position };
+      const previousVelocity = { ...anomaly.velocity };
+      this.moveAnomalyAxis(anomaly, 'x', events);
+      this.moveAnomalyAxis(anomaly, 'y', events);
 
-      if (crossedVertical) {
-        const boundaryX = anomaly.velocity.x > 0 ? Math.floor(nextX / FIXED_SCALE) : Math.floor(anomaly.position.x / FIXED_SCALE);
-        const cellY = Math.max(0, Math.min(this.scenario.height - 1, Math.floor(anomaly.position.y / FIXED_SCALE)));
-        const edge = { ax: boundaryX, ay: cellY, bx: boundaryX, by: cellY + 1 };
-        if (this.trace.some((candidate) => edgeKey(candidate) === edgeKey(edge))) {
-          this.hitTrace(anomaly.id, events);
-        } else if (this.walls.has(edgeKey(edge))) {
-          anomaly.velocity.x *= -1;
-          nextX = anomaly.position.x + anomaly.velocity.x;
-        }
+      const cellX = Math.floor(anomaly.position.x / FIXED_SCALE);
+      const cellY = Math.floor(anomaly.position.y / FIXED_SCALE);
+      if (!this.activeCell(cellX, cellY)) {
+        // A scenario with unusually high velocity can cross more than one cell
+        // in a tick. Preserve the hard geometry invariant even in that case.
+        anomaly.position = previousPosition;
+        anomaly.velocity = {
+          x: -previousVelocity.x,
+          y: -previousVelocity.y,
+        };
       }
-
-      if (crossedHorizontal) {
-        const boundaryY = anomaly.velocity.y > 0 ? Math.floor(nextY / FIXED_SCALE) : Math.floor(anomaly.position.y / FIXED_SCALE);
-        const cellX = Math.max(0, Math.min(this.scenario.width - 1, Math.floor(anomaly.position.x / FIXED_SCALE)));
-        const edge = { ax: cellX, ay: boundaryY, bx: cellX + 1, by: boundaryY };
-        if (this.trace.some((candidate) => edgeKey(candidate) === edgeKey(edge))) {
-          this.hitTrace(anomaly.id, events);
-        } else if (this.walls.has(edgeKey(edge))) {
-          anomaly.velocity.y *= -1;
-          nextY = anomaly.position.y + anomaly.velocity.y;
-        }
-      }
-
-      anomaly.position.x = Math.max(1, Math.min(this.scenario.width * FIXED_SCALE - 1, nextX));
-      anomaly.position.y = Math.max(1, Math.min(this.scenario.height * FIXED_SCALE - 1, nextY));
       if (this.drawing) {
         if (anomaly.kind === 'filament') {
           const walls = [...this.walls.values()];
@@ -325,6 +310,42 @@ export class PartitionEngine {
         }
       }
     }
+  }
+
+  private moveAnomalyAxis(anomaly: AnomalyState, axis: 'x' | 'y', events: GameEvent[]): void {
+    const position = anomaly.position[axis];
+    const velocity = anomaly.velocity[axis];
+    let next = position + velocity;
+    const crossedBoundary = Math.floor(position / FIXED_SCALE) !== Math.floor(next / FIXED_SCALE);
+
+    if (crossedBoundary) {
+      const boundary = velocity > 0 ? Math.floor(next / FIXED_SCALE) : Math.floor(position / FIXED_SCALE);
+      const crossCell = axis === 'x'
+        ? Math.max(0, Math.min(this.scenario.height - 1, Math.floor(anomaly.position.y / FIXED_SCALE)))
+        : Math.max(0, Math.min(this.scenario.width - 1, Math.floor(anomaly.position.x / FIXED_SCALE)));
+      const edge = axis === 'x'
+        ? {
+            ax: boundary,
+            ay: crossCell,
+            bx: boundary,
+            by: crossCell + 1,
+          }
+        : {
+            ax: crossCell,
+            ay: boundary,
+            bx: crossCell + 1,
+            by: boundary,
+          };
+      if (this.trace.some((candidate) => edgeKey(candidate) === edgeKey(edge))) {
+        this.hitTrace(anomaly.id, events);
+      } else if (this.walls.has(edgeKey(edge))) {
+        anomaly.velocity[axis] *= -1;
+        next = position + anomaly.velocity[axis];
+      }
+    }
+
+    const maximum = (axis === 'x' ? this.scenario.width : this.scenario.height) * FIXED_SCALE - 1;
+    anomaly.position[axis] = Math.max(1, Math.min(maximum, next));
   }
 
   private hitTrace(anomalyId: string, events: GameEvent[]): void {

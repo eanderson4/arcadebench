@@ -16,6 +16,7 @@ import {
   wallLine,
   wallsAroundMask,
 } from '../src/levels';
+import { FIXED_SCALE, PartitionEngine } from '../src/core/engine';
 
 describe('Partition level-authoring toolbox', () => {
   it('scales ASCII silhouettes and outlines only their playable frontier', () => {
@@ -127,6 +128,23 @@ describe('Partition campaign catalog', () => {
     expect(campaign.flatMap((level) => level.scenario.anomalies)
       .filter((anomaly) => anomaly.kind === 'filament')
       .every((anomaly) => anomaly.length === 5.5)).toBe(true);
+  });
+
+  it('keeps every anomaly out of blocked geometry during long shaped-field runs', () => {
+    for (const seed of [1, 2]) {
+      for (const level of createPartitionCampaign(seed)) {
+        const blocked = new Set(level.scenario.blockedCells);
+        const engine = new PartitionEngine(level.scenario);
+        for (let tick = 0; tick < 4_000; tick++) {
+          const state = engine.step().state;
+          for (const anomaly of state.anomalies) {
+            const x = Math.floor(anomaly.position.x / FIXED_SCALE);
+            const y = Math.floor(anomaly.position.y / FIXED_SCALE);
+            expect(blocked.has(y * state.width + x), `${level.scenario.id} tick ${state.tick}`).toBe(false);
+          }
+        }
+      }
+    }
   });
 
   it('is deterministic for a campaign seed while preserving authored geometry across seeds', () => {
