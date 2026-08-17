@@ -27,9 +27,35 @@ function withinBoard(point: Point, width: number, height: number): boolean {
   return point.x >= 0 && point.y >= 0 && point.x <= width && point.y <= height;
 }
 
+function cellIndex(x: number, y: number, width: number): number {
+  return y * width + x;
+}
+
+function blockedBoundaryEdges(width: number, height: number, blocked: ReadonlySet<number>): Edge[] {
+  const edges = new Map<string, Edge>();
+  for (const index of blocked) {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    const candidates: Array<[number, number, Edge]> = [
+      [x, y - 1, { ax: x, ay: y, bx: x + 1, by: y }],
+      [x + 1, y, { ax: x + 1, ay: y, bx: x + 1, by: y + 1 }],
+      [x, y + 1, { ax: x, ay: y + 1, bx: x + 1, by: y + 1 }],
+      [x - 1, y, { ax: x, ay: y, bx: x, by: y + 1 }],
+    ];
+    for (const [nx, ny, edge] of candidates) {
+      const neighborBlocked = nx >= 0 && ny >= 0 && nx < width && ny < height
+        ? blocked.has(cellIndex(nx, ny, width))
+        : false;
+      if (!neighborBlocked) edges.set(edgeKey(edge), edge);
+    }
+  }
+  return [...edges.values()];
+}
+
 export class PartitionEngine {
   private tickNumber = 0;
   private status: PartitionState['status'] = 'running';
+  private failureReason: PartitionState['failureReason'] = null;
   private input: ControlInput = { ...IDLE_INPUT };
   private sparkPosition: Point;
   private sparkHeading: Direction = 'idle';
@@ -42,11 +68,18 @@ export class PartitionEngine {
   private walls = new Map<string, Edge>();
   private wallPoints = new Set<string>();
   private stabilized = new Set<number>();
+  private blocked: Set<number>;
+  private playableCellCount: number;
   private anomalies: AnomalyState[];
   private controllerVersion = 0;
 
   constructor(readonly scenario: PartitionScenario) {
-    this.sparkPosition = { x: Math.floor(scenario.width / 2), y: scenario.height };
+    this.blocked = new Set(scenario.blockedCells ?? []);
+    this.playableCellCount = scenario.width * scenario.height - this.blocked.size;
+    if (this.playableCellCount < 1) throw new Error('Partition scenario must contain at least one playable cell');
+    this.sparkPosition = scenario.sparkStart
+      ? { ...scenario.sparkStart }
+      : { x: Math.floor(scenario.width / 2), y: scenario.height };
     this.integrity = scenario.integrity;
     this.anomalies = scenario.anomalies.map((anomaly) => ({
       id: anomaly.id,
@@ -60,6 +93,8 @@ export class PartitionEngine {
       },
     }));
     for (const edge of boundaryEdges(scenario.width, scenario.height)) this.addWall(edge);
+    for (const edge of blockedBoundaryEdges(scenario.width, scenario.height, this.blocked)) this.addWall(edge);
+    for (const edge of scenario.initialWalls ?? []) this.addWall(edge);
   }
 
   setInput(input: ControlInput): void {
@@ -78,6 +113,7 @@ export class PartitionEngine {
       width: this.scenario.width,
       height: this.scenario.height,
       status: this.status,
+      failureReason: this.failureReason,
       spark: {
         position: { ...this.sparkPosition },
         heading: this.sparkHeading,
@@ -93,8 +129,15 @@ export class PartitionEngine {
       walls: [...this.walls.values()].map(cloneEdge),
       trace: this.trace.map(cloneEdge),
       stabilizedCells: [...this.stabilized].sort((a, b) => a - b),
-      capturedFraction: this.stabilized.size / (this.scenario.width * this.scenario.height),
+      capturedFraction: this.stabilized.size / this.playableCellCount,
       targetFraction: this.scenario.targetFraction,
+      difficultyId: this.scenario.difficultyId ?? 'medium',
+      blockedCells: [...this.blocked].sort((a, b) => a - b),
+      playableCellCount: this.playableCellCount,
+      timeRemainingTicks: this.scenario.timeLimitTicks === undefined
+        ? null
+        : Math.max(0, this.scenario.timeLimitTicks - this.tickNumber),
+      sparkMoveEveryTicks: this.scenario.sparkMoveEveryTicks ?? 1,
       controllerVersion: this.controllerVersion,
       currentInput: { ...this.input },
     };
@@ -104,10 +147,24 @@ export class PartitionEngine {
     if (this.status !== 'running') return { state: this.snapshot(), events: [] };
     this.tickNumber++;
     const events: GameEvent[] = [];
-    this.moveSpark(events);
+    // Version-1 replays created before cadence was authored imply the legacy
+    // one-move-per-tick rule. New human/campaign scenarios set this explicitly.
+    const sparkMoveEveryTicks = this.scenario.sparkMoveEveryTicks ?? 1;
+    if ((this.tickNumber - 1) % sparkMoveEveryTicks === 0) this.moveSpark(events);
     this.moveAnomalies(events);
     if (this.integrity <= 0 && this.status === 'running') {
       this.status = 'lost';
+      this.failureReason = 'integrity';
+      events.push({ tick: this.tickNumber, type: 'game_lost' });
+    }
+    if (
+      this.scenario.timeLimitTicks !== undefined
+      && this.tickNumber >= this.scenario.timeLimitTicks
+      && this.status === 'running'
+    ) {
+      this.status = 'lost';
+      this.failureReason = 'timeout';
+      events.push({ tick: this.tickNumber, type: 'time_expired' });
       events.push({ tick: this.tickNumber, type: 'game_lost' });
     }
     return { state: this.snapshot(), events };
@@ -162,6 +219,7 @@ export class PartitionEngine {
       this.stabilized,
       this.anomalies,
       FIXED_SCALE,
+      this.blocked,
     );
     this.stabilized = result.stabilized;
     this.trace = [];
@@ -172,7 +230,7 @@ export class PartitionEngine {
     this.input = { direction: this.input.direction, draw: 'off' };
     events.push({ tick: this.tickNumber, type: 'trace_completed', capturedCells: result.newlyStabilized });
 
-    const capturedFraction = this.stabilized.size / (this.scenario.width * this.scenario.height);
+    const capturedFraction = this.stabilized.size / this.playableCellCount;
     if (capturedFraction >= this.scenario.targetFraction) {
       this.status = 'won';
       events.push({ tick: this.tickNumber, type: 'level_won', capturedFraction });

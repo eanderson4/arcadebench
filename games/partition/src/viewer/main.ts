@@ -1,12 +1,13 @@
 import { PartitionEngine } from '../core/engine';
+import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
-import { createClassicScenario } from '../core/scenarios';
-import type { ControlInput, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
+import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
+import { createPartitionCampaign, type PartitionCampaignLevel } from '../levels';
 import { PartitionRenderer } from './renderer';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
 
-type ViewMode = 'live' | 'replay';
+type ViewMode = 'home' | 'live' | 'replay';
 
 function query<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -23,6 +24,7 @@ const tickEl = query<HTMLElement>('#tick');
 const statusEl = query<HTMLElement>('#status');
 const stageCaptureEl = query<HTMLElement>('#stage-capture');
 const stageIntegrityEl = query<HTMLElement>('#stage-integrity');
+const stageTimeEl = query<HTMLElement>('#stage-time');
 const stageTickEl = query<HTMLElement>('#stage-tick');
 const fitScreenButton = query<HTMLButtonElement>('#fit-screen');
 const messageEl = query<HTMLElement>('#message');
@@ -46,20 +48,54 @@ const inputDraw = query<HTMLElement>('#input-draw');
 const controllerVersion = query<HTMLElement>('#controller-version');
 const fileInput = query<HTMLInputElement>('#replay-file');
 const notice = query<HTMLElement>('#notice');
+const levelSelect = query<HTMLSelectElement>('#level-select');
+const difficultySelect = query<HTMLSelectElement>('#difficulty-select');
+const fieldLauncher = query<HTMLFormElement>('#field-launcher');
+const homeReplayButton = query<HTMLButtonElement>('#home-replay');
+const returnHomeButton = query<HTMLButtonElement>('#return-home');
+const homeLevelNumber = query<HTMLElement>('#home-level-number');
+const homeLevelTier = query<HTMLElement>('#home-level-tier');
+const homeLevelTitle = query<HTMLElement>('#home-level-title');
+const homeLevelTagline = query<HTMLElement>('#home-level-tagline');
+const homeLevelChallenge = query<HTMLElement>('#home-level-challenge');
+const homeAnomalies = query<HTMLElement>('#home-anomalies');
+const homeTarget = query<HTMLElement>('#home-target');
+const homeClock = query<HTMLElement>('#home-clock');
+const homeLives = query<HTMLElement>('#home-lives');
+const difficultySummary = query<HTMLElement>('#difficulty-summary');
+const stageFieldLabel = query<HTMLElement>('#stage-field-label');
+const stageFieldName = query<HTMLElement>('#stage-field-name');
+const controlTarget = query<HTMLElement>('#control-target');
 
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
 if (!Number.isFinite(seed)) seed = 11;
-let engine = new PartitionEngine(createClassicScenario(seed));
-let mode: ViewMode = params.get('mode') === 'replay' ? 'replay' : 'live';
+let campaign = createPartitionCampaign(seed);
+const requestedLevel = Number(params.get('level') ?? 1);
+let selectedLevelIndex = Number.isInteger(requestedLevel)
+  ? Math.max(0, Math.min(campaign.length - 1, requestedLevel - 1))
+  : 0;
+const requestedDifficulty = params.get('difficulty');
+let selectedDifficulty: DifficultyId = requestedDifficulty && requestedDifficulty in DIFFICULTY_PRESETS
+  ? requestedDifficulty as DifficultyId
+  : 'medium';
+let engine = new PartitionEngine(applyDifficulty(campaign[selectedLevelIndex]!.scenario, selectedDifficulty));
+let mode: ViewMode = params.get('mode') === 'replay'
+  ? 'replay'
+  : params.get('mode') === 'live' || params.get('autostart') === '1'
+    ? 'live'
+    : 'home';
 let immersive = false;
 let direction: Direction = 'idle';
 let drawing = false;
 let touchDirection: Direction = 'idle';
 let touchDrawing = false;
-let liveStarted = params.get('autostart') === '1';
+let liveStarted = mode === 'live' && params.get('autostart') === '1';
 let liveReplayTicks: ReplayTick[] = [];
 const keys = new Set<string>();
+const pressedDirections: Direction[] = [];
+let bufferedDirection: Direction = 'idle';
+let bufferedDraw = false;
 
 let loadedReplay: PartitionReplay = createShowcaseReplay();
 let replayFrames: PartitionReplayFrame[] = replayPartitionFrames(loadedReplay);
@@ -69,17 +105,112 @@ let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 let damageTimer: ReturnType<typeof setTimeout> | undefined;
 let introTimer: ReturnType<typeof setTimeout> | undefined;
 
+function selectedLevel(): PartitionCampaignLevel {
+  return campaign[selectedLevelIndex]!;
+}
+
+function configureFieldSurface(state: Pick<PartitionState, 'width' | 'height'>): void {
+  canvas.height = Math.round(canvas.width * (state.height / state.width));
+  stage.style.setProperty('--board-aspect', `${state.width} / ${state.height}`);
+}
+
+function updateFieldIdentity(): void {
+  const level = selectedLevel();
+  stageFieldLabel.textContent = `FIELD ${String(level.metadata.number).padStart(2, '0')}`;
+  stageFieldName.textContent = level.metadata.title.toUpperCase();
+  controlTarget.textContent = `CAPTURE ${Math.round(engine.scenario.targetFraction * 100)}%`;
+}
+
+function formatFieldClock(ticks: number, ticksPerSecond: number): string {
+  const totalSeconds = Math.ceil(ticks / ticksPerSecond);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds === 0 ? `${minutes}m` : `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function updateHomeSelection(): void {
+  const level = selectedLevel();
+  const scenario = applyDifficulty(level.scenario, selectedDifficulty);
+  levelSelect.value = String(level.metadata.number);
+  difficultySelect.value = selectedDifficulty;
+  homeLevelNumber.textContent = `FIELD ${String(level.metadata.number).padStart(2, '0')} / ${campaign.length}`;
+  homeLevelTier.textContent = `${level.metadata.tier.toUpperCase()} CAMPAIGN`;
+  homeLevelTitle.textContent = level.metadata.title;
+  homeLevelTagline.textContent = level.metadata.tagline;
+  homeLevelChallenge.textContent = level.metadata.challenge;
+  homeAnomalies.textContent = String(scenario.anomalies.length).padStart(2, '0');
+  homeTarget.textContent = `${Math.round(scenario.targetFraction * 100)}%`;
+  homeClock.textContent = scenario.timeLimitTicks === undefined
+    ? 'OPEN'
+    : formatFieldClock(scenario.timeLimitTicks, scenario.ticksPerSecond);
+  homeLives.textContent = String(scenario.integrity).padStart(2, '0');
+  difficultySummary.textContent = DIFFICULTY_PRESETS[selectedDifficulty].description;
+}
+
+function resetLiveSession(): void {
+  clearHumanControls();
+  direction = 'idle';
+  liveReplayTicks = [];
+  watchRunButton.disabled = true;
+  messageEl.classList.add('hidden');
+  updateFieldIdentity();
+  configureFieldSurface(engine.snapshot());
+}
+
+function launchSelectedField(): void {
+  engine = new PartitionEngine(applyDifficulty(selectedLevel().scenario, selectedDifficulty));
+  resetLiveSession();
+  liveStarted = true;
+  playIntro.classList.add('hidden');
+  playIntro.classList.remove('leaving');
+  setMode('live');
+}
+
 function selectDirection(): Direction {
-  if (keys.has('ArrowUp')) return 'up';
-  if (keys.has('ArrowDown')) return 'down';
-  if (keys.has('ArrowLeft')) return 'left';
-  if (keys.has('ArrowRight')) return 'right';
+  for (let index = pressedDirections.length - 1; index >= 0; index--) {
+    const candidate = pressedDirections[index];
+    if (keys.has(`Arrow${candidate[0].toUpperCase()}${candidate.slice(1)}`)) return candidate;
+  }
   return touchDirection;
 }
 
+function directionForCode(code: string): Direction | null {
+  switch (code) {
+    case 'ArrowUp': return 'up';
+    case 'ArrowDown': return 'down';
+    case 'ArrowLeft': return 'left';
+    case 'ArrowRight': return 'right';
+    default: return null;
+  }
+}
+
+function clearHumanControls(): void {
+  keys.clear();
+  pressedDirections.length = 0;
+  bufferedDirection = 'idle';
+  bufferedDraw = false;
+  drawing = false;
+  touchDirection = 'idle';
+  touchDrawing = false;
+  engine.setInput({ direction: 'idle', draw: 'off' });
+}
+
 function currentInput(): ControlInput {
-  direction = selectDirection();
-  return { direction, draw: drawing || touchDrawing ? 'fast' : 'off' };
+  const heldDirection = selectDirection();
+  const state = engine.snapshot();
+  const movementDue = state.tick % state.sparkMoveEveryTicks === 0;
+  direction = heldDirection;
+  let draw = drawing || touchDrawing;
+  if (movementDue) {
+    if (direction === 'idle' && bufferedDirection !== 'idle') {
+      direction = bufferedDirection;
+      draw = draw || bufferedDraw;
+    }
+    bufferedDirection = 'idle';
+    bufferedDraw = false;
+  }
+  return { direction, draw: draw ? 'fast' : 'off' };
 }
 
 function humanReplay(): PartitionReplay {
@@ -104,9 +235,7 @@ function startHumanPlay(): void {
 
 function showHowToPlay(): void {
   liveStarted = false;
-  engine.setInput({ direction: 'idle', draw: 'off' });
-  keys.clear();
-  drawing = false;
+  clearHumanControls();
   clearTimeout(introTimer);
   playIntro.classList.remove('leaving');
   playIntro.classList.remove('hidden');
@@ -127,14 +256,15 @@ function showDamage(integrity: number): void {
   stage.classList.add('damage-hit');
   clearTimeout(damageTimer);
   damageTimer = setTimeout(() => stage.classList.remove('damage-hit'), 520);
-  showNotice(`Trace severed · ${integrity} integrity remaining`, 'error');
+  showNotice(`Trace severed · ${integrity} ${integrity === 1 ? 'life' : 'lives'} remaining`, 'error');
 }
 
 function eventLabel(event: GameEvent): string {
   switch (event.type) {
     case 'trace_started': return `Trace opened at ${event.at.x}, ${event.at.y}`;
     case 'trace_completed': return `Partition closed · ${event.capturedCells} cells stabilized`;
-    case 'trace_hit': return `${event.anomalyId.toUpperCase()} severed trace · ${event.integrity} integrity`;
+    case 'trace_hit': return `${event.anomalyId.toUpperCase()} severed trace · ${event.integrity} lives`;
+    case 'time_expired': return 'Field clock expired';
     case 'level_won': return `Field stabilized · ${Math.round(event.capturedFraction * 100)}%`;
     case 'game_lost': return 'Signal lost';
     case 'controller_installed': return `Controller v${event.version} installed`;
@@ -226,13 +356,30 @@ function updateStats(state: PartitionState): void {
   tickEl.textContent = tick;
   stageCaptureEl.textContent = capture;
   stageIntegrityEl.textContent = integrity;
+  stageTimeEl.textContent = state.timeRemainingTicks === null
+    ? 'OPEN'
+    : formatFieldClock(
+      state.timeRemainingTicks,
+      mode === 'replay' ? loadedReplay.scenario.ticksPerSecond : engine.scenario.ticksPerSecond,
+    );
   stageTickEl.textContent = tick;
   statusEl.textContent = state.status;
   statusEl.dataset.status = state.status;
+  const restartLabel = state.status === 'won'
+    ? 'NEXT FIELD <span>→</span>'
+    : state.status === 'lost'
+      ? 'RETRY FIELD <span>↻</span>'
+      : 'RESTART FIELD <span>↻</span>';
+  if (restartButton.dataset.label !== restartLabel) {
+    restartButton.dataset.label = restartLabel;
+    restartButton.innerHTML = restartLabel;
+  }
   if (state.status !== 'running') {
     messageEl.innerHTML = state.status === 'won'
       ? '<span>FIELD STABILIZED</span><small>capture threshold reached</small>'
-      : '<span>SIGNAL LOST</span><small>all integrity depleted</small>';
+      : state.failureReason === 'timeout'
+        ? '<span>TIME EXPIRED</span><small>field remained unstable</small>'
+        : '<span>SIGNAL LOST</span><small>all lives depleted</small>';
     messageEl.classList.remove('hidden');
   } else {
     messageEl.classList.add('hidden');
@@ -303,6 +450,7 @@ function installReplay(replay: PartitionReplay, name: string): void {
   timelineEnd.textContent = String(frames.at(-1)!.state.tick);
   replayName.textContent = name;
   replayDetail.textContent = `${replay.scenario.name} · ${replay.scenario.ticksPerSecond} Hz · ${replay.scenario.anomalies.length} anomalies`;
+  configureFieldSurface(frames[0].state);
   setReplayPlaying(false);
   loopButton.setAttribute('aria-pressed', String(replayTransport.loop));
   renderEventTrack();
@@ -322,6 +470,11 @@ function jumpReplayEvent(direction: -1 | 1): void {
 
 function setMode(nextMode: ViewMode): void {
   mode = nextMode;
+  if (mode === 'home') {
+    liveStarted = false;
+    clearHumanControls();
+    updateHomeSelection();
+  }
   document.body.dataset.mode = mode;
   setImmersive(mode === 'live' && liveStarted);
   for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
@@ -330,6 +483,8 @@ function setMode(nextMode: ViewMode): void {
   const queryParams = new URLSearchParams(location.search);
   queryParams.set('mode', mode);
   queryParams.set('seed', String(seed));
+  queryParams.set('level', String(selectedLevel().metadata.number));
+  queryParams.set('difficulty', selectedDifficulty);
   if (mode === 'replay') queryParams.set('tick', String(replayTransport.current.state.tick));
   else queryParams.delete('tick');
   history.replaceState(null, '', `${location.pathname}?${queryParams}`);
@@ -345,6 +500,7 @@ window.addEventListener('keydown', (event) => {
   }
   if (target?.matches('input, select')) return;
   if (target?.matches('button') && (event.code === 'Space' || event.code === 'Enter')) return;
+  if (mode === 'home') return;
   if (mode === 'replay') {
     switch (event.code) {
       case 'Space':
@@ -393,12 +549,32 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.code.startsWith('Arrow') || event.code === 'Space') event.preventDefault();
   if (!liveStarted && (event.code.startsWith('Arrow') || event.code === 'Space')) startHumanPlay();
+  const pressedDirection = directionForCode(event.code);
+  if (pressedDirection && !event.repeat) {
+    const prior = pressedDirections.indexOf(pressedDirection);
+    if (prior !== -1) pressedDirections.splice(prior, 1);
+    pressedDirections.push(pressedDirection);
+    bufferedDirection = pressedDirection;
+    bufferedDraw = drawing || touchDrawing || keys.has('Space');
+  }
   keys.add(event.code);
-  if (event.code === 'Space') drawing = true;
+  if (event.code === 'Space') {
+    drawing = true;
+    const activeDirection = selectDirection();
+    if (activeDirection !== 'idle') {
+      bufferedDirection = activeDirection;
+      bufferedDraw = true;
+    }
+  }
 });
 
 window.addEventListener('keyup', (event) => {
   keys.delete(event.code);
+  const releasedDirection = directionForCode(event.code);
+  if (releasedDirection) {
+    const index = pressedDirections.indexOf(releasedDirection);
+    if (index !== -1) pressedDirections.splice(index, 1);
+  }
   if (event.code === 'Space') drawing = false;
 });
 
@@ -408,6 +584,8 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-directi
     event.preventDefault();
     if (!liveStarted) startHumanPlay();
     touchDirection = selected;
+    bufferedDirection = selected;
+    bufferedDraw = touchDrawing;
   };
   const end = (event: Event) => {
     event.preventDefault();
@@ -424,6 +602,10 @@ traceButton.addEventListener('pointerdown', (event) => {
   event.preventDefault();
   if (!liveStarted) startHumanPlay();
   touchDrawing = true;
+  if (touchDirection !== 'idle') {
+    bufferedDirection = touchDirection;
+    bufferedDraw = true;
+  }
 });
 for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
   traceButton.addEventListener(eventName, (event) => {
@@ -438,29 +620,38 @@ for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')
 
 startPlayButton.addEventListener('click', startHumanPlay);
 howToPlayButton.addEventListener('click', showHowToPlay);
+returnHomeButton.addEventListener('click', () => setMode('home'));
+homeReplayButton.addEventListener('click', () => setMode('replay'));
+fieldLauncher.addEventListener('submit', (event) => {
+  event.preventDefault();
+  launchSelectedField();
+});
+levelSelect.addEventListener('change', () => {
+  selectedLevelIndex = Math.max(0, Math.min(campaign.length - 1, Number(levelSelect.value) - 1));
+  updateHomeSelection();
+});
+difficultySelect.addEventListener('change', () => {
+  selectedDifficulty = difficultySelect.value as DifficultyId;
+  updateHomeSelection();
+});
 watchRunButton.addEventListener('click', () => {
   if (liveReplayTicks.length === 0) {
     showNotice('Start playing to create a replay', 'error');
     return;
   }
-  installReplay(humanReplay(), `Your run · seed ${seed}`);
+  installReplay(humanReplay(), `Your run · ${selectedLevel().metadata.title} · ${DIFFICULTY_PRESETS[selectedDifficulty].label}`);
   setMode('replay');
   setReplayPlaying(true);
 });
 
 restartButton.addEventListener('click', () => {
-  seed++;
-  engine = new PartitionEngine(createClassicScenario(seed));
-  direction = 'idle';
-  drawing = false;
-  touchDirection = 'idle';
-  touchDrawing = false;
-  keys.clear();
-  liveReplayTicks = [];
-  watchRunButton.disabled = true;
-  startHumanPlay();
-  setMode('live');
-  showNotice(`New seeded field · ${seed}`);
+  const completed = engine.snapshot().status === 'won';
+  if (completed && selectedLevelIndex < campaign.length - 1) {
+    selectedLevelIndex++;
+    levelSelect.value = String(selectedLevel().metadata.number);
+  }
+  launchSelectedField();
+  showNotice(completed ? `Field ${selectedLevel().metadata.number} loaded` : 'Field restarted');
 });
 
 playButton.addEventListener('click', () => {
@@ -536,6 +727,8 @@ query<HTMLButtonElement>('#copy-link').addEventListener('click', async () => {
   const url = new URL(location.href);
   url.searchParams.set('mode', mode);
   url.searchParams.set('seed', String(seed));
+  url.searchParams.set('level', String(selectedLevel().metadata.number));
+  url.searchParams.set('difficulty', selectedDifficulty);
   try {
     await navigator.clipboard.writeText(url.toString());
     showNotice('View link copied');
@@ -564,7 +757,10 @@ setInterval(() => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && replayTransport.isPlaying) setReplayPlaying(false);
+  if (document.hidden) clearHumanControls();
 });
+
+window.addEventListener('blur', clearHumanControls);
 
 function frame(animationTime: number): void {
   if (mode === 'replay') {
@@ -572,9 +768,12 @@ function frame(animationTime: number): void {
     if (advance.changed) updateReplayInspector(replayTransport.current);
     if (advance.reachedEnd) syncReplayPlayButton();
     const replayFrame = replayTransport.current;
-    renderer.render(replayFrame.state, { ambientTime: animationTime / 1000 });
+    renderer.render(replayFrame.state, {
+      ambientTime: animationTime / 1000,
+      smoothSpark: replayTransport.isPlaying,
+    });
     updateStats(replayFrame.state);
-  } else {
+  } else if (mode === 'live') {
     const state = engine.snapshot();
     renderer.render(state, { ambientTime: animationTime / 1000 });
     updateStats(state);
@@ -601,7 +800,22 @@ async function loadReplayFromUrl(): Promise<void> {
   }
 }
 
+for (const tier of ['easy', 'medium', 'hard', 'impossible'] as const) {
+  const group = document.createElement('optgroup');
+  group.label = tier.toUpperCase();
+  for (const level of campaign.filter((candidate) => candidate.metadata.tier === tier)) {
+    const option = document.createElement('option');
+    option.value = String(level.metadata.number);
+    option.textContent = `${String(level.metadata.number).padStart(2, '0')} · ${level.metadata.title}`;
+    group.append(option);
+  }
+  levelSelect.append(group);
+}
+
 installReplay(loadedReplay, 'Showcase controller');
+updateFieldIdentity();
+updateHomeSelection();
+if (mode !== 'replay') configureFieldSurface(engine.snapshot());
 const requestedTick = Number(params.get('tick') ?? 0);
 if (Number.isFinite(requestedTick) && requestedTick > 0) {
   const requestedFrame = replayFrames.findIndex((candidate) => candidate.state.tick >= requestedTick);

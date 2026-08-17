@@ -1,6 +1,8 @@
 export type Direction = 'up' | 'down' | 'left' | 'right' | 'idle';
 export type DrawMode = 'off' | 'fast' | 'slow';
 export type EpisodeStatus = 'running' | 'won' | 'lost';
+export type FailureReason = 'integrity' | 'timeout';
+export type DifficultyId = 'easy' | 'medium' | 'hard' | 'impossible';
 
 export interface Point {
   x: number;
@@ -46,6 +48,12 @@ export interface PartitionScenario {
   ticksPerSecond: number;
   targetFraction: number;
   integrity: number;
+  difficultyId?: DifficultyId;
+  sparkStart?: Point;
+  sparkMoveEveryTicks?: number;
+  timeLimitTicks?: number;
+  blockedCells?: number[];
+  initialWalls?: Edge[];
   anomalies: Array<{
     id: string;
     position: [number, number];
@@ -59,6 +67,7 @@ export interface PartitionState {
   width: number;
   height: number;
   status: EpisodeStatus;
+  failureReason: FailureReason | null;
   spark: SparkState;
   anomalies: AnomalyState[];
   walls: Edge[];
@@ -66,6 +75,11 @@ export interface PartitionState {
   stabilizedCells: number[];
   capturedFraction: number;
   targetFraction: number;
+  difficultyId: DifficultyId;
+  blockedCells: number[];
+  playableCellCount: number;
+  timeRemainingTicks: number | null;
+  sparkMoveEveryTicks: number;
   controllerVersion: number;
   currentInput: ControlInput;
 }
@@ -74,6 +88,7 @@ export type GameEvent =
   | { tick: number; type: 'trace_started'; at: Point }
   | { tick: number; type: 'trace_completed'; capturedCells: number }
   | { tick: number; type: 'trace_hit'; anomalyId: string; integrity: number }
+  | { tick: number; type: 'time_expired' }
   | { tick: number; type: 'level_won'; capturedFraction: number }
   | { tick: number; type: 'game_lost' }
   | { tick: number; type: 'controller_installed'; version: number };

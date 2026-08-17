@@ -6,6 +6,19 @@ export interface PartitionReplayFrame {
   events: GameEvent[];
 }
 
+function matchesRecordedState(actual: unknown, recorded: unknown): boolean {
+  if (recorded === null || typeof recorded !== 'object') return Object.is(actual, recorded);
+  if (Array.isArray(recorded)) {
+    return Array.isArray(actual)
+      && actual.length === recorded.length
+      && recorded.every((value, index) => matchesRecordedState(actual[index], value));
+  }
+  if (!actual || typeof actual !== 'object' || Array.isArray(actual)) return false;
+  return Object.entries(recorded).every(([key, value]) =>
+    matchesRecordedState((actual as Record<string, unknown>)[key], value),
+  );
+}
+
 export function replayPartitionFrames(replay: PartitionReplay): PartitionReplayFrame[] {
   if (replay.version !== 1) throw new Error(`unsupported Partition replay version: ${String(replay.version)}`);
   const engine = new PartitionEngine(replay.scenario);
@@ -23,7 +36,9 @@ export function replayPartitionFrames(replay: PartitionReplay): PartitionReplayF
       events: structuredClone([...(record.controlEvents ?? []), ...result.events]),
     });
   }
-  if (JSON.stringify(frames.at(-1)!.state) !== JSON.stringify(replay.finalState)) {
+  // Version-1 state gained additive display/tooling fields over time. A legacy
+  // artifact still validates every field it recorded while accepting new ones.
+  if (!matchesRecordedState(frames.at(-1)!.state, replay.finalState)) {
     throw new Error('replay final state does not match reconstructed state');
   }
   return frames;

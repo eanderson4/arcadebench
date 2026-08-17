@@ -24,6 +24,7 @@ export function captureEmptyComponents(
   currentStabilized: ReadonlySet<number>,
   anomalies: readonly AnomalyState[],
   fixedScale: number,
+  blockedCells: ReadonlySet<number> = new Set(),
 ): CaptureResult {
   const walls = new Set([...wallEdges].map(edgeKey));
   const stabilized = new Set(currentStabilized);
@@ -39,7 +40,7 @@ export function captureEmptyComponents(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const start = cellIndex(x, y, width);
-      if (stabilized.has(start) || visited.has(start)) continue;
+      if (stabilized.has(start) || blockedCells.has(start) || visited.has(start)) continue;
 
       const component: number[] = [];
       const queue: Array<[number, number]> = [[x, y]];
@@ -61,7 +62,7 @@ export function captureEmptyComponents(
         for (const [nx, ny] of neighbors) {
           if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
           const next = cellIndex(nx, ny, width);
-          if (visited.has(next) || stabilized.has(next) || barrierBetween(cx, cy, nx, ny, walls)) continue;
+          if (visited.has(next) || stabilized.has(next) || blockedCells.has(next) || barrierBetween(cx, cy, nx, ny, walls)) continue;
           visited.add(next);
           queue.push([nx, ny]);
         }
@@ -75,4 +76,3 @@ export function captureEmptyComponents(
   }
   return { stabilized, newlyStabilized };
 }
-

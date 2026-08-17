@@ -17,13 +17,21 @@ describe('Partition replay', () => {
   });
 
   it('records the applied draw input on a trace-closing tick', () => {
-    const session = new ContinuousPartitionSession(new PartitionEngine(createClassicScenario(23)));
+    const scenario = createClassicScenario(23);
+    // This test isolates replay input attribution from the human-play cadence.
+    scenario.sparkMoveEveryTicks = 1;
+    const session = new ContinuousPartitionSession(new PartitionEngine(scenario));
     session.setInput({ direction: 'right', draw: 'off' });
-    for (let index = 0; index < 18; index++) session.tick();
+    while (session.engine.snapshot().spark.position.x < 42) session.tick();
     session.setInput({ direction: 'up', draw: 'fast' });
-    for (let index = 0; index < 32; index++) session.tick();
+    let completed = false;
+    for (let tick = 0; tick < 200 && !completed; tick++) {
+      const result = session.tick();
+      completed = result.events.some((event) => event.type === 'trace_completed');
+    }
 
     const replay = session.replay();
+    expect(completed).toBe(true);
     expect(replay.ticks.at(-1)?.events.some((event) => event.type === 'trace_completed')).toBe(true);
     expect(replay.ticks.at(-1)?.input.draw).toBe('fast');
     expect(replayPartition(replay)).toEqual(replay.finalState);
@@ -60,6 +68,26 @@ describe('Partition replay', () => {
     expect(replayPartitionFrames(replay)[1].events[0]).toEqual(
       { tick: 0, type: 'controller_installed', version: 1 },
     );
+  });
+
+  it('accepts additive state fields missing from an older version-1 artifact', () => {
+    const scenario = createClassicScenario(11);
+    delete scenario.sparkMoveEveryTicks;
+    const session = new ContinuousPartitionSession(new PartitionEngine(scenario));
+    session.setInput({ direction: 'left', draw: 'off' });
+    session.tick();
+    const replay = session.replay();
+    const legacyFinalState = replay.finalState as unknown as Record<string, unknown>;
+    for (const field of [
+      'failureReason',
+      'difficultyId',
+      'blockedCells',
+      'playableCellCount',
+      'timeRemainingTicks',
+      'sparkMoveEveryTicks',
+    ]) delete legacyFinalState[field];
+
+    expect(replayPartitionFrames(replay).at(-1)?.state.tick).toBe(1);
   });
 
   it('rejects a replay whose claimed final state was altered', () => {

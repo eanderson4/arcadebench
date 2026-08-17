@@ -8,10 +8,68 @@
     <title>Partition — ArcadeBench</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body data-mode="live">
+  <body data-mode="home">
     <div class="ambient ambient-one"></div>
     <div class="ambient ambient-two"></div>
     <main class="shell">
+      <section id="home-screen" class="home-screen" aria-label="Partition home">
+        <header class="home-nav">
+          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
+          <button id="home-replay" class="quiet-button" type="button">OPEN REPLAY LAB <span>↗</span></button>
+        </header>
+
+        <div class="home-hero">
+          <div class="home-copy">
+            <div class="home-kicker"><span>REAL-TIME CONTROL BENCHMARK</span><b>DEV / 0</b></div>
+            <h1>PARTITION</h1>
+            <p class="home-dek">Cut through a live field. Isolate the anomalies. Every human move and model control signal runs against the same unpaused, deterministic clock.</p>
+            <div class="home-signal" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+              <span>30 HZ / AUTHORITATIVE</span>
+            </div>
+          </div>
+
+          <form id="field-launcher" class="field-launcher">
+            <div class="launcher-heading">
+              <span id="home-level-number">FIELD 01 / 20</span>
+              <b id="home-level-tier">EASY CAMPAIGN</b>
+            </div>
+            <h2 id="home-level-title">First Light</h2>
+            <p id="home-level-tagline">One field. One anomaly. One clean cut.</p>
+
+            <label>
+              <span>SELECT FIELD</span>
+              <select id="level-select" name="level"></select>
+            </label>
+            <label>
+              <span>DIFFICULTY</span>
+              <select id="difficulty-select" name="difficulty">
+                <option value="easy">Easy · 4 lives</option>
+                <option value="medium" selected>Medium · 3 lives</option>
+                <option value="hard">Hard · 2 lives</option>
+                <option value="impossible">Impossible · 1 life</option>
+              </select>
+            </label>
+
+            <p id="home-level-challenge" class="launcher-challenge">Learn safe-wall travel and close a generous first partition.</p>
+            <div class="launcher-stats">
+              <span><small>ANOMALIES</small><b id="home-anomalies">01</b></span>
+              <span><small>TARGET</small><b id="home-target">58%</b></span>
+              <span><small>CLOCK</small><b id="home-clock">180s</b></span>
+              <span><small>LIVES</small><b id="home-lives">03</b></span>
+            </div>
+            <p id="difficulty-summary" class="difficulty-summary">Three lives and the intended field timing.</p>
+            <button id="launch-field" class="launch-button" type="submit"><span>START FIELD</span><b>→</b></button>
+          </form>
+        </div>
+
+        <div class="home-lanes">
+          <article><span>01 / HUMAN PLAY</span><h3>Learn the field</h3><p>Arrow keys move the Spark. Hold Space while leaving a wall to open a partition.</p></article>
+          <article><span>02 / MODEL CONTROL</span><h3>Program under pressure</h3><p>Controllers receive compact state ticks while the engine continues running in real time.</p></article>
+          <article><span>03 / REPLAY EVIDENCE</span><h3>Inspect every signal</h3><p>Scrub deterministic runs tick by tick, jump between events, and share the replay artifact.</p></article>
+        </div>
+      </section>
+
       <header class="masthead">
         <div class="identity">
           <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
@@ -20,12 +78,13 @@
         </div>
         <div class="header-right">
           <div class="mode-switch" role="tablist" aria-label="Viewer mode">
+            <button type="button" data-mode="home" role="tab" aria-selected="false">HOME</button>
             <button type="button" data-mode="live" role="tab" aria-selected="true">PLAY</button>
             <button type="button" data-mode="replay" role="tab" aria-selected="false">REPLAY LAB</button>
           </div>
           <div class="stats" aria-live="polite">
             <span><small>STABLE</small><b id="capture">0%</b></span>
-            <span><small>INTEGRITY</small><b id="integrity">03</b></span>
+            <span><small>LIVES</small><b id="integrity">03</b></span>
             <span><small>TICK</small><b id="tick">0000</b></span>
             <span><small>FIELD</small><b id="status" data-status="running">RUNNING</b></span>
           </div>
@@ -35,10 +94,11 @@
       <section class="workspace">
         <div class="field-column">
           <div class="stage">
-            <div class="stage-label"><span class="live-dot"></span><b>FIELD 01</b><em>DETERMINISTIC SIMULATION</em></div>
+            <div class="stage-label"><span class="live-dot"></span><b id="stage-field-label">FIELD 01</b><em id="stage-field-name">FIRST LIGHT</em></div>
             <div class="stage-stats" aria-hidden="true">
               <span><small>STABLE</small><b id="stage-capture">0%</b></span>
-              <span><small>INTEGRITY</small><b id="stage-integrity">03</b></span>
+              <span><small>LIVES</small><b id="stage-integrity">03</b></span>
+              <span><small>TIME</small><b id="stage-time">3:00</b></span>
               <span><small>TICK</small><b id="stage-tick">0000</b></span>
             </div>
             <button id="fit-screen" class="fit-screen" type="button" aria-pressed="false" aria-label="Fit game field to screen">
@@ -56,7 +116,7 @@
               <div class="intro-rules">
                 <span><b>01</b> ARROWS MOVE</span>
                 <span><b>02</b> SPACE + ARROW CUTS</span>
-                <span><b>03</b> CAPTURE 75%</span>
+                <span><b>03</b> REACH FIELD TARGET</span>
               </div>
               <button id="start-play" class="primary-button" type="button">START FIELD <span>→</span></button>
             </div>
@@ -70,8 +130,9 @@
           </div>
 
           <div class="live-controls">
-            <p><kbd>ARROWS</kbd> MOVE <span>·</span> HOLD <kbd>SPACE</kbd> TO TRACE <span>·</span> CAPTURE 75%</p>
+            <p><kbd>ARROWS</kbd> MOVE <span>·</span> HOLD <kbd>SPACE</kbd> TO TRACE <span>·</span> <b id="control-target">CAPTURE 75%</b></p>
             <div class="actions">
+              <button id="return-home" class="quiet-button" type="button">HOME</button>
               <button id="how-to-play" class="quiet-button" type="button">HOW TO PLAY</button>
               <button id="watch-run" class="quiet-button" type="button" disabled>WATCH RUN</button>
               <button id="copy-link" class="quiet-button" type="button">COPY LINK</button>

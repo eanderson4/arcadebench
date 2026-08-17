@@ -23,7 +23,8 @@ export function createClassicScenario(seed: number): PartitionScenario {
     ticksPerSecond: 30,
     targetFraction: 0.75,
     integrity: 3,
+    difficultyId: 'medium',
+    sparkMoveEveryTicks: 3,
     anomalies,
   };
 }
-

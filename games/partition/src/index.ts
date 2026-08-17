@@ -1,4 +1,5 @@
 export * from './core/capture';
+export * from './core/difficulty';
 export * from './core/edges';
 export * from './core/engine';
 export * from './core/rng';
@@ -7,6 +8,7 @@ export * from './core/scenarios';
 export * from './core/types';
 export * from './runtime/session';
 export * from './runtime/program-controller';
+export * from './levels';
 export * from './benchmark/plugin';
 export * from './benchmark/protocol';
 export * from './benchmark/session';

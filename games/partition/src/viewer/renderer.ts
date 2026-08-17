@@ -4,6 +4,12 @@ import type { Edge, PartitionState } from '../core/types';
 export interface RenderOptions {
   ambientTime?: number;
   emphasizeEvents?: boolean;
+  smoothSpark?: boolean;
+}
+
+interface VisualPoint {
+  x: number;
+  y: number;
 }
 
 const COLORS = {
@@ -39,6 +45,12 @@ function directionAngle(direction: PartitionState['spark']['heading']): number {
 
 export class PartitionRenderer {
   private readonly context: CanvasRenderingContext2D;
+  private sparkFrom: VisualPoint | null = null;
+  private sparkTarget: VisualPoint | null = null;
+  private sparkTransitionStarted = 0;
+  private sparkTransitionSeconds = 0.075;
+  private lastScenarioId: string | null = null;
+  private lastStateTick = -1;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const context = canvas.getContext('2d');
@@ -51,18 +63,53 @@ export class PartitionRenderer {
     const sx = canvas.width / state.width;
     const sy = canvas.height / state.height;
     const time = options.ambientTime ?? state.tick / 30;
+    const visualSpark = this.resolveVisualSpark(state, time, options.smoothSpark ?? true);
 
     context.save();
     context.clearRect(0, 0, canvas.width, canvas.height);
     this.drawBackdrop(state, time, sx, sy);
     this.drawStabilizedField(state, time, sx, sy);
     this.drawGrid(state, sx, sy);
+    this.drawBlockedField(state, time, sx, sy);
     this.drawWalls(state, sx, sy);
-    this.drawTrace(state, time, sx, sy);
+    this.drawTrace(state, time, sx, sy, visualSpark);
     this.drawAnomalies(state, time, sx, sy);
-    this.drawSpark(state, time, sx, sy);
+    this.drawSpark(state, time, sx, sy, visualSpark);
     this.drawFrame(state);
     context.restore();
+  }
+
+  private sampleSparkTransition(time: number): VisualPoint {
+    if (!this.sparkFrom || !this.sparkTarget) return { x: 0, y: 0 };
+    const raw = (time - this.sparkTransitionStarted) / this.sparkTransitionSeconds;
+    const progress = Math.max(0, Math.min(1, raw));
+    const eased = 1 - (1 - progress) ** 3;
+    return {
+      x: this.sparkFrom.x + (this.sparkTarget.x - this.sparkFrom.x) * eased,
+      y: this.sparkFrom.y + (this.sparkTarget.y - this.sparkFrom.y) * eased,
+    };
+  }
+
+  private resolveVisualSpark(state: PartitionState, time: number, smooth: boolean): VisualPoint {
+    const target = { ...state.spark.position };
+    const discontinuity = this.lastScenarioId !== state.scenarioId
+      || state.tick < this.lastStateTick
+      || state.tick - this.lastStateTick > Math.max(3, state.sparkMoveEveryTicks * 2);
+
+    if (!smooth || !this.sparkTarget || !this.sparkFrom || discontinuity) {
+      this.sparkFrom = target;
+      this.sparkTarget = target;
+      this.sparkTransitionStarted = time;
+    } else if (target.x !== this.sparkTarget.x || target.y !== this.sparkTarget.y) {
+      this.sparkFrom = this.sampleSparkTransition(time);
+      this.sparkTarget = target;
+      this.sparkTransitionStarted = time;
+      this.sparkTransitionSeconds = Math.min(0.11, 0.024 * state.sparkMoveEveryTicks + 0.018);
+    }
+
+    this.lastScenarioId = state.scenarioId;
+    this.lastStateTick = state.tick;
+    return this.sampleSparkTransition(time);
   }
 
   private drawBackdrop(state: PartitionState, time: number, sx: number, sy: number): void {
@@ -150,6 +197,32 @@ export class PartitionRenderer {
     context.restore();
   }
 
+  private drawBlockedField(state: PartitionState, time: number, sx: number, sy: number): void {
+    if (state.blockedCells.length === 0) return;
+    const { context } = this;
+    context.save();
+    context.fillStyle = 'rgba(2, 5, 9, 0.94)';
+    context.beginPath();
+    for (const cell of state.blockedCells) {
+      const x = cell % state.width;
+      const y = Math.floor(cell / state.width);
+      context.rect(x * sx, y * sy, sx + 0.5, sy + 0.5);
+    }
+    context.fill();
+    context.clip();
+
+    const offset = (time * 5) % 24;
+    context.strokeStyle = 'rgba(84, 199, 216, 0.055)';
+    context.lineWidth = 1;
+    context.beginPath();
+    for (let x = -this.canvas.height + offset; x < this.canvas.width; x += 24) {
+      context.moveTo(x, this.canvas.height);
+      context.lineTo(x + this.canvas.height, 0);
+    }
+    context.stroke();
+    context.restore();
+  }
+
   private drawWalls(state: PartitionState, sx: number, sy: number): void {
     const { context } = this;
     context.save();
@@ -173,14 +246,28 @@ export class PartitionRenderer {
     context.restore();
   }
 
-  private drawTrace(state: PartitionState, time: number, sx: number, sy: number): void {
+  private drawTrace(
+    state: PartitionState,
+    time: number,
+    sx: number,
+    sy: number,
+    visualSpark: VisualPoint,
+  ): void {
     if (state.trace.length === 0) return;
     const { context } = this;
     context.save();
     context.lineCap = 'round';
     context.lineJoin = 'round';
     context.beginPath();
-    for (const edge of state.trace) edgePath(context, edge, sx, sy);
+    for (let index = 0; index < state.trace.length; index++) {
+      const edge = state.trace[index];
+      if (index === state.trace.length - 1) {
+        context.moveTo(edge.ax * sx, edge.ay * sy);
+        context.lineTo(visualSpark.x * sx, visualSpark.y * sy);
+      } else {
+        edgePath(context, edge, sx, sy);
+      }
+    }
     context.strokeStyle = 'rgba(255, 174, 55, 0.3)';
     context.shadowColor = COLORS.trace;
     context.shadowBlur = 24;
@@ -267,10 +354,16 @@ export class PartitionRenderer {
     }
   }
 
-  private drawSpark(state: PartitionState, time: number, sx: number, sy: number): void {
+  private drawSpark(
+    state: PartitionState,
+    time: number,
+    sx: number,
+    sy: number,
+    visualSpark: VisualPoint,
+  ): void {
     const { context } = this;
-    const x = state.spark.position.x * sx;
-    const y = state.spark.position.y * sy;
+    const x = visualSpark.x * sx;
+    const y = visualSpark.y * sy;
     const angle = directionAngle(state.spark.heading);
     const pulse = 1 + Math.sin(time * 7) * 0.08;
     const primary = state.spark.drawing ? COLORS.trace : COLORS.spark;

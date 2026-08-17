@@ -7,8 +7,7 @@ describe('ContinuousPartitionSession', () => {
   it('watches an already-running tick interval without owning advancement', async () => {
     const session = new ContinuousPartitionSession(new PartitionEngine(createClassicScenario(11)));
     const watched = session.watchGameplay({ ticks: 3 });
-    session.tick();
-    session.tick();
+    for (let tick = 0; tick < 4; tick++) session.tick();
     session.tick();
     const result = await watched;
     expect(result.fromTick).toBe(0);
@@ -25,6 +24,8 @@ describe('ContinuousPartitionSession', () => {
         return { direction: 'left', draw: 'off' };
       },
     });
+    session.tick();
+    session.tick();
     session.tick();
     session.tick();
     expect(version).toBe(1);
