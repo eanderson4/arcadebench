@@ -71,6 +71,14 @@ const difficultySummary = query<HTMLElement>('#difficulty-summary');
 const stageFieldLabel = query<HTMLElement>('#stage-field-label');
 const stageFieldName = query<HTMLElement>('#stage-field-name');
 const controlTarget = query<HTMLElement>('#control-target');
+const stabilityHud = query<HTMLElement>('#stability-hud');
+const stabilityCurrent = query<HTMLElement>('#stability-current');
+const stabilityTarget = query<HTMLElement>('#stability-target');
+const stabilityFill = query<HTMLElement>('#stability-fill');
+const stabilityGoalMarker = query<HTMLElement>('#stability-goal-marker');
+const captureFeedback = query<HTMLElement>('#capture-feedback');
+const captureGain = query<HTMLElement>('#capture-gain');
+const captureTotal = query<HTMLElement>('#capture-total');
 
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
@@ -105,6 +113,7 @@ let replayTransport = new ReplayTransport(replayFrames, loadedReplay.scenario.ti
 let lastAnimationTime = performance.now();
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 let damageTimer: ReturnType<typeof setTimeout> | undefined;
+let captureFeedbackTimer: ReturnType<typeof setTimeout> | undefined;
 let introTimer: ReturnType<typeof setTimeout> | undefined;
 let autoAdvanceTimer: ReturnType<typeof setTimeout> | undefined;
 let countdownTimer: ReturnType<typeof setInterval> | undefined;
@@ -158,11 +167,14 @@ function updateHomeSelection(): void {
 
 function resetLiveSession(): void {
   cancelAutoAdvance();
+  clearTimeout(captureFeedbackTimer);
   clearHumanControls();
   direction = 'idle';
   liveReplayTicks = [];
   watchRunButton.disabled = true;
   messageEl.classList.add('hidden');
+  captureFeedback.classList.remove('visible');
+  stage.classList.remove('capture-pulse');
   updateFieldIdentity();
   configureFieldSurface(engine.snapshot());
 }
@@ -327,6 +339,88 @@ function showDamage(integrity: number): void {
   showNotice(`Trace severed · ${integrity} ${integrity === 1 ? 'life' : 'lives'} remaining`, 'error');
 }
 
+function formatCaptureGain(capturedCells: number, playableCellCount: number): string {
+  const percentage = (capturedCells / playableCellCount) * 100;
+  return percentage >= 10 ? String(Math.round(percentage)) : percentage.toFixed(1).replace(/\.0$/, '');
+}
+
+function newlyStabilizedCells(before: PartitionState, after: PartitionState): number[] {
+  const prior = new Set(before.stabilizedCells);
+  return after.stabilizedCells.filter((cell) => !prior.has(cell));
+}
+
+function largestCapturedComponent(cells: readonly number[], width: number): number[] {
+  const remaining = new Set(cells);
+  let largest: number[] = [];
+  while (remaining.size > 0) {
+    const first = remaining.values().next().value as number;
+    const component: number[] = [];
+    const queue = [first];
+    remaining.delete(first);
+    while (queue.length > 0) {
+      const cell = queue.pop()!;
+      component.push(cell);
+      const x = cell % width;
+      const neighbors = [cell - width, cell + width];
+      if (x > 0) neighbors.push(cell - 1);
+      if (x < width - 1) neighbors.push(cell + 1);
+      for (const neighbor of neighbors) {
+        if (!remaining.delete(neighbor)) continue;
+        queue.push(neighbor);
+      }
+    }
+    if (component.length > largest.length) largest = component;
+  }
+  return largest;
+}
+
+function positionCaptureFeedback(cells: readonly number[], state: PartitionState): void {
+  const component = largestCapturedComponent(cells, state.width);
+  if (component.length === 0) {
+    captureFeedback.style.left = '50%';
+    captureFeedback.style.top = '28%';
+    return;
+  }
+  const center = component.reduce((sum, cell) => ({
+    x: sum.x + (cell % state.width) + 0.5,
+    y: sum.y + Math.floor(cell / state.width) + 0.5,
+  }), { x: 0, y: 0 });
+  const x = Math.max(10, Math.min(90, (center.x / component.length / state.width) * 100));
+  const y = Math.max(12, Math.min(84, (center.y / component.length / state.height) * 100));
+  captureFeedback.style.left = `${x}%`;
+  captureFeedback.style.top = `${y}%`;
+}
+
+function showCaptureFeedback(capturedCells: number, state: PartitionState, newCells: readonly number[]): void {
+  if (capturedCells <= 0) return;
+  const current = Math.floor(state.capturedFraction * 100);
+  const target = Math.round(state.targetFraction * 100);
+  captureGain.textContent = `+${formatCaptureGain(capturedCells, state.playableCellCount)}%`;
+  captureTotal.textContent = `${current}% / ${target}% STABLE`;
+  positionCaptureFeedback(newCells, state);
+  captureFeedback.classList.remove('visible');
+  stage.classList.remove('capture-pulse');
+  void captureFeedback.offsetWidth;
+  captureFeedback.classList.add('visible');
+  stage.classList.add('capture-pulse');
+  clearTimeout(captureFeedbackTimer);
+  captureFeedbackTimer = setTimeout(() => {
+    captureFeedback.classList.remove('visible');
+    stage.classList.remove('capture-pulse');
+  }, 1_500);
+}
+
+function showFrameCaptureFeedback(frame: PartitionReplayFrame): void {
+  const completion = frame.events.find((event) => event.type === 'trace_completed');
+  if (completion?.type !== 'trace_completed') return;
+  const previous = replayFrames[Math.max(0, replayTransport.index - 1)]?.state ?? frame.state;
+  showCaptureFeedback(
+    completion.capturedCells,
+    frame.state,
+    newlyStabilizedCells(previous, frame.state),
+  );
+}
+
 function eventLabel(event: GameEvent): string {
   switch (event.type) {
     case 'trace_started': return `Trace opened at ${event.at.x}, ${event.at.y}`;
@@ -416,13 +510,21 @@ function renderEvents(tick: number): void {
 }
 
 function updateStats(state: PartitionState): void {
-  const capture = `${Math.floor(state.capturedFraction * 100)}%`;
+  const currentPercentage = Math.floor(state.capturedFraction * 100);
+  const targetPercentage = Math.round(state.targetFraction * 100);
+  const capture = `${currentPercentage}%`;
+  const captureGoal = `${currentPercentage}% / ${targetPercentage}%`;
   const integrity = String(state.spark.integrity).padStart(2, '0');
   const tick = String(state.tick).padStart(4, '0');
-  captureEl.textContent = capture;
+  captureEl.textContent = captureGoal;
   integrityEl.textContent = integrity;
   tickEl.textContent = tick;
-  stageCaptureEl.textContent = capture;
+  stageCaptureEl.textContent = captureGoal;
+  stabilityCurrent.textContent = capture;
+  stabilityTarget.textContent = `${targetPercentage}%`;
+  stabilityFill.style.width = `${Math.min(100, state.capturedFraction * 100)}%`;
+  stabilityGoalMarker.style.left = `${Math.min(100, state.targetFraction * 100)}%`;
+  stabilityHud.setAttribute('aria-label', `${capture} stabilized, ${targetPercentage}% goal`);
   stageIntegrityEl.textContent = integrity;
   stageTimeEl.textContent = state.timeRemainingTicks === null
     ? 'OPEN'
@@ -515,6 +617,7 @@ function seekReplay(index: number, reflectInUrl = false): void {
   replayTransport.seekFrame(index);
   updateReplayInspector(replayTransport.current);
   if (reflectInUrl && mode === 'replay') {
+    showFrameCaptureFeedback(replayTransport.current);
     const queryParams = new URLSearchParams(location.search);
     queryParams.set('tick', String(replayTransport.current.state.tick));
     history.replaceState(null, '', `${location.pathname}?${queryParams}`);
@@ -853,6 +956,14 @@ setInterval(() => {
     });
     const traceHit = result.events.find((event) => event.type === 'trace_hit');
     if (traceHit?.type === 'trace_hit') showDamage(traceHit.integrity);
+    const traceCompleted = result.events.find((event) => event.type === 'trace_completed');
+    if (traceCompleted?.type === 'trace_completed') {
+      showCaptureFeedback(
+        traceCompleted.capturedCells,
+        result.state,
+        newlyStabilizedCells(applied, result.state),
+      );
+    }
     watchRunButton.disabled = false;
   }
 }, 1000 / engine.scenario.ticksPerSecond);
@@ -867,7 +978,10 @@ window.addEventListener('blur', clearHumanControls);
 function frame(animationTime: number): void {
   if (mode === 'replay') {
     const advance = replayTransport.advance(animationTime - lastAnimationTime);
-    if (advance.changed) updateReplayInspector(replayTransport.current);
+    if (advance.changed) {
+      updateReplayInspector(replayTransport.current);
+      showFrameCaptureFeedback(replayTransport.current);
+    }
     if (advance.reachedEnd) syncReplayPlayButton();
     const replayFrame = replayTransport.current;
     renderer.render(replayFrame.state, {
@@ -895,6 +1009,7 @@ async function loadReplayFromUrl(): Promise<void> {
     if (Number.isFinite(remoteTick) && remoteTick > 0) {
       const requestedFrame = replayFrames.findIndex((candidate) => candidate.state.tick >= remoteTick);
       seekReplay(requestedFrame === -1 ? replayFrames.length - 1 : requestedFrame);
+      showFrameCaptureFeedback(replayTransport.current);
     }
     setMode('replay');
   } catch (error) {
@@ -922,6 +1037,7 @@ const requestedTick = Number(params.get('tick') ?? 0);
 if (Number.isFinite(requestedTick) && requestedTick > 0) {
   const requestedFrame = replayFrames.findIndex((candidate) => candidate.state.tick >= requestedTick);
   seekReplay(requestedFrame === -1 ? replayFrames.length - 1 : requestedFrame);
+  showFrameCaptureFeedback(replayTransport.current);
 }
 setMode(mode);
 if (liveStarted) playIntro.classList.add('hidden');

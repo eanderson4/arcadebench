@@ -238,6 +238,7 @@ h1 {
 
 .stats { display: flex; align-items: flex-end; gap: clamp(18px, 3vw, 34px); }
 .stats span { display: grid; gap: 6px; min-width: 52px; }
+.stats .capture-stat { min-width: 92px; }
 .stats small { color: #53686f; font: 500 9px 'DM Mono', monospace; letter-spacing: 0.12em; }
 .stats b { color: #e9f9fb; font: 500 19px/1 'DM Mono', monospace; letter-spacing: -0.06em; text-transform: uppercase; }
 .stats b[data-status='running'] { color: var(--cyan); font-size: 12px; letter-spacing: 0.03em; }
@@ -421,6 +422,58 @@ body[data-mode='live'][data-immersive='true'] .stage-stats small { color: #4f686
 body[data-mode='live'][data-immersive='true'] .stage-stats b { color: #dffaff; font: 500 11px 'DM Mono', monospace; }
 body[data-mode='live'][data-immersive='true'] .fit-screen { top: 14px; right: 16px; }
 body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
+
+.stability-hud {
+  position: absolute;
+  z-index: 4;
+  left: 18px;
+  bottom: 18px;
+  width: min(310px, 38%);
+  padding: 12px 13px 13px;
+  border: 1px solid rgba(110, 233, 245, 0.24);
+  background: rgba(3, 9, 14, 0.78);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(9px);
+  pointer-events: none;
+}
+.stability-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; }
+.stability-heading span { display: grid; gap: 4px; text-align: left; }
+.stability-heading small { color: #6b858c; font: 500 7px 'DM Mono', monospace; letter-spacing: 0.13em; }
+.stability-heading strong { color: #effeff; font: 700 clamp(22px, 3vw, 34px)/0.9 'DM Mono', monospace; letter-spacing: -0.08em; }
+.stability-heading em { color: #698188; font: normal 500 8px 'DM Mono', monospace; letter-spacing: 0.1em; white-space: nowrap; }
+.stability-heading em b { color: var(--yellow); font-weight: 600; }
+.stability-meter { position: relative; height: 5px; margin-top: 11px; overflow: visible; background: rgba(110, 233, 245, 0.09); }
+.stability-meter i { display: block; width: 0; height: 100%; background: linear-gradient(90deg, #24aebd, var(--cyan-bright)); box-shadow: 0 0 13px rgba(110, 233, 245, 0.55); transition: width 480ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.stability-meter b { position: absolute; top: -3px; bottom: -3px; left: 75%; width: 2px; background: var(--yellow); box-shadow: 0 0 8px rgba(255, 211, 90, 0.8); transform: translateX(-1px); }
+.stage.capture-pulse .stability-hud { animation: stability-pulse 780ms ease-out; }
+@keyframes stability-pulse {
+  0% { border-color: rgba(110, 233, 245, 0.24); }
+  28% { border-color: rgba(255, 211, 90, 0.95); box-shadow: 0 0 45px rgba(255, 211, 90, 0.24); }
+  100% { border-color: rgba(110, 233, 245, 0.24); }
+}
+
+.capture-feedback {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 28%;
+  display: grid;
+  justify-items: center;
+  opacity: 0;
+  filter: drop-shadow(0 0 16px rgba(255, 211, 90, 0.42));
+  transform: translate(-50%, 10px) scale(0.9);
+  pointer-events: none;
+}
+.capture-feedback small { color: rgba(255, 224, 126, 0.86); font: 500 8px 'DM Mono', monospace; letter-spacing: 0.16em; text-shadow: 0 1px 5px #020508; }
+.capture-feedback strong { margin-top: 3px; color: rgba(245, 254, 255, 0.94); font: 800 clamp(35px, 5vw, 58px)/1 Inter, sans-serif; letter-spacing: -0.06em; text-shadow: 0 2px 9px #020508, 0 0 20px rgba(110, 233, 245, 0.35); }
+.capture-feedback em { margin-top: 5px; color: rgba(190, 226, 231, 0.78); font: normal 500 8px 'DM Mono', monospace; letter-spacing: 0.1em; text-shadow: 0 1px 5px #020508; }
+.capture-feedback.visible { animation: capture-feedback 1450ms cubic-bezier(0.2, 0.75, 0.2, 1) both; }
+@keyframes capture-feedback {
+  0% { opacity: 0; transform: translate(-50%, 15px) scale(0.84); }
+  16% { opacity: 0.94; transform: translate(-50%, 0) scale(1.03); }
+  28%, 68% { opacity: 0.82; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -13px) scale(1.025); }
+}
 
 .scanlines {
   position: absolute;
@@ -647,6 +700,8 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
     gap: 5px;
     pointer-events: none;
   }
+  .stability-hud { bottom: 108px; width: min(240px, 58%); }
+  .capture-feedback { top: 19%; }
   body[data-mode='replay'] .touch-controls { display: none; }
   .touch-controls button {
     padding: 0;

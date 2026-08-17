@@ -84,7 +84,7 @@
             <button type="button" data-mode="replay" role="tab" aria-selected="false">REPLAY LAB</button>
           </div>
           <div class="stats" aria-live="polite">
-            <span><small>STABLE</small><b id="capture">0%</b></span>
+            <span class="capture-stat"><small>STABILITY / GOAL</small><b id="capture">0 / 75%</b></span>
             <span><small>LIVES</small><b id="integrity">03</b></span>
             <span><small>TICK</small><b id="tick">0000</b></span>
             <span><small>FIELD</small><b id="status" data-status="running">RUNNING</b></span>
@@ -97,10 +97,22 @@
           <div class="stage">
             <div class="stage-label"><span class="live-dot"></span><b id="stage-field-label">STAGE 01</b><em id="stage-field-name">FIRST LIGHT</em></div>
             <div class="stage-stats" aria-hidden="true">
-              <span><small>STABLE</small><b id="stage-capture">0%</b></span>
+              <span><small>STABLE / GOAL</small><b id="stage-capture">0 / 75%</b></span>
               <span><small>LIVES</small><b id="stage-integrity">03</b></span>
               <span><small>TIME</small><b id="stage-time">3:00</b></span>
               <span><small>TICK</small><b id="stage-tick">0000</b></span>
+            </div>
+            <div id="stability-hud" class="stability-hud" aria-live="polite">
+              <div class="stability-heading">
+                <span><small>FIELD STABILITY</small><strong id="stability-current">0%</strong></span>
+                <em>GOAL <b id="stability-target">75%</b></em>
+              </div>
+              <div class="stability-meter" aria-hidden="true"><i id="stability-fill"></i><b id="stability-goal-marker"></b></div>
+            </div>
+            <div id="capture-feedback" class="capture-feedback" aria-live="assertive">
+              <small>PARTITION SECURED</small>
+              <strong id="capture-gain">+0%</strong>
+              <em id="capture-total">0% / 75% STABLE</em>
             </div>
             <button id="fit-screen" class="fit-screen" type="button" aria-pressed="false" aria-label="Fit game field to screen">
               <i aria-hidden="true"></i><span>FIT SCREEN</span>
