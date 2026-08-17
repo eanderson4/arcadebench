@@ -15,7 +15,10 @@
       <section id="home-screen" class="home-screen" aria-label="Partition home">
         <header class="home-nav">
           <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
-          <button id="home-replay" class="quiet-button" type="button">OPEN REPLAY LAB <span>↗</span></button>
+          <div class="home-nav-actions">
+            <button id="open-catalog" class="quiet-button catalog-link" type="button">EXPLORE 20 FIELDS <span>→</span></button>
+            <button id="home-replay" class="quiet-button" type="button">OPEN REPLAY LAB <span>↗</span></button>
+          </div>
         </header>
 
         <div class="home-hero">
@@ -69,6 +72,49 @@
           <article><span>02 / MODEL CONTROL</span><h3>Program under pressure</h3><p>Controllers receive compact state ticks while the engine continues running in real time.</p></article>
           <article><span>03 / REPLAY EVIDENCE</span><h3>Inspect every signal</h3><p>Scrub deterministic runs tick by tick, jump between events, and share the replay artifact.</p></article>
         </div>
+      </section>
+
+      <section id="level-catalog" class="level-catalog" aria-label="Partition level catalog">
+        <header class="catalog-nav">
+          <button id="catalog-home" class="text-button" type="button"><span>←</span> PARTITION HOME</button>
+          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> FIELD CATALOG</div>
+          <button id="catalog-replay" class="quiet-button" type="button">REPLAY LAB <span>↗</span></button>
+        </header>
+
+        <div class="catalog-hero">
+          <div>
+            <div class="home-kicker"><span>20 AUTHORED TEST FIELDS</span><b>CATALOG / V1</b></div>
+            <h1>FIELD<br />CATALOG</h1>
+          </div>
+          <div class="catalog-intro">
+            <p>Browse every board outside the arcade run. Launch any stage directly, compare its geometry, and test the hazards that make later fields harder.</p>
+            <div class="hazard-legend" aria-label="Hazard legend">
+              <span><i class="drifter-swatch"></i><b>DRIFTER</b><small>compact roaming anomaly</small></span>
+              <span><i class="filament-swatch"></i><b>FILAMENT</b><small>full line severs traces</small></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="catalog-toolbar">
+          <div id="catalog-filters" class="catalog-filters" aria-label="Filter fields by tier">
+            <button type="button" data-tier="all" aria-pressed="true">ALL <b>20</b></button>
+            <button type="button" data-tier="easy" aria-pressed="false">EASY <b>05</b></button>
+            <button type="button" data-tier="medium" aria-pressed="false">MEDIUM <b>05</b></button>
+            <button type="button" data-tier="hard" aria-pressed="false">HARD <b>05</b></button>
+            <button type="button" data-tier="impossible" aria-pressed="false">IMPOSSIBLE <b>05</b></button>
+          </div>
+          <label class="catalog-difficulty">
+            <span>PLAY AT</span>
+            <select id="catalog-difficulty-select" name="catalog-difficulty">
+              <option value="easy">Easy · 4 lives</option>
+              <option value="medium" selected>Medium · 3 lives</option>
+              <option value="hard">Hard · 2 lives</option>
+              <option value="impossible">Impossible · 1 life</option>
+            </select>
+          </label>
+        </div>
+
+        <div id="catalog-grid" class="catalog-grid" aria-live="polite"></div>
       </section>
 
       <header class="masthead">

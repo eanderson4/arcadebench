@@ -214,6 +214,7 @@ interface LevelDraft {
   features: string[];
   board: BoardMask;
   anomalyCount: number;
+  filamentCount?: number;
   anomalySpeed: readonly [number, number];
   targetFraction: number;
   integrity: number;
@@ -267,8 +268,8 @@ export function createPartitionCampaign(seed = PARTITION_CAMPAIGN_SEED): Partiti
 
     authoredLevel(6, seed, {
       slug: 'crosswind', title: 'Crosswind', tier: 'medium', tagline: 'Familiar space, less forgiving motion.',
-      challenge: 'Read the open field at a tighter Spark-to-anomaly speed ratio.', features: ['open-field', 'faster-anomalies', 'timing-pressure'],
-      board: OPEN, anomalyCount: 3, anomalySpeed: [0.12, 0.155], targetFraction: 0.75, integrity: 4,
+      challenge: 'Meet the first long-body Filament while reading a tighter Spark-to-anomaly speed ratio.', features: ['open-field', 'first-filament', 'timing-pressure'],
+      board: OPEN, anomalyCount: 3, filamentCount: 1, anomalySpeed: [0.12, 0.155], targetFraction: 0.75, integrity: 4,
       sparkMoveEveryTicks: 3, timeLimitTicks: 4_050, parTicks: 2_400,
     }),
     authoredLevel(7, seed, {
@@ -280,81 +281,81 @@ export function createPartitionCampaign(seed = PARTITION_CAMPAIGN_SEED): Partiti
     authoredLevel(8, seed, {
       slug: 'broken-compass', title: 'Broken Compass', tier: 'medium', tagline: 'Four spokes, four tempting approaches.',
       challenge: 'Use a broken cross of safe walls while anomalies migrate through its gaps.', features: ['broken-cross', 'internal-walls', 'four-quadrants'],
-      board: OPEN, initialWalls: brokenCross(OPEN), anomalyCount: 4, anomalySpeed: [0.125, 0.165], targetFraction: 0.75, integrity: 3,
+      board: OPEN, initialWalls: brokenCross(OPEN), anomalyCount: 4, filamentCount: 1, anomalySpeed: [0.125, 0.165], targetFraction: 0.75, integrity: 3,
       sparkMoveEveryTicks: 3, timeLimitTicks: 3_750, parTicks: 2_300,
     }),
     authoredLevel(9, seed, {
       slug: 'hollow-core', title: 'Hollow Core', tier: 'medium', tagline: 'The center is missing; the routes are not.',
       challenge: 'Cut around a large diamond-like void whose frontier creates many junctions.', features: ['central-void', 'non-rectangular', 'wall-junctions'],
-      board: HOLLOW_CORE, anomalyCount: 4, anomalySpeed: [0.13, 0.17], targetFraction: 0.75, integrity: 3,
+      board: HOLLOW_CORE, anomalyCount: 4, filamentCount: 1, anomalySpeed: [0.13, 0.17], targetFraction: 0.75, integrity: 3,
       sparkMoveEveryTicks: 3, timeLimitTicks: 3_600, parTicks: 2_250,
     }),
     authoredLevel(10, seed, {
       slug: 'three-body-plus-one', title: 'Three Body, Plus One', tier: 'medium', tagline: 'Prediction gets crowded.',
       challenge: 'Coordinate cut timing against four fast trajectories in an uncluttered arena.', features: ['open-field', 'four-anomalies', 'temporal-prediction'],
-      board: OPEN, anomalyCount: 4, anomalySpeed: [0.145, 0.185], targetFraction: 0.75, integrity: 3,
+      board: OPEN, anomalyCount: 4, filamentCount: 1, anomalySpeed: [0.145, 0.185], targetFraction: 0.75, integrity: 3,
       sparkMoveEveryTicks: 3, timeLimitTicks: 3_450, parTicks: 2_150,
     }),
 
     authoredLevel(11, seed, {
       slug: 'razor-frame', title: 'Razor Frame', tier: 'hard', tagline: 'Every inward tooth changes the bounce.',
       challenge: 'Read ricochets created by a jagged frontier and commit with fewer lives.', features: ['jagged-silhouette', 'ricochets', 'low-lives'],
-      board: RAZOR_FRAME, anomalyCount: 4, anomalySpeed: [0.165, 0.215], targetFraction: 0.75, integrity: 3,
+      board: RAZOR_FRAME, anomalyCount: 4, filamentCount: 1, anomalySpeed: [0.165, 0.215], targetFraction: 0.75, integrity: 3,
       sparkMoveEveryTicks: 3, timeLimitTicks: 3_150, parTicks: 2_050,
     }),
     authoredLevel(12, seed, {
       slug: 'switchback', title: 'Switchback', tier: 'hard', tagline: 'The safe route zigzags; the danger does not.',
       challenge: 'Traverse alternating wall shelves to find short trace opportunities.', features: ['switchback-walls', 'route-planning', 'five-anomalies'],
-      board: OPEN, initialWalls: switchbacks(OPEN), anomalyCount: 5, anomalySpeed: [0.17, 0.22], targetFraction: 0.75, integrity: 3,
+      board: OPEN, initialWalls: switchbacks(OPEN), anomalyCount: 5, filamentCount: 2, anomalySpeed: [0.17, 0.22], targetFraction: 0.75, integrity: 3,
       sparkMoveEveryTicks: 3, timeLimitTicks: 3_000, parTicks: 1_950,
     }),
     authoredLevel(13, seed, {
       slug: 'archipelago', title: 'Archipelago', tier: 'hard', tagline: 'Many shores, nowhere to stop watching.',
       challenge: 'Use scattered obstacle frontiers while five anomalies rebound unpredictably.', features: ['asymmetric-islands', 'five-anomalies', 'dense-frontier'],
-      board: ARCHIPELAGO, anomalyCount: 5, anomalySpeed: [0.175, 0.225], targetFraction: 0.75, integrity: 3,
+      board: ARCHIPELAGO, anomalyCount: 5, filamentCount: 1, anomalySpeed: [0.175, 0.225], targetFraction: 0.75, integrity: 3,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_900, parTicks: 1_900,
     }),
     authoredLevel(14, seed, {
       slug: 'offset-gates', title: 'Offset Gates', tier: 'hard', tagline: 'No route stays straight for long.',
       challenge: 'Thread staggered obstacle gates and isolate anomalies on opposite sides.', features: ['offset-obstacles', 'narrow-gates', 'separation'],
-      board: OFFSET_GATES, anomalyCount: 6, anomalySpeed: [0.18, 0.23], targetFraction: 0.75, integrity: 2,
+      board: OFFSET_GATES, anomalyCount: 6, filamentCount: 2, anomalySpeed: [0.18, 0.23], targetFraction: 0.75, integrity: 2,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_800, parTicks: 1_850,
     }),
     authoredLevel(15, seed, {
       slug: 'pressure-front', title: 'Pressure Front', tier: 'hard', tagline: 'The clock joins the swarm.',
       challenge: 'Reach the standard target against six anomalies before a deliberately tight clock.', features: ['time-pressure', 'six-anomalies', 'standard-target'],
-      board: PINCHED, anomalyCount: 6, anomalySpeed: [0.185, 0.24], targetFraction: 0.75, integrity: 2,
+      board: PINCHED, anomalyCount: 6, filamentCount: 2, anomalySpeed: [0.185, 0.24], targetFraction: 0.75, integrity: 2,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_650, parTicks: 1_750,
     }),
 
     authoredLevel(16, seed, {
       slug: 'bow-tie', title: 'Bow Tie', tier: 'impossible', tagline: 'Two chambers share a dangerous throat.',
       challenge: 'Control the Spark around diagonal-looking walls and a seven-anomaly swarm.', features: ['bow-tie-silhouette', 'seven-anomalies', 'tight-routing'],
-      board: BOW_TIE, anomalyCount: 7, anomalySpeed: [0.21, 0.27], targetFraction: 0.75, integrity: 2,
+      board: BOW_TIE, anomalyCount: 7, filamentCount: 3, anomalySpeed: [0.21, 0.27], targetFraction: 0.75, integrity: 2,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_400, parTicks: 1_650,
     }),
     authoredLevel(17, seed, {
       slug: 'event-horizon', title: 'Event Horizon', tier: 'impossible', tagline: 'A ring of walls bends every forecast.',
       challenge: 'Plan around a hollow ring that repeatedly redirects eight anomalies.', features: ['ring-silhouette', 'eight-anomalies', 'complex-ricochets'],
-      board: EVENT_HORIZON, anomalyCount: 8, anomalySpeed: [0.215, 0.28], targetFraction: 0.75, integrity: 2,
+      board: EVENT_HORIZON, anomalyCount: 8, filamentCount: 3, anomalySpeed: [0.215, 0.28], targetFraction: 0.75, integrity: 2,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_300, parTicks: 1_600,
     }),
     authoredLevel(18, seed, {
       slug: 'shattered-circuit', title: 'Shattered Circuit', tier: 'impossible', tagline: 'The board is a diagram with missing connections.',
       challenge: 'Combine fragmented mask frontiers with a permanent circuit of safe walls.', features: ['fragmented-mask', 'circuit-walls', 'eight-anomalies'],
-      board: SHATTERED, initialWalls: circuitWalls(SHATTERED), anomalyCount: 8, anomalySpeed: [0.22, 0.29], targetFraction: 0.75, integrity: 2,
+      board: SHATTERED, initialWalls: circuitWalls(SHATTERED), anomalyCount: 8, filamentCount: 3, anomalySpeed: [0.22, 0.29], targetFraction: 0.75, integrity: 2,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_200, parTicks: 1_550,
     }),
     authoredLevel(19, seed, {
       slug: 'black-diamond', title: 'Black Diamond', tier: 'impossible', tagline: 'A hard silhouette with almost no quiet space.',
       challenge: 'Find viable cuts between a central diamond, closing corners, and nine anomalies.', features: ['compound-silhouette', 'nine-anomalies', 'one-mistake-margin'],
-      board: BLACK_DIAMOND, anomalyCount: 9, anomalySpeed: [0.225, 0.30], targetFraction: 0.75, integrity: 2,
+      board: BLACK_DIAMOND, anomalyCount: 9, filamentCount: 4, anomalySpeed: [0.225, 0.30], targetFraction: 0.75, integrity: 2,
       sparkMoveEveryTicks: 3, timeLimitTicks: 2_100, parTicks: 1_500,
     }),
     authoredLevel(20, seed, {
       slug: 'last-partition', title: 'Last Partition', tier: 'impossible', tagline: 'Everything moves faster than your first instinct.',
       challenge: 'Clear the standard target with nine anomalies, one life, and the shortest clock.', features: ['broken-cross', 'nine-anomalies', 'maximum-pressure', 'single-life'],
-      board: RAZOR_FRAME, initialWalls: brokenCross(RAZOR_FRAME), anomalyCount: 9, anomalySpeed: [0.24, 0.315], targetFraction: 0.75, integrity: 1,
+      board: RAZOR_FRAME, initialWalls: brokenCross(RAZOR_FRAME), anomalyCount: 9, filamentCount: 4, anomalySpeed: [0.24, 0.315], targetFraction: 0.75, integrity: 1,
       sparkMoveEveryTicks: 3, timeLimitTicks: 1_950, parTicks: 1_450,
     }),
   ];

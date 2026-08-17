@@ -166,6 +166,63 @@ describe('PartitionEngine', () => {
     expect(result.state.trace).toHaveLength(0);
   });
 
+  it('blocks an unfinished trace from crossing itself without consuming a life', () => {
+    const scenario: PartitionScenario = {
+      id: 'self-cross-test',
+      name: 'Self-cross test',
+      width: 6,
+      height: 6,
+      ticksPerSecond: 30,
+      targetFraction: 0.9,
+      integrity: 2,
+      anomalies: [{ id: 'a1', position: [1, 1], velocity: [0, 0] }],
+    };
+    const engine = new PartitionEngine(scenario);
+    const move = (direction: 'up' | 'down' | 'left' | 'right', ticks: number): void => {
+      engine.setInput({ direction, draw: 'fast' });
+      for (let index = 0; index < ticks; index++) engine.step();
+    };
+
+    move('up', 2);
+    move('right', 2);
+    move('down', 1);
+    move('left', 1);
+    const beforeCrossing = engine.snapshot();
+    const rejected = engine.step();
+
+    expect(beforeCrossing.spark.position).toEqual({ x: 4, y: 5 });
+    expect(rejected.state.spark.position).toEqual(beforeCrossing.spark.position);
+    expect(rejected.state.trace).toEqual(beforeCrossing.trace);
+    expect(rejected.state.spark.integrity).toBe(2);
+    expect(rejected.events).toEqual([]);
+  });
+
+  it('lets a filament body sever a trace before its center reaches it', () => {
+    const scenario: PartitionScenario = {
+      id: 'filament-collision-test',
+      name: 'Filament collision test',
+      width: 10,
+      height: 6,
+      ticksPerSecond: 30,
+      targetFraction: 0.9,
+      integrity: 2,
+      anomalies: [{
+        id: 'f1',
+        kind: 'filament',
+        length: 5.5,
+        position: [3.4, 5.5],
+        velocity: [0.01, 0],
+      }],
+    };
+    const engine = new PartitionEngine(scenario);
+    engine.setInput({ direction: 'up', draw: 'fast' });
+    const result = engine.step();
+
+    expect(result.events.map((event) => event.type)).toEqual(['trace_started', 'trace_hit']);
+    expect(result.state.spark.integrity).toBe(1);
+    expect(result.state.trace).toEqual([]);
+  });
+
   it('enters the terminal failure state at zero integrity', () => {
     const scenario: PartitionScenario = {
       id: 'failure-test',

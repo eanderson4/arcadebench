@@ -10,6 +10,7 @@ import {
   playableCellCount,
   resolvePartitionProgression,
   spawnDeterministicAnomalies,
+  type PartitionCampaignLevel,
   validateCampaign,
   validateLevel,
   wallLine,
@@ -112,6 +113,20 @@ describe('Partition campaign catalog', () => {
         expect(Math.hypot(...anomaly.velocity), level.scenario.id).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('introduces long-body filaments at medium tier and escalates them in later fields', () => {
+    const filamentCount = (level: PartitionCampaignLevel): number =>
+      level.scenario.anomalies.filter((anomaly) => anomaly.kind === 'filament').length;
+
+    expect(campaign.slice(0, 5).every((level) => filamentCount(level) === 0)).toBe(true);
+    expect(filamentCount(campaign[5]!)).toBe(1);
+    expect(filamentCount(campaign[11]!)).toBe(2);
+    expect(filamentCount(campaign[15]!)).toBe(3);
+    expect(filamentCount(campaign[19]!)).toBe(4);
+    expect(campaign.flatMap((level) => level.scenario.anomalies)
+      .filter((anomaly) => anomaly.kind === 'filament')
+      .every((anomaly) => anomaly.length === 5.5)).toBe(true);
   });
 
   it('is deterministic for a campaign seed while preserving authored geometry across seeds', () => {

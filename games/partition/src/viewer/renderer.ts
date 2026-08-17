@@ -1,4 +1,5 @@
 import { FIXED_SCALE } from '../core/engine';
+import { filamentSegment } from '../core/anomalies';
 import type { Edge, PartitionState } from '../core/types';
 
 export interface RenderOptions {
@@ -20,6 +21,8 @@ const COLORS = {
   trace: '#ffd35a',
   anomaly: '#ff3e91',
   anomalyCore: '#fff0f7',
+  filament: '#ff5ab3',
+  filamentHot: '#ffbd68',
   spark: '#e8fdff',
 };
 
@@ -290,6 +293,10 @@ export class PartitionRenderer {
     const { context } = this;
     for (let index = 0; index < state.anomalies.length; index++) {
       const anomaly = state.anomalies[index];
+      if (anomaly.kind === 'filament') {
+        this.drawFilament(state, anomaly, index, time, sx, sy);
+        continue;
+      }
       const x = (anomaly.position.x / FIXED_SCALE) * sx;
       const y = (anomaly.position.y / FIXED_SCALE) * sy;
       const vx = (anomaly.velocity.x / FIXED_SCALE) * sx;
@@ -352,6 +359,80 @@ export class PartitionRenderer {
       }
       context.restore();
     }
+  }
+
+  private drawFilament(
+    state: PartitionState,
+    anomaly: PartitionState['anomalies'][number],
+    index: number,
+    time: number,
+    sx: number,
+    sy: number,
+  ): void {
+    const { context } = this;
+    const body = filamentSegment(anomaly, state.walls, FIXED_SCALE);
+    const start = { x: body.start.x * sx, y: body.start.y * sy };
+    const end = { x: body.end.x * sx, y: body.end.y * sy };
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const magnitude = Math.max(1, Math.hypot(dx, dy));
+    const normal = { x: -dy / magnitude, y: dx / magnitude };
+    const phase = time * 7.5 + index * 1.91;
+
+    context.save();
+    context.globalCompositeOperation = 'screen';
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+
+    context.strokeStyle = 'rgba(255, 60, 157, 0.12)';
+    context.shadowColor = COLORS.filament;
+    context.shadowBlur = 30;
+    context.lineWidth = 12;
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.stroke();
+
+    for (let strand = 0; strand < 3; strand++) {
+      context.strokeStyle = strand === 1 ? COLORS.filamentHot : COLORS.filament;
+      context.shadowColor = strand === 1 ? COLORS.filamentHot : COLORS.filament;
+      context.shadowBlur = strand === 1 ? 13 : 20;
+      context.globalAlpha = strand === 1 ? 0.92 : 0.72;
+      context.lineWidth = strand === 1 ? 1.5 : 2;
+      context.beginPath();
+      for (let point = 0; point <= 12; point++) {
+        const amount = point / 12;
+        const envelope = Math.sin(amount * Math.PI);
+        const wave = Math.sin(amount * Math.PI * (4 + strand) + phase + strand * 2.3);
+        const crackle = (hash(index * 103 + point * 7 + strand * 31 + Math.floor(time * 12)) - 0.5) * 4;
+        const offset = envelope * (wave * (4 + strand * 1.5) + crackle);
+        const x = start.x + dx * amount + normal.x * offset;
+        const y = start.y + dy * amount + normal.y * offset;
+        if (point === 0) context.moveTo(x, y);
+        else context.lineTo(x, y);
+      }
+      context.stroke();
+    }
+
+    const centerX = (start.x + end.x) / 2;
+    const centerY = (start.y + end.y) / 2;
+    context.globalAlpha = 1;
+    context.shadowColor = COLORS.filamentHot;
+    context.shadowBlur = 18;
+    context.fillStyle = '#fff4d8';
+    for (const amount of [0, 0.5, 1]) {
+      const x = start.x + dx * amount;
+      const y = start.y + dy * amount;
+      context.beginPath();
+      context.arc(x, y, amount === 0.5 ? 3.1 : 2.1, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.strokeStyle = 'rgba(255, 189, 104, 0.55)';
+    context.lineWidth = 1;
+    context.beginPath();
+    context.arc(centerX, centerY, 9 + Math.sin(phase) * 2, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
   }
 
   private drawSpark(

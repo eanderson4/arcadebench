@@ -1,4 +1,5 @@
 import { captureEmptyComponents } from './capture';
+import { filamentTouchesEdges, filamentTouchesPoint } from './anomalies';
 import { boundaryEdges, edgeBetween, edgeKey, nextPoint, opposite } from './edges';
 import type {
   AnomalyState,
@@ -83,6 +84,8 @@ export class PartitionEngine {
     this.integrity = scenario.integrity;
     this.anomalies = scenario.anomalies.map((anomaly) => ({
       id: anomaly.id,
+      kind: anomaly.kind ?? 'drifter',
+      ...(anomaly.length === undefined ? {} : { length: anomaly.length }),
       position: {
         x: Math.round(anomaly.position[0] * FIXED_SCALE),
         y: Math.round(anomaly.position[1] * FIXED_SCALE),
@@ -123,6 +126,8 @@ export class PartitionEngine {
       },
       anomalies: this.anomalies.map((anomaly) => ({
         id: anomaly.id,
+        kind: anomaly.kind,
+        ...(anomaly.length === undefined ? {} : { length: anomaly.length }),
         position: { ...anomaly.position },
         velocity: { ...anomaly.velocity },
       })),
@@ -191,6 +196,12 @@ export class PartitionEngine {
     return this.activeCell(edge.ax - 1, y) || this.activeCell(edge.ax, y);
   }
 
+  private traceContainsPoint(point: Point): boolean {
+    return this.trace.some((edge) =>
+      (edge.ax === point.x && edge.ay === point.y)
+      || (edge.bx === point.x && edge.by === point.y));
+  }
+
   private moveSpark(events: GameEvent[]): void {
     const direction = this.input.direction;
     if (direction === 'idle') return;
@@ -202,6 +213,11 @@ export class PartitionEngine {
     const key = edgeKey(edge);
     const onExistingWall = this.walls.has(key);
     const onTrace = this.trace.some((candidate) => edgeKey(candidate) === key);
+
+    // Qix-style Stix cannot cross or reconnect to itself while exposed. Since
+    // movement is constrained to unit grid edges, every crossing lands on a
+    // vertex already present in the active trace.
+    if (this.drawing && this.traceContainsPoint(target)) return;
 
     if (!this.drawing) {
       if (onExistingWall) {
@@ -287,6 +303,20 @@ export class PartitionEngine {
       anomaly.position.x = Math.max(1, Math.min(this.scenario.width * FIXED_SCALE - 1, nextX));
       anomaly.position.y = Math.max(1, Math.min(this.scenario.height * FIXED_SCALE - 1, nextY));
       if (this.drawing) {
+        if (anomaly.kind === 'filament') {
+          const walls = [...this.walls.values()];
+          const sparkFixed = {
+            x: this.sparkPosition.x * FIXED_SCALE,
+            y: this.sparkPosition.y * FIXED_SCALE,
+          };
+          if (
+            filamentTouchesEdges(anomaly, walls, this.trace, FIXED_SCALE)
+            || filamentTouchesPoint(anomaly, walls, sparkFixed, FIXED_SCALE)
+          ) {
+            this.hitTrace(anomaly.id, events);
+            continue;
+          }
+        }
         const dx = anomaly.position.x - this.sparkPosition.x * FIXED_SCALE;
         const dy = anomaly.position.y - this.sparkPosition.y * FIXED_SCALE;
         const tipCollisionRadius = FIXED_SCALE / 3;

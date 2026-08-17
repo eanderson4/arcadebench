@@ -2,12 +2,14 @@ import { PartitionEngine } from '../core/engine';
 import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
 import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
-import { resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
+import { createPartitionCampaign, resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
 import { PartitionRenderer } from './renderer';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
 
-type ViewMode = 'home' | 'live' | 'replay';
+type ViewMode = 'home' | 'catalog' | 'live' | 'replay';
+type PlayContext = 'arcade' | 'catalog';
+type CatalogTier = DifficultyId | 'all';
 
 function query<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -57,6 +59,11 @@ const levelSelect = query<HTMLSelectElement>('#level-select');
 const difficultySelect = query<HTMLSelectElement>('#difficulty-select');
 const fieldLauncher = query<HTMLFormElement>('#field-launcher');
 const homeReplayButton = query<HTMLButtonElement>('#home-replay');
+const openCatalogButton = query<HTMLButtonElement>('#open-catalog');
+const catalogHomeButton = query<HTMLButtonElement>('#catalog-home');
+const catalogReplayButton = query<HTMLButtonElement>('#catalog-replay');
+const catalogGrid = query<HTMLElement>('#catalog-grid');
+const catalogDifficultySelect = query<HTMLSelectElement>('#catalog-difficulty-select');
 const returnHomeButton = query<HTMLButtonElement>('#return-home');
 const homeLevelNumber = query<HTMLElement>('#home-level-number');
 const homeLevelTier = query<HTMLElement>('#home-level-tier');
@@ -83,7 +90,25 @@ const captureTotal = query<HTMLElement>('#capture-total');
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
 if (!Number.isFinite(seed)) seed = 11;
-let campaign = resolvePartitionProgression(undefined, seed);
+const arcadeCampaign = resolvePartitionProgression(undefined, seed);
+const levelCatalog = createPartitionCampaign(seed);
+let campaign = arcadeCampaign;
+let playContext: PlayContext = 'arcade';
+const requestedTier = params.get('tier');
+let catalogTier: CatalogTier = requestedTier === 'easy'
+  || requestedTier === 'medium'
+  || requestedTier === 'hard'
+  || requestedTier === 'impossible'
+  ? requestedTier
+  : 'all';
+const requestedLevel = params.get('level');
+const requestedCatalogLevel = requestedLevel
+  ? levelCatalog.find((level) => level.metadata.slug === requestedLevel || level.scenario.id === requestedLevel)
+  : undefined;
+if (requestedCatalogLevel) {
+  campaign = [requestedCatalogLevel];
+  playContext = 'catalog';
+}
 let selectedLevelIndex = 0;
 const requestedDifficulty = params.get('difficulty');
 let selectedDifficulty: DifficultyId = requestedDifficulty && requestedDifficulty in DIFFICULTY_PRESETS
@@ -92,6 +117,8 @@ let selectedDifficulty: DifficultyId = requestedDifficulty && requestedDifficult
 let engine = new PartitionEngine(applyDifficulty(campaign[selectedLevelIndex]!.scenario, selectedDifficulty));
 let mode: ViewMode = params.get('mode') === 'replay'
   ? 'replay'
+  : params.get('mode') === 'catalog'
+    ? 'catalog'
   : params.get('mode') === 'live' || params.get('autostart') === '1'
     ? 'live'
     : 'home';
@@ -146,6 +173,95 @@ function formatFieldClock(ticks: number, ticksPerSecond: number): string {
   return seconds === 0 ? `${minutes}m` : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
+function catalogStat(label: string, value: string): HTMLElement {
+  const stat = document.createElement('span');
+  const caption = document.createElement('small');
+  const result = document.createElement('b');
+  caption.textContent = label;
+  result.textContent = value;
+  stat.append(caption, result);
+  return stat;
+}
+
+function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
+  const scenario = applyDifficulty(level.scenario, selectedDifficulty);
+  const filaments = scenario.anomalies.filter((anomaly) => anomaly.kind === 'filament').length;
+  const drifters = scenario.anomalies.length - filaments;
+  const card = document.createElement('article');
+  card.className = `catalog-card tier-${level.metadata.tier}`;
+
+  const preview = document.createElement('div');
+  preview.className = 'catalog-preview';
+  const previewCanvas = document.createElement('canvas');
+  previewCanvas.width = 480;
+  previewCanvas.height = Math.round(previewCanvas.width * (scenario.height / scenario.width));
+  previewCanvas.setAttribute('aria-label', `${level.metadata.title} board preview`);
+  const previewLabel = document.createElement('span');
+  previewLabel.textContent = `FIELD ${String(level.metadata.number).padStart(2, '0')}`;
+  const hazardBadge = document.createElement('b');
+  hazardBadge.className = filaments > 0 ? 'has-filament' : '';
+  hazardBadge.textContent = filaments > 0 ? `${filaments} FILAMENT${filaments === 1 ? '' : 'S'}` : 'DRIFTERS';
+  preview.append(previewCanvas, previewLabel, hazardBadge);
+
+  const heading = document.createElement('div');
+  heading.className = 'catalog-card-heading';
+  const tier = document.createElement('small');
+  tier.textContent = level.metadata.tier;
+  const title = document.createElement('h2');
+  title.textContent = level.metadata.title;
+  heading.append(tier, title);
+
+  const tagline = document.createElement('p');
+  tagline.className = 'catalog-tagline';
+  tagline.textContent = level.metadata.tagline;
+  const challenge = document.createElement('p');
+  challenge.className = 'catalog-challenge';
+  challenge.textContent = level.metadata.challenge;
+
+  const features = document.createElement('div');
+  features.className = 'catalog-features';
+  for (const feature of level.metadata.features.slice(0, 3)) {
+    const chip = document.createElement('span');
+    chip.textContent = feature.replaceAll('-', ' ');
+    features.append(chip);
+  }
+
+  const stats = document.createElement('div');
+  stats.className = 'catalog-stats';
+  stats.append(
+    catalogStat('DRIFTERS', String(drifters).padStart(2, '0')),
+    catalogStat('FILAMENTS', String(filaments).padStart(2, '0')),
+    catalogStat('TARGET', `${Math.round(scenario.targetFraction * 100)}%`),
+    catalogStat('CLOCK', scenario.timeLimitTicks === undefined
+      ? 'OPEN'
+      : formatFieldClock(scenario.timeLimitTicks, scenario.ticksPerSecond)),
+  );
+
+  const launch = document.createElement('button');
+  launch.className = 'catalog-play';
+  launch.type = 'button';
+  const launchLabel = document.createElement('span');
+  launchLabel.textContent = 'PLAY THIS FIELD';
+  const launchArrow = document.createElement('b');
+  launchArrow.textContent = '→';
+  launch.append(launchLabel, launchArrow);
+  launch.addEventListener('click', () => launchCatalogField(level));
+
+  card.append(preview, heading, tagline, challenge, features, stats, launch);
+  const previewEngine = new PartitionEngine(scenario);
+  new PartitionRenderer(previewCanvas).render(previewEngine.snapshot(), {
+    ambientTime: level.metadata.number * 0.73,
+    smoothSpark: false,
+  });
+  return card;
+}
+
+function renderCatalogCards(): void {
+  const visible = levelCatalog.filter((level) => catalogTier === 'all' || level.metadata.tier === catalogTier);
+  catalogGrid.replaceChildren(...visible.map(createCatalogCard));
+  catalogGrid.setAttribute('aria-label', `${visible.length} fields shown`);
+}
+
 function updateHomeSelection(): void {
   const level = selectedLevel();
   const scenario = applyDifficulty(level.scenario, selectedDifficulty);
@@ -188,7 +304,17 @@ function launchSelectedField(): void {
   setMode('live');
 }
 
+function launchCatalogField(level: PartitionCampaignLevel): void {
+  campaign = [level];
+  playContext = 'catalog';
+  selectedLevelIndex = 0;
+  launchSelectedField();
+  showNotice(`Catalog field ${String(level.metadata.number).padStart(2, '0')} · ${level.metadata.title}`);
+}
+
 function startArcadeRun(): void {
+  campaign = arcadeCampaign;
+  playContext = 'arcade';
   selectedLevelIndex = 0;
   levelSelect.value = '1';
   updateHomeSelection();
@@ -206,6 +332,11 @@ function cancelAutoAdvance(): void {
 
 function advanceProgression(): void {
   cancelAutoAdvance();
+  if (playContext === 'catalog') {
+    setMode('catalog');
+    showNotice(`${selectedLevel().metadata.title} stabilized · choose another field`);
+    return;
+  }
   if (selectedLevelIndex >= campaign.length - 1) {
     setMode('home');
     showNotice('Arcade run complete · all stages stabilized');
@@ -230,7 +361,7 @@ function updateAutoAdvanceCountdown(): void {
 }
 
 function scheduleAutoAdvance(state: PartitionState): void {
-  if (mode !== 'live' || selectedLevelIndex >= campaign.length - 1) return;
+  if (mode !== 'live' || playContext !== 'arcade' || selectedLevelIndex >= campaign.length - 1) return;
   if (autoAdvanceScenarioId === state.scenarioId) return;
   cancelAutoAdvance();
   autoAdvanceScenarioId = state.scenarioId;
@@ -421,6 +552,15 @@ function showFrameCaptureFeedback(frame: PartitionReplayFrame): void {
   );
 }
 
+function actionOverlapsStabilityHud(state: PartitionState): boolean {
+  const inLowerLeft = (x: number, y: number): boolean =>
+    x <= state.width * 0.3 && y >= state.height * 0.68;
+  if (inLowerLeft(state.spark.position.x, state.spark.position.y)) return true;
+  return state.trace.some((edge) =>
+    inLowerLeft(edge.ax, edge.ay) || inLowerLeft(edge.bx, edge.by),
+  );
+}
+
 function eventLabel(event: GameEvent): string {
   switch (event.type) {
     case 'trace_started': return `Trace opened at ${event.at.x}, ${event.at.y}`;
@@ -525,6 +665,7 @@ function updateStats(state: PartitionState): void {
   stabilityFill.style.width = `${Math.min(100, state.capturedFraction * 100)}%`;
   stabilityGoalMarker.style.left = `${Math.min(100, state.targetFraction * 100)}%`;
   stabilityHud.setAttribute('aria-label', `${capture} stabilized, ${targetPercentage}% goal`);
+  stabilityHud.classList.toggle('action-nearby', actionOverlapsStabilityHud(state));
   stageIntegrityEl.textContent = integrity;
   stageTimeEl.textContent = state.timeRemainingTicks === null
     ? 'OPEN'
@@ -535,11 +676,17 @@ function updateStats(state: PartitionState): void {
   stageTickEl.textContent = tick;
   statusEl.textContent = state.status;
   statusEl.dataset.status = state.status;
-  const restartLabel = state.status === 'won'
-    ? 'NEXT STAGE <span>→</span>'
-    : state.status === 'lost'
-      ? 'START OVER <span>↻</span>'
-      : 'RESTART RUN <span>↻</span>';
+  const restartLabel = playContext === 'catalog'
+    ? state.status === 'won'
+      ? 'FIELD CATALOG <span>→</span>'
+      : state.status === 'lost'
+        ? 'RETRY FIELD <span>↻</span>'
+        : 'RESTART FIELD <span>↻</span>'
+    : state.status === 'won'
+      ? 'NEXT STAGE <span>→</span>'
+      : state.status === 'lost'
+        ? 'START OVER <span>↻</span>'
+        : 'RESTART RUN <span>↻</span>';
   if (restartButton.dataset.label !== restartLabel) {
     restartButton.dataset.label = restartLabel;
     restartButton.innerHTML = restartLabel;
@@ -556,6 +703,14 @@ function updateStats(state: PartitionState): void {
           : 'all lives depleted';
       messageCountdown.textContent = '';
       messageAction.hidden = true;
+    } else if (state.status === 'won' && playContext === 'catalog') {
+      cancelAutoAdvance();
+      messageKicker.textContent = 'CATALOG FIELD COMPLETE';
+      messageTitle.textContent = 'FIELD STABILIZED';
+      messageDetail.textContent = `${selectedLevel().metadata.title} · ${Math.floor(state.capturedFraction * 100)}% stabilized`;
+      messageCountdown.textContent = 'SELECT ANOTHER FIELD OR TRY AGAIN';
+      messageAction.hidden = false;
+      messageAction.innerHTML = 'RETURN TO CATALOG <b>→</b>';
     } else if (state.status === 'won') {
       const next = campaign[selectedLevelIndex + 1];
       messageKicker.textContent = next ? 'FIELD COMPLETE' : 'ARCADE RUN COMPLETE';
@@ -570,6 +725,16 @@ function updateStats(state: PartitionState): void {
         cancelAutoAdvance();
         messageCountdown.textContent = 'RUN COMPLETE';
       }
+    } else if (playContext === 'catalog') {
+      cancelAutoAdvance();
+      messageKicker.textContent = 'CATALOG FIELD FAILED';
+      messageTitle.textContent = state.failureReason === 'timeout' ? 'TIME EXPIRED' : 'SIGNAL LOST';
+      messageDetail.textContent = state.failureReason === 'timeout'
+        ? 'field remained unstable'
+        : 'all lives depleted';
+      messageCountdown.textContent = 'CATALOG PROGRESS IS NOT RESET';
+      messageAction.hidden = false;
+      messageAction.innerHTML = 'RETRY FIELD <b>↻</b>';
     } else {
       cancelAutoAdvance();
       messageKicker.textContent = 'RUN OVER';
@@ -677,8 +842,14 @@ function setMode(nextMode: ViewMode): void {
   if (mode === 'home') {
     liveStarted = false;
     clearHumanControls();
+    campaign = arcadeCampaign;
+    playContext = 'arcade';
     selectedLevelIndex = 0;
     updateHomeSelection();
+  } else if (mode === 'catalog') {
+    liveStarted = false;
+    clearHumanControls();
+    renderCatalogCards();
   }
   document.body.dataset.mode = mode;
   setImmersive(mode === 'live' && liveStarted);
@@ -688,7 +859,10 @@ function setMode(nextMode: ViewMode): void {
   const queryParams = new URLSearchParams(location.search);
   queryParams.set('mode', mode);
   queryParams.set('seed', String(seed));
-  queryParams.delete('level');
+  if (mode === 'live' && playContext === 'catalog') queryParams.set('level', selectedLevel().metadata.slug);
+  else queryParams.delete('level');
+  if (mode === 'catalog' && catalogTier !== 'all') queryParams.set('tier', catalogTier);
+  else queryParams.delete('tier');
   queryParams.set('difficulty', selectedDifficulty);
   if (mode === 'replay') queryParams.set('tick', String(replayTransport.current.state.tick));
   else queryParams.delete('tick');
@@ -705,7 +879,7 @@ window.addEventListener('keydown', (event) => {
   }
   if (target?.matches('input, select')) return;
   if (target?.matches('button') && (event.code === 'Space' || event.code === 'Enter')) return;
-  if (mode === 'home') return;
+  if (mode === 'home' || mode === 'catalog') return;
   if (mode === 'replay') {
     switch (event.code) {
       case 'Space':
@@ -827,9 +1001,15 @@ startPlayButton.addEventListener('click', startHumanPlay);
 howToPlayButton.addEventListener('click', showHowToPlay);
 returnHomeButton.addEventListener('click', () => setMode('home'));
 homeReplayButton.addEventListener('click', () => setMode('replay'));
+openCatalogButton.addEventListener('click', () => setMode('catalog'));
+catalogHomeButton.addEventListener('click', () => setMode('home'));
+catalogReplayButton.addEventListener('click', () => setMode('replay'));
 messageAction.addEventListener('click', () => {
   const state = engine.snapshot();
-  if (state.status === 'won') advanceProgression();
+  if (playContext === 'catalog') {
+    if (state.status === 'won') setMode('catalog');
+    else if (state.status === 'lost') launchSelectedField();
+  } else if (state.status === 'won') advanceProgression();
   else if (state.status === 'lost') startArcadeRun();
 });
 fieldLauncher.addEventListener('submit', (event) => {
@@ -838,8 +1018,28 @@ fieldLauncher.addEventListener('submit', (event) => {
 });
 difficultySelect.addEventListener('change', () => {
   selectedDifficulty = difficultySelect.value as DifficultyId;
+  catalogDifficultySelect.value = selectedDifficulty;
   updateHomeSelection();
 });
+catalogDifficultySelect.addEventListener('change', () => {
+  selectedDifficulty = catalogDifficultySelect.value as DifficultyId;
+  difficultySelect.value = selectedDifficulty;
+  updateHomeSelection();
+  renderCatalogCards();
+});
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-tier]')) {
+  button.addEventListener('click', () => {
+    catalogTier = button.dataset.tier as CatalogTier;
+    for (const filter of document.querySelectorAll<HTMLButtonElement>('[data-tier]')) {
+      filter.setAttribute('aria-pressed', String(filter === button));
+    }
+    renderCatalogCards();
+    const queryParams = new URLSearchParams(location.search);
+    if (catalogTier === 'all') queryParams.delete('tier');
+    else queryParams.set('tier', catalogTier);
+    history.replaceState(null, '', `${location.pathname}?${queryParams}`);
+  });
+}
 watchRunButton.addEventListener('click', () => {
   if (liveReplayTicks.length === 0) {
     showNotice('Start playing to create a replay', 'error');
@@ -852,7 +1052,13 @@ watchRunButton.addEventListener('click', () => {
 
 restartButton.addEventListener('click', () => {
   const completed = engine.snapshot().status === 'won';
-  if (completed) advanceProgression();
+  if (playContext === 'catalog') {
+    if (completed) setMode('catalog');
+    else {
+      launchSelectedField();
+      showNotice(`${selectedLevel().metadata.title} restarted`);
+    }
+  } else if (completed) advanceProgression();
   else {
     startArcadeRun();
     showNotice('Arcade run restarted · Stage 01');
@@ -932,7 +1138,8 @@ query<HTMLButtonElement>('#copy-link').addEventListener('click', async () => {
   const url = new URL(location.href);
   url.searchParams.set('mode', mode);
   url.searchParams.set('seed', String(seed));
-  url.searchParams.delete('level');
+  if (mode === 'live' && playContext === 'catalog') url.searchParams.set('level', selectedLevel().metadata.slug);
+  else url.searchParams.delete('level');
   url.searchParams.set('difficulty', selectedDifficulty);
   try {
     await navigator.clipboard.writeText(url.toString());
@@ -1020,7 +1227,7 @@ async function loadReplayFromUrl(): Promise<void> {
 for (const tier of ['easy', 'medium', 'hard', 'impossible'] as const) {
   const group = document.createElement('optgroup');
   group.label = tier.toUpperCase();
-  for (const level of campaign.filter((candidate) => candidate.metadata.tier === tier)) {
+  for (const level of arcadeCampaign.filter((candidate) => candidate.metadata.tier === tier)) {
     const option = document.createElement('option');
     option.value = String(level.metadata.number);
     option.textContent = `${String(level.metadata.number).padStart(2, '0')} · ${level.metadata.title}`;
@@ -1030,6 +1237,10 @@ for (const tier of ['easy', 'medium', 'hard', 'impossible'] as const) {
 }
 
 installReplay(loadedReplay, 'Showcase controller');
+catalogDifficultySelect.value = selectedDifficulty;
+for (const filter of document.querySelectorAll<HTMLButtonElement>('[data-tier]')) {
+  filter.setAttribute('aria-pressed', String(filter.dataset.tier === catalogTier));
+}
 updateFieldIdentity();
 updateHomeSelection();
 if (mode !== 'replay') configureFieldSurface(engine.snapshot());

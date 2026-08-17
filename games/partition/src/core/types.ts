@@ -3,6 +3,7 @@ export type DrawMode = 'off' | 'fast' | 'slow';
 export type EpisodeStatus = 'running' | 'won' | 'lost';
 export type FailureReason = 'integrity' | 'timeout';
 export type DifficultyId = 'easy' | 'medium' | 'hard' | 'impossible';
+export type AnomalyKind = 'drifter' | 'filament';
 
 export interface Point {
   x: number;
@@ -38,6 +39,10 @@ export interface AnomalyState {
   id: string;
   position: FixedPoint;
   velocity: FixedPoint;
+  /** Missing on legacy replay states and treated as the classic drifter. */
+  kind?: AnomalyKind;
+  /** Full body length in cells for extended hazards such as filaments. */
+  length?: number;
 }
 
 export interface PartitionScenario {
@@ -58,6 +63,8 @@ export interface PartitionScenario {
     id: string;
     position: [number, number];
     velocity: [number, number];
+    kind?: AnomalyKind;
+    length?: number;
   }>;
 }
 

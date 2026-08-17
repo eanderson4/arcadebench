@@ -1,6 +1,6 @@
 import { edgeKey } from '../core/edges';
 import { mulberry32 } from '../core/rng';
-import type { Edge, PartitionScenario, Point } from '../core/types';
+import type { AnomalyKind, Edge, PartitionScenario, Point } from '../core/types';
 import type {
   BoardMask,
   CampaignValidationResult,
@@ -21,6 +21,7 @@ export interface AnomalySpawnOptions {
   blockedCells?: readonly number[];
   speed: readonly [minimum: number, maximum: number];
   idPrefix?: string;
+  kinds?: readonly AnomalyKind[];
 }
 
 export interface DefineLevelOptions {
@@ -35,6 +36,7 @@ export interface DefineLevelOptions {
   board: BoardMask;
   seed: number;
   anomalyCount: number;
+  filamentCount?: number;
   anomalySpeed: readonly [number, number];
   targetFraction: number;
   integrity: number;
@@ -192,7 +194,14 @@ export function spawnDeterministicAnomalies(options: AnomalySpawnOptions): Parti
     const acuteAngle = Math.PI * (0.12 + rng() * 0.26);
     const angle = quadrant * (Math.PI / 2) + acuteAngle;
     const velocity: [number, number] = [Math.cos(angle) * speed, Math.sin(angle) * speed];
-    return { id: `${options.idPrefix ?? 'a'}${anomalyIndex + 1}`, position, velocity };
+    const kind = options.kinds?.[anomalyIndex] ?? 'drifter';
+    return {
+      id: `${options.idPrefix ?? 'a'}${anomalyIndex + 1}`,
+      position,
+      velocity,
+      kind,
+      ...(kind === 'filament' ? { length: 5.5 } : {}),
+    };
   });
 }
 
@@ -283,6 +292,12 @@ export function validateLevel(level: PartitionCampaignLevel): LevelValidationRes
       errors.push(`${anomaly.id} starts in a blocked cell.`);
     }
     if (Math.hypot(...anomaly.velocity) <= 0) errors.push(`${anomaly.id} must move.`);
+    if (anomaly.kind !== undefined && anomaly.kind !== 'drifter' && anomaly.kind !== 'filament') {
+      errors.push(`${anomaly.id} has an unknown anomaly kind.`);
+    }
+    if (anomaly.length !== undefined && (!Number.isFinite(anomaly.length) || anomaly.length <= 0)) {
+      errors.push(`${anomaly.id} has an invalid body length.`);
+    }
   }
 
   return { valid: errors.length === 0, errors, warnings, playableCellCount: playable };
@@ -321,6 +336,10 @@ export function validateCampaign(levels: readonly PartitionCampaignLevel[]): Cam
 
 export function defineLevel(options: DefineLevelOptions): PartitionCampaignLevel {
   const { board } = options;
+  const filamentCount = options.filamentCount ?? 0;
+  if (!Number.isInteger(filamentCount) || filamentCount < 0 || filamentCount > options.anomalyCount) {
+    throw new Error('Filament count must be an integer no greater than the anomaly count.');
+  }
   const sparkStart = options.sparkStart ?? { x: Math.floor(board.width / 2), y: board.height };
   const initialWalls = uniqueWalls(wallsAroundMask(board), options.initialWalls ?? []);
   const scenario: PartitionLevelScenario = {
@@ -338,6 +357,8 @@ export function defineLevel(options: DefineLevelOptions): PartitionCampaignLevel
       height: board.height,
       blockedCells: board.blockedCells,
       speed: options.anomalySpeed,
+      kinds: Array.from({ length: options.anomalyCount }, (_, index) =>
+        index < filamentCount ? 'filament' : 'drifter'),
     }),
     difficultyId: options.tier,
     sparkStart,
