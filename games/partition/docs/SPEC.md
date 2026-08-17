@@ -1,0 +1,89 @@
+# Partition `dev-0` specification
+
+Status: **development protocol; not leaderboard-compatible**.
+
+## Identity
+
+- Player avatar: **Spark**
+- Interior hazards: **Anomalies**
+- Vulnerable player path: **Trace**
+- Permanent barriers: **Partitions**
+- Captured territory: **Stabilized area**
+- Health: **Integrity**
+
+## Authoritative clock
+
+The engine advances in integer ticks. `dev-0` uses 30 ticks per virtual second.
+Realtime presentation throttles those ticks to wall time; evaluation may run
+them unthrottled. Game rules never read wall-clock time.
+
+The engine does not wait for an LLM. Control input is latched and remains in
+effect until replaced or explicitly released. A resident controller may be
+replaced atomically at a tick boundary while its previous version continues to
+control the Spark.
+
+## Board
+
+The board is an integer grid of cells. Walls occupy cell edges, while the Spark
+moves between grid intersections. The exterior boundary is a permanent wall.
+
+Anomalies have fixed-point positions and velocities. They reflect from
+permanent walls. Contact with an unfinished Trace destroys the Trace and costs
+one Integrity.
+
+## Spark movement
+
+- Input is one of up/down/left/right/idle plus draw off/fast/slow.
+- On a permanent wall, the Spark may move along connected wall edges safely.
+- Leaving a wall for an open edge requires draw input.
+- While tracing, the Spark may continue or make orthogonal turns.
+- It may not reverse over, cross, or branch from its unfinished Trace.
+- Reaching any permanent wall completes the Trace.
+
+Fast and slow drawing initially share movement speed. Their risk/reward
+distinction will be calibrated before `partition-v1`.
+
+## Partition and capture
+
+When a Trace reconnects, it becomes a permanent Partition. Active cells are
+split into connected components using all permanent walls as barriers.
+
+- A component containing at least one Anomaly remains active.
+- A component containing no Anomaly becomes stabilized.
+- If Anomalies occupy both sides of a new Partition, both sides remain active
+  and the Partition still prevents traversal between them.
+
+The level completes at 75% stabilized area.
+
+## Failure
+
+When an Anomaly touches the unfinished Trace:
+
+1. The unfinished Trace is removed.
+2. The Spark returns to the wall point where the Trace began.
+3. Integrity decreases by one.
+4. Anomaly motion and the authoritative clock continue.
+
+The episode ends when Integrity reaches zero or the capture target is reached.
+
+## Observation and controller contract
+
+A resident controller receives a read-only state snapshot and events on every
+control tick. It returns a new latched input or `null` to retain the current
+input. The controller has persistent episode memory but no seed, future state,
+network, filesystem, or wall-clock access.
+
+LLM-facing telemetry is independently sampled. `watchGameplay` observes an
+already-running interval; it does not advance or pause the engine. When a watch
+request ends, the game continues under the installed controller.
+
+## Human product surface
+
+The public browser build is part of the game, not a separate demo. It supports:
+
+- Keyboard and touch play.
+- Seeded challenges and shareable run URLs.
+- Controller lab and live telemetry overlays.
+- Deterministic replay playback and model race views.
+- Capture routes for screenshots, social video, and benchmark infographics.
+

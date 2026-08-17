@@ -5,11 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "bench": "tsx src/main.ts"
+    "bench": "node --import tsx src/main.ts"
   },
   "dependencies": {
     "@arcadebench/bench-core": "0.1.0",
-    "@arcadebench/harness": "0.1.0"
+    "@arcadebench/harness": "0.1.0",
+    "@arcadebench/partition": "0.1.0"
   }
 }
-

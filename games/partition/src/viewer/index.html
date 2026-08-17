@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#070a12" />
+    <title>Partition — ArcadeBench</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header>
+        <div>
+          <p class="eyebrow">ARCADEBENCH / LIVE FIELD</p>
+          <h1>PARTITION</h1>
+        </div>
+        <div class="stats" aria-live="polite">
+          <span><b id="capture">0%</b> STABLE</span>
+          <span><b id="integrity">3</b> INTEGRITY</span>
+          <span><b id="tick">0</b> TICK</span>
+        </div>
+      </header>
+      <section class="stage">
+        <canvas id="game" width="960" height="640" aria-label="Partition game field"></canvas>
+        <div id="message" class="message hidden"></div>
+        <div class="touch-controls" aria-label="Touch controls">
+          <button class="direction up" data-direction="up" aria-label="Move up">↑</button>
+          <button class="direction left" data-direction="left" aria-label="Move left">←</button>
+          <button class="direction down" data-direction="down" aria-label="Move down">↓</button>
+          <button class="direction right" data-direction="right" aria-label="Move right">→</button>
+          <button class="trace-control" data-trace aria-label="Hold to trace">TRACE</button>
+        </div>
+      </section>
+      <footer>
+        <p><kbd>Arrow keys</kbd> move · hold <kbd>Space</kbd> to trace · capture 75%</p>
+        <button id="restart" type="button">NEW FIELD</button>
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

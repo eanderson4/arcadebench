@@ -5,10 +5,10 @@ describe('shared benchmark contracts', () => {
   it('represent both turn-based and continuous protocols', () => {
     const protocols: ProtocolDefinition[] = [
       {
-        gameId: 'tower',
-        generation: 'main-1',
-        title: 'TowerBench main-1',
-        description: 'Published tower protocol',
+        gameId: 'stacker',
+        generation: 'v1',
+        title: 'Example turn-based game',
+        description: 'Example published protocol',
         sessionKind: 'turn-based',
         config: {},
       },
@@ -44,4 +44,3 @@ describe('shared benchmark contracts', () => {
     expect(manifest.artifacts[0]?.kind).toBe('replay');
   });
 });
-

@@ -18,10 +18,10 @@ model provider <-> harness <-> game session
 viewer/board <---------- read-only replay and run consumers
 ```
 
-Turn-based games such as TowerBench advance only through accepted game
-actions. Continuous games such as Partition own a fixed-tick clock that keeps
-advancing while the harness waits for the model. This difference is declared
-as a game capability; it is not embedded into the generic model loop.
+Turn-based games advance only through accepted game actions. Continuous games
+such as Partition own a fixed-tick clock that keeps advancing while the
+harness waits for the model. This difference is declared as a game capability;
+it is not embedded into the generic model loop.
 
 ## Package responsibilities
 
@@ -71,4 +71,3 @@ A published protocol is immutable. Changes to prompts, tool schemas, game
 rules, scoring, seeds, attempt policy, or uncertainty/dynamics create a new
 generation. Code may move between packages only when compatibility tests prove
 that the published behavior and artifacts are unchanged.
-

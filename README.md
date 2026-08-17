@@ -12,9 +12,6 @@ and frozen protocol generations.
 
 - **Partition** *(in development)* — continuous control under moving hazards:
   trace boundaries, partition the field, and stabilize empty regions.
-- **TowerBench** — deterministic 3D tower building under a
-  position/velocity uncertainty contract. Its published generations are
-  preserved during migration into this repository.
 
 ## Design principles
 
@@ -36,7 +33,6 @@ See [the architecture](docs/ARCHITECTURE.md) and
 packages/bench-core/   shared contracts, run records, protocol validation
 packages/harness/      provider-neutral model and tool orchestration
 games/partition/       Partition simulation, controller SDK, and viewer
-games/tower/           TowerBench, imported with its history intact
 apps/cli/              family-wide command line interface
 apps/board/            cross-game run browser and leaderboard
 ```
@@ -49,3 +45,22 @@ npm run build
 npm test
 ```
 
+Play Partition locally:
+
+```sh
+npm run dev:partition
+# http://localhost:5173/src/viewer/?seed=11
+```
+
+Inspect the benchmark installation or start a tracked model run:
+
+```sh
+npm run bench -- list
+npm run bench -- doctor
+npm run bench -- run --game partition --generation dev-0 \
+  --provider openai --model <model-id> --seed 11 --max-turns 40
+```
+
+Partition's current model interface is documented in
+[docs/PARTITION-SDK.md](docs/PARTITION-SDK.md). `dev-0` is intentionally
+unfrozen; results from it are development evidence, not leaderboard entries.
