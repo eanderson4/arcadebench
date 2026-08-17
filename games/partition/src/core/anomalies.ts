@@ -1,6 +1,8 @@
 import type { AnomalyState, Edge, FixedPoint } from './types';
 
 export const DEFAULT_FILAMENT_LENGTH = 5.5;
+export const FILAMENT_TRACE_RADIUS = 0.14;
+export const FILAMENT_SPARK_RADIUS = 0.3;
 
 interface CellSegment {
   start: { x: number; y: number };
@@ -102,7 +104,7 @@ export function filamentTouchesEdges(
   walls: readonly Edge[],
   edges: readonly Edge[],
   fixedScale: number,
-  radius = 0.16,
+  radius = FILAMENT_TRACE_RADIUS,
 ): boolean {
   const filament = filamentSegment(anomaly, walls, fixedScale);
   return edges.some((edge) => {
@@ -123,7 +125,7 @@ export function filamentTouchesPoint(
   walls: readonly Edge[],
   point: FixedPoint,
   fixedScale: number,
-  radius = 0.42,
+  radius = FILAMENT_SPARK_RADIUS,
 ): boolean {
   const filament = filamentSegment(anomaly, walls, fixedScale);
   return pointSegmentDistanceSquared({ x: point.x / fixedScale, y: point.y / fixedScale }, filament) <= radius * radius;

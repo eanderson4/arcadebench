@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PartitionEngine } from '../src/core/engine';
+import { filamentTouchesPoint } from '../src/core/anomalies';
+import { FIXED_SCALE, PartitionEngine } from '../src/core/engine';
 import { createClassicScenario } from '../src/core/scenarios';
 import type { PartitionScenario } from '../src/core/types';
 
@@ -55,6 +56,25 @@ describe('PartitionEngine', () => {
     expect(engine.snapshot().capturedFraction).toBe(0.5);
     expect(engine.snapshot().status).toBe('won');
     expect(events.some((event) => event.type === 'trace_completed')).toBe(true);
+  });
+
+  it('excludes blank geometry from the field-stability denominator', () => {
+    const scenario: PartitionScenario = {
+      id: 'playable-area-test',
+      name: 'Playable area test',
+      width: 4,
+      height: 4,
+      ticksPerSecond: 30,
+      targetFraction: 0.75,
+      integrity: 1,
+      blockedCells: [0, 1, 4, 5],
+      anomalies: [{ id: 'a1', position: [3, 3], velocity: [0, 0] }],
+    };
+    const state = new PartitionEngine(scenario).snapshot();
+
+    expect(state.playableCellCount).toBe(12);
+    expect(state.blockedCells).toHaveLength(4);
+    expect(state.capturedFraction).toBe(state.stabilizedCells.length / 12);
   });
 
   it('stops at an existing wall until draw is released and rearmed', () => {
@@ -221,6 +241,29 @@ describe('PartitionEngine', () => {
     expect(result.events.map((event) => event.type)).toEqual(['trace_started', 'trace_hit']);
     expect(result.state.spark.integrity).toBe(1);
     expect(result.state.trace).toEqual([]);
+  });
+
+  it('keeps filament Spark contact inside the visible body envelope', () => {
+    const filament = {
+      id: 'f1',
+      kind: 'filament' as const,
+      length: 5.5,
+      position: { x: 3 * FIXED_SCALE, y: 3 * FIXED_SCALE },
+      velocity: { x: FIXED_SCALE, y: 0 },
+    };
+
+    expect(filamentTouchesPoint(
+      filament,
+      [],
+      { x: 3 * FIXED_SCALE, y: 3.29 * FIXED_SCALE },
+      FIXED_SCALE,
+    )).toBe(true);
+    expect(filamentTouchesPoint(
+      filament,
+      [],
+      { x: 3 * FIXED_SCALE, y: 3.31 * FIXED_SCALE },
+      FIXED_SCALE,
+    )).toBe(false);
   });
 
   it('cannot tunnel diagonally through the corner of blocked geometry', () => {
