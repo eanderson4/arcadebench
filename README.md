@@ -49,7 +49,7 @@ Play Partition locally:
 
 ```sh
 npm run dev:partition
-# http://localhost:5173/src/viewer/?seed=11
+# http://127.0.0.1:5183/src/viewer/?seed=11
 ```
 
 Inspect the benchmark installation or start a tracked model run:

@@ -3,39 +3,118 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#070a12" />
+    <meta name="theme-color" content="#05070d" />
+    <meta name="description" content="Play Partition or inspect a deterministic ArcadeBench model replay." />
     <title>Partition — ArcadeBench</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
-  <body>
+  <body data-mode="live">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
     <main class="shell">
-      <header>
-        <div>
-          <p class="eyebrow">ARCADEBENCH / LIVE FIELD</p>
+      <header class="masthead">
+        <div class="identity">
+          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
           <h1>PARTITION</h1>
+          <p class="dek">Divide the live field. Isolate the unknown.</p>
         </div>
-        <div class="stats" aria-live="polite">
-          <span><b id="capture">0%</b> STABLE</span>
-          <span><b id="integrity">3</b> INTEGRITY</span>
-          <span><b id="tick">0</b> TICK</span>
+        <div class="header-right">
+          <div class="mode-switch" role="tablist" aria-label="Viewer mode">
+            <button type="button" data-mode="live" role="tab" aria-selected="true">PLAY</button>
+            <button type="button" data-mode="replay" role="tab" aria-selected="false">REPLAY LAB</button>
+          </div>
+          <div class="stats" aria-live="polite">
+            <span><small>STABLE</small><b id="capture">0%</b></span>
+            <span><small>INTEGRITY</small><b id="integrity">03</b></span>
+            <span><small>TICK</small><b id="tick">0000</b></span>
+            <span><small>FIELD</small><b id="status" data-status="running">RUNNING</b></span>
+          </div>
         </div>
       </header>
-      <section class="stage">
-        <canvas id="game" width="960" height="640" aria-label="Partition game field"></canvas>
-        <div id="message" class="message hidden"></div>
-        <div class="touch-controls" aria-label="Touch controls">
-          <button class="direction up" data-direction="up" aria-label="Move up">↑</button>
-          <button class="direction left" data-direction="left" aria-label="Move left">←</button>
-          <button class="direction down" data-direction="down" aria-label="Move down">↓</button>
-          <button class="direction right" data-direction="right" aria-label="Move right">→</button>
-          <button class="trace-control" data-trace aria-label="Hold to trace">TRACE</button>
+
+      <section class="workspace">
+        <div class="field-column">
+          <div class="stage">
+            <div class="stage-label"><span class="live-dot"></span><b>FIELD 01</b><em>DETERMINISTIC SIMULATION</em></div>
+            <canvas id="game" width="960" height="640" aria-label="Partition game field"></canvas>
+            <div class="scanlines" aria-hidden="true"></div>
+            <div class="corner corner-nw"></div><div class="corner corner-ne"></div>
+            <div class="corner corner-sw"></div><div class="corner corner-se"></div>
+            <div id="message" class="message hidden"></div>
+            <div class="touch-controls" aria-label="Touch controls">
+              <button class="direction up" data-direction="up" aria-label="Move up">↑</button>
+              <button class="direction left" data-direction="left" aria-label="Move left">←</button>
+              <button class="direction down" data-direction="down" aria-label="Move down">↓</button>
+              <button class="direction right" data-direction="right" aria-label="Move right">→</button>
+              <button class="trace-control" data-trace aria-label="Hold to trace">TRACE</button>
+            </div>
+          </div>
+
+          <div class="live-controls">
+            <p><kbd>ARROWS</kbd> MOVE <span>·</span> HOLD <kbd>SPACE</kbd> TO TRACE <span>·</span> CAPTURE 75%</p>
+            <div class="actions">
+              <button id="copy-link" class="quiet-button" type="button">COPY LINK</button>
+              <button id="restart" class="primary-button" type="button">NEW FIELD <span>↗</span></button>
+            </div>
+          </div>
+
+          <div class="replay-controls">
+            <div class="transport">
+              <button id="step-back" class="icon-button" type="button" aria-label="Step backward">←</button>
+              <button id="play-pause" class="play-button" type="button" data-playing="false"><i></i><span>PLAY</span></button>
+              <button id="step-forward" class="icon-button" type="button" aria-label="Step forward">→</button>
+            </div>
+            <div class="timeline-wrap">
+              <input id="timeline" type="range" min="0" max="1" value="0" aria-label="Replay timeline" />
+              <div class="timeline-labels"><span>TICK <b id="timeline-current">0</b></span><span id="timeline-end">0</span></div>
+            </div>
+            <div class="speed-controls" aria-label="Playback speed">
+              <button type="button" data-speed="0.25" aria-pressed="false">.25</button>
+              <button type="button" data-speed="0.5" aria-pressed="false">.5</button>
+              <button type="button" data-speed="1" aria-pressed="true">1×</button>
+              <button type="button" data-speed="2" aria-pressed="false">2×</button>
+              <button type="button" data-speed="4" aria-pressed="false">4×</button>
+            </div>
+          </div>
         </div>
+
+        <aside class="inspector" aria-label="Replay inspector">
+          <div class="inspector-heading">
+            <span class="section-number">01</span>
+            <div><small>NOW INSPECTING</small><h2 id="replay-name">Showcase controller</h2></div>
+          </div>
+          <p id="replay-detail" class="replay-detail"></p>
+
+          <section class="signal-panel">
+            <h3>CONTROL SIGNAL</h3>
+            <dl>
+              <div><dt>DIRECTION</dt><dd id="input-direction">idle</dd></div>
+              <div><dt>TRACE</dt><dd id="input-draw">off</dd></div>
+              <div><dt>CONTROLLER</dt><dd id="controller-version">v0</dd></div>
+            </dl>
+          </section>
+
+          <section class="event-panel">
+            <div class="panel-title"><h3>EVENT STREAM</h3><span>LIVE INDEX</span></div>
+            <ol id="event-list"></ol>
+          </section>
+
+          <div class="replay-actions">
+            <input id="replay-file" type="file" accept="application/json,.json" hidden />
+            <button id="load-replay" class="primary-button" type="button">LOAD REPLAY</button>
+            <button id="demo-replay" class="quiet-button" type="button">RESTORE DEMO</button>
+            <button id="download-replay" class="text-button" type="button">DOWNLOAD JSON ↓</button>
+          </div>
+        </aside>
       </section>
-      <footer>
-        <p><kbd>Arrow keys</kbd> move · hold <kbd>Space</kbd> to trace · capture 75%</p>
-        <button id="restart" type="button">NEW FIELD</button>
+
+      <footer class="site-footer">
+        <span>AB / PARTITION / DEV-0</span>
+        <p>One engine. Human play and model evidence.</p>
+        <span>30 HZ AUTHORITATIVE CLOCK</span>
       </footer>
     </main>
+    <div id="notice" class="notice" role="status"></div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

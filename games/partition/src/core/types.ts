@@ -86,6 +86,8 @@ export interface TickResult {
 export interface ReplayTick {
   tick: number;
   input: ControlInput;
+  controllerVersion: number;
+  controlEvents?: GameEvent[];
   events: GameEvent[];
 }
 

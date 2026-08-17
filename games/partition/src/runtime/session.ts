@@ -35,6 +35,7 @@ export class ContinuousPartitionSession {
   private controllerMemory: unknown;
   private version = 0;
   private lastEvents: GameEvent[] = [];
+  private pendingReplayEvents: GameEvent[] = [];
   private watchers = new Set<Watcher>();
   private replayTicks: ReplayTick[] = [];
 
@@ -57,12 +58,16 @@ export class ContinuousPartitionSession {
       const next = this.controller.onTick(before, this.lastEvents, this.controllerMemory);
       if (next) this.engine.setInput(next);
     }
+    const appliedState = this.engine.snapshot();
     const result = this.engine.step();
     this.replayTicks.push({
       tick: result.state.tick,
-      input: { ...result.state.currentInput },
+      input: { ...appliedState.currentInput },
+      controllerVersion: appliedState.controllerVersion,
+      controlEvents: structuredClone(this.pendingReplayEvents),
       events: structuredClone(result.events),
     });
+    this.pendingReplayEvents = [];
     this.lastEvents = result.events;
     this.notifyWatchers(result);
     return result;
@@ -77,10 +82,9 @@ export class ContinuousPartitionSession {
     this.controller = controller as PartitionController;
     this.controllerMemory = controller.reset(this.engine.snapshot());
     this.engine.setControllerVersion(this.version);
-    this.lastEvents = [
-      ...this.lastEvents,
-      { tick: this.engine.snapshot().tick, type: 'controller_installed', version: this.version },
-    ];
+    const event = { tick: this.engine.snapshot().tick, type: 'controller_installed', version: this.version } as const;
+    this.lastEvents = [...this.lastEvents, event];
+    this.pendingReplayEvents.push(event);
     return this.version;
   }
 
