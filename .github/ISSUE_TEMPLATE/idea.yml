@@ -1,0 +1,36 @@
+name: Game or level idea
+description: Propose a field, hazard, controller challenge, or future cabinet.
+title: "[Idea]: "
+labels:
+  - idea
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of idea
+      options:
+        - Partition field
+        - Partition hazard or mechanic
+        - Model-control challenge
+        - Replay or spectator feature
+        - New game cabinet
+        - Arcade platform feature
+    validations:
+      required: true
+  - type: textarea
+    id: pitch
+    attributes:
+      label: The idea
+      description: What would the player or model experience?
+    validations:
+      required: true
+  - type: textarea
+    id: benchmark
+    attributes:
+      label: Why it is interesting
+      description: Explain the skill, decision, or failure mode it reveals.
+  - type: textarea
+    id: inspectability
+    attributes:
+      label: Replay and scoring notes
+      description: How might a run be scored, replayed, or compared?

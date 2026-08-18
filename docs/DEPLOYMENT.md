@@ -23,19 +23,19 @@ npm run preview:site
 1. Install the exact dependency lock with `npm ci`.
 2. Build and test every workspace.
 3. Assemble and upload the verified static artifact.
-4. On `main` only, deploy that exact artifact to Cloudflare.
+4. On `main` only, deploy that exact artifact to Cloudflare when the production
+   credentials are configured.
 
-Push the repository to GitHub before enabling deployment; this local checkout
-does not currently have a remote configured. Create a protected GitHub
-environment named `production`, then add these repository or environment
-secrets:
+Create a protected GitHub environment named `production`, then add these
+repository or environment secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
 Use a narrowly scoped Cloudflare API token that can edit Workers scripts for
 the target account. Pull requests never receive the production secrets and
-never deploy.
+never deploy. Until both secrets exist, the production job reports a notice and
+exits successfully; verification and artifact assembly still run normally.
 
 ## First activation
 

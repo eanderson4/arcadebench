@@ -11,8 +11,10 @@ to stop credentials and private details before they enter public Git history.
   the ArcadeBench private-detail scanner.
 - **Pre-push:** scans all tracked files, every reachable commit, and author
   identities.
-- **GitHub Actions:** repeats the full pre-push scan with read-only repository
-  permissions before build or deployment. Dependency advisories remain a
+- **GitHub Actions:** repeats the credential and private-detail scans with
+  read-only repository permissions before build or deployment. CI accepts
+  contributor identities because those are intentional public metadata; the
+  stricter owner-identity policy stays local. Dependency advisories remain a
   separate CI concern and do not widen the local disclosure gate.
 
 Run the complete disclosure gate manually with:
@@ -22,10 +24,12 @@ npm run security:prepush
 ```
 
 The private-detail scanner rejects personal email addresses, absolute user home
-paths, private-network addresses, and credential-shaped filenames. Public
-fixtures can be explicitly reviewed by placing `privacylint-allow` on the same
-line. Secretlint findings should not be allowlisted without verifying that the
-value is fake or already revoked.
+paths, private-network addresses, and credential-shaped filenames. The local
+history check accepts the ArcadeBench project identity, GitHub noreply
+addresses, and GitHub bot identities. Public fixtures can be explicitly
+reviewed by placing `privacylint-allow` on the same line. Secretlint findings
+should not be allowlisted without verifying that the value is fake or already
+revoked.
 
 Git hooks can be bypassed with Git's `--no-verify` option. Before making the
 repository public, enable GitHub secret scanning and push protection, protect

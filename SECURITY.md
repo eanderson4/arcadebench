@@ -1,12 +1,17 @@
-# Security policy
+# Security
 
-Do not open a public issue containing a credential, private replay, personal
-information, or an unpatched vulnerability. Use GitHub's private vulnerability
-reporting for the ArcadeBench repository instead.
+Do not report exploitable vulnerabilities in a public issue.
 
-Until the public repository is activated, disclose concerns directly to the
-project owner through an already established private channel.
+Use GitHub's **Report a vulnerability** flow in the repository Security tab so
+the report and any proof of concept remain private. Include the affected commit
+or protocol generation, expected impact, and the smallest safe reproduction you
+can provide. Do not include production credentials or unrelated user data.
 
-If a real credential is ever committed, removing the text is not sufficient.
-Rotate or revoke the credential first, then remove it from every affected Git
-commit before publishing the repository.
+ArcadeBench also maintains two different security boundaries:
+
+- Local disclosure gates prevent credentials and private details from entering
+  public Git history.
+- Public CI checks application code, dependencies, and pull requests.
+
+The boundaries and local commands are documented in
+[the disclosure-prevention guide](docs/DISCLOSURE-PREVENTION.md).

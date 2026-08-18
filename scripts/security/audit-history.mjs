@@ -1,16 +1,21 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
-const allowedNames = new Set(['ArcadeBench']);
-const allowedEmailDomains = new Set(['arcadebench.org', 'users.noreply.github.com']);
-const identityLog = execFileSync('git', ['log', '--all', '--format=%H%x09%an%x09%ae'], { encoding: 'utf8' });
 const identityFindings = [];
 
-for (const line of identityLog.trim().split('\n').filter(Boolean)) {
-  const [commit = '', name = '', email = ''] = line.split('\t');
-  const domain = email.includes('@') ? email.split('@').at(-1).toLowerCase() : '';
-  if (!allowedNames.has(name) || !allowedEmailDomains.has(domain)) {
-    identityFindings.push(commit.slice(0, 12));
+if (process.env.ARCADEBENCH_SKIP_IDENTITY_CHECK !== '1') {
+  const identityLog = execFileSync('git', ['log', '--all', '--format=%H%x09%an%x09%ae'], { encoding: 'utf8' });
+
+  for (const line of identityLog.trim().split('\n').filter(Boolean)) {
+    const [commit = '', name = '', email = ''] = line.split('\t');
+    const domain = email.includes('@') ? email.split('@').at(-1).toLowerCase() : '';
+    const isArcadeBench = name === 'ArcadeBench' && domain === 'arcadebench.org';
+    const isGitHubNoreply = domain === 'users.noreply.github.com';
+    const isGitHubBot = domain === 'github.com' && (name === 'GitHub' || name.endsWith('[bot]'));
+
+    if (!isArcadeBench && !isGitHubNoreply && !isGitHubBot) {
+      identityFindings.push(commit.slice(0, 12));
+    }
   }
 }
 
