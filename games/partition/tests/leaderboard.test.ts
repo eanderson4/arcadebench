@@ -64,6 +64,10 @@ describe('Partition leaderboard', () => {
     expect(reviewPlayerName('  Spark   Pilot  ')).toEqual({ allowed: true, normalizedName: 'Spark Pilot' });
     expect(reviewPlayerName('https://spam.test').allowed).toBe(false);
     expect(reviewPlayerName('shit').allowed).toBe(false);
+    expect(reviewPlayerName('4uck').allowed).toBe(false);
+    expect(reviewPlayerName('f_u_c_k').allowed).toBe(false);
+    expect(reviewPlayerName('sh1t').allowed).toBe(false);
+    expect(reviewPlayerName(`safe\u200bname`).allowed).toBe(false);
     expect(reviewPlayerName('12345678901234567').allowed).toBe(false);
   });
 

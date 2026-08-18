@@ -35,6 +35,7 @@ human score submission, ranking, storage, and callsign moderation.
 
 ```text
 packages/bench-core/   shared contracts, run records, protocol validation
+packages/arcade-sdk/   game-facing leaderboards, replays, and social client
 packages/harness/      provider-neutral model and tool orchestration
 games/partition/       Partition simulation, controller SDK, and viewer
 apps/cli/              family-wide command line interface
@@ -84,6 +85,11 @@ npm run build:site
 
 The output is written to `dist/site`. See
 [the deployment guide](docs/DEPLOYMENT.md) for CI/CD and custom-domain setup.
+
+Before contributing or publishing the repository, read the
+[local disclosure-prevention guide](docs/DISCLOSURE-PREVENTION.md). Repository
+installs enable a staged secret/private-detail scan before commits and a full
+history and dependency audit before pushes.
 
 ---
 

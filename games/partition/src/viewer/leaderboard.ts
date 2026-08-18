@@ -1,3 +1,4 @@
+import type { ArcadeBenchClient } from '@arcadebench/sdk';
 import type { DifficultyId, PartitionReplay } from '../core/types';
 
 export const PLAYER_NAME_MAX_LENGTH = 16;
@@ -73,12 +74,51 @@ const REJECTED_NAME_WORDS = new Set([
   'shit',
 ]);
 
+const LEET_ALTERNATIVES: Readonly<Record<string, readonly string[]>> = {
+  '0': ['o'],
+  '1': ['i', 'l'],
+  '3': ['e'],
+  '4': ['a', 'f'],
+  '5': ['s'],
+  '7': ['t'],
+  '8': ['b'],
+  '@': ['a'],
+  '$': ['s'],
+  '!': ['i'],
+};
+
+function expandedLeetTokens(token: string): Set<string> {
+  let candidates = new Set(['']);
+  for (const character of token) {
+    const alternatives = LEET_ALTERNATIVES[character] ?? [character];
+    const next = new Set<string>();
+    for (const prefix of candidates) {
+      for (const alternative of alternatives) {
+        next.add(prefix + alternative);
+        if (next.size >= 64) break;
+      }
+      if (next.size >= 64) break;
+    }
+    candidates = next;
+  }
+  return candidates;
+}
+
+function containsRejectedNameWord(value: string): boolean {
+  const tokens = value.toLocaleLowerCase().split(/[^\p{L}\p{N}@$!]+/u).filter(Boolean);
+  const candidates = [...tokens];
+  if (tokens.length > 1 && tokens.every((token) => [...token].length === 1)) candidates.push(tokens.join(''));
+  return candidates.some((token) =>
+    [...expandedLeetTokens(token)].some((expanded) => REJECTED_NAME_WORDS.has(expanded)),
+  );
+}
+
 function scalarLength(value: string): number {
   return [...value].length;
 }
 
 export function reviewPlayerName(candidate: string): PlayerNameReview {
-  const normalizedName = candidate.trim().replace(/\s+/g, ' ');
+  const normalizedName = candidate.normalize('NFKC').trim().replace(/\s+/g, ' ');
   if (normalizedName.length === 0) return { allowed: false, reason: 'Enter a callsign.' };
   if (scalarLength(normalizedName) > PLAYER_NAME_MAX_LENGTH) {
     return { allowed: false, reason: `Use ${PLAYER_NAME_MAX_LENGTH} characters or fewer.` };
@@ -89,8 +129,10 @@ export function reviewPlayerName(candidate: string): PlayerNameReview {
   if (/https?:|www\.|\.com\b|\.net\b|\.org\b/i.test(normalizedName)) {
     return { allowed: false, reason: 'Links are not allowed in callsigns.' };
   }
-  const words = normalizedName.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
-  if (words.some((word) => REJECTED_NAME_WORDS.has(word))) {
+  if (/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/u.test(normalizedName)) {
+    return { allowed: false, reason: 'Invisible or directional characters are not allowed.' };
+  }
+  if (containsRejectedNameWord(normalizedName)) {
     return { allowed: false, reason: 'Choose a public-friendly callsign.' };
   }
   return { allowed: true, normalizedName };
@@ -209,49 +251,34 @@ export class LeaderboardService {
 
   constructor(
     private readonly localStore: LocalLeaderboardStore,
-    private readonly apiBaseUrl = '',
+    private readonly client?: ArcadeBenchClient,
   ) {
-    this.apiBaseUrl = apiBaseUrl.replace(/\/$/, '');
-    this.mode = this.apiBaseUrl ? 'public' : 'local';
+    this.mode = this.client ? 'public' : 'local';
   }
 
   async list(query: LeaderboardQuery, limit = 25): Promise<LeaderboardEntry[]> {
-    if (!this.apiBaseUrl) return this.localStore.list(query, limit);
-    const url = new URL(`${this.apiBaseUrl}/entries`, location.origin);
-    url.searchParams.set('scope', query.scope);
-    url.searchParams.set('difficulty', query.difficulty);
-    url.searchParams.set('limit', String(limit));
-    if (query.scope === 'level') url.searchParams.set('levelId', query.levelId);
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`Leaderboard unavailable (${response.status}).`);
-    const body: unknown = await response.json();
-    const entries = Array.isArray(body)
-      ? body
-      : body && typeof body === 'object' && Array.isArray((body as { entries?: unknown }).entries)
-        ? (body as { entries: unknown[] }).entries
-        : [];
-    return rankLeaderboardEntries(entries.filter(isLeaderboardEntry), query).slice(0, limit);
+    if (!this.client) return this.localStore.list(query, limit);
+    const page = await this.client.leaderboards.list<unknown>({
+      boardId: query.scope,
+      filters: {
+        difficulty: query.difficulty,
+        ...(query.scope === 'level' ? { levelId: query.levelId } : {}),
+      },
+      limit,
+    });
+    return rankLeaderboardEntries(page.entries.filter(isLeaderboardEntry), query).slice(0, limit);
   }
 
   async submit(name: string, draft: LeaderboardDraft, proof: LeaderboardSubmitProof): Promise<LeaderboardEntry> {
     const review = reviewPlayerName(name);
     if (!review.allowed || !review.normalizedName) throw new Error(review.reason ?? 'Callsign was rejected.');
-    if (!this.apiBaseUrl) return this.localStore.submit(review.normalizedName, draft);
-    const response = await fetch(`${this.apiBaseUrl}/entries`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name: review.normalizedName, score: draft, proof }),
+    if (!this.client) return this.localStore.submit(review.normalizedName, draft);
+    const { entry } = await this.client.leaderboards.submit<LeaderboardDraft, LeaderboardSubmitProof, unknown>({
+      boardId: draft.scope,
+      playerName: review.normalizedName,
+      score: draft,
+      proof,
     });
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok) {
-      const reason = body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
-        ? (body as { error: string }).error
-        : `Score submission failed (${response.status}).`;
-      throw new Error(reason);
-    }
-    const entry = body && typeof body === 'object' && 'entry' in body
-      ? (body as { entry: unknown }).entry
-      : body;
     if (!isLeaderboardEntry(entry)) throw new Error('Leaderboard returned an invalid score.');
     return entry;
   }

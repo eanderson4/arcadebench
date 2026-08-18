@@ -1,3 +1,4 @@
+import { createArcadeBenchClient } from '@arcadebench/sdk';
 import { PartitionEngine } from '../core/engine';
 import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
@@ -202,9 +203,16 @@ let leaderboardLevelId = levelCatalog.some((level) => level.metadata.slug === re
   ? requestedBoardLevel!
   : levelCatalog[0]!.metadata.slug;
 
+const leaderboardApiBaseUrl = import.meta.env.VITE_ARCADEBENCH_API_URL ?? '';
 const leaderboardService = new LeaderboardService(
   new LocalLeaderboardStore(localStorage),
-  import.meta.env.VITE_PARTITION_LEADERBOARD_API_URL ?? '',
+  leaderboardApiBaseUrl
+    ? createArcadeBenchClient({
+        gameId: 'partition',
+        gameVersion: 'dev-0',
+        baseUrl: leaderboardApiBaseUrl,
+      })
+    : undefined,
 );
 
 const AUTO_ADVANCE_SECONDS = 5;

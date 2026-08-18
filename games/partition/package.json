@@ -13,7 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@arcadebench/bench-core": "0.1.0"
+    "@arcadebench/bench-core": "0.1.0",
+    "@arcadebench/sdk": "0.1.0"
   },
   "devDependencies": {
     "vite": "^8.1.5"
