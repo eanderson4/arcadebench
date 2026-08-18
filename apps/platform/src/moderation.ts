@@ -78,7 +78,7 @@ interface ModelDecision {
   category: string;
 }
 
-function parseModelDecision(value: unknown): ModelDecision | undefined {
+export function parseModelDecision(value: unknown): ModelDecision | undefined {
   let candidate = value;
   if (typeof candidate === 'string') {
     try { candidate = JSON.parse(candidate); } catch { return undefined; }
@@ -89,9 +89,9 @@ function parseModelDecision(value: unknown): ModelDecision | undefined {
     'clean', 'profanity', 'sexual', 'hate', 'harassment', 'impersonation',
     'personal_information', 'evasive', 'uncertain',
   ]);
-  if (typeof decision.allowed !== 'boolean' || !categories.has(String(decision.category))) return undefined;
-  if (decision.allowed !== (decision.category === 'clean')) return undefined;
-  return { allowed: decision.allowed, category: String(decision.category) };
+  if (!categories.has(String(decision.category))) return undefined;
+  const category = String(decision.category);
+  return { allowed: category === 'clean', category };
 }
 
 export async function moderateCallsign(candidate: unknown, env: ArcadeBenchEnv): Promise<CallsignReview> {
@@ -116,7 +116,7 @@ export async function moderateCallsign(candidate: unknown, env: ArcadeBenchEnv):
       messages: [
         {
           role: 'system',
-          content: 'Review one short player callsign for a free, general-audience arcade used by children and adults. Reject profanity, sexual content, hate, slurs, targeted harassment, impersonation, personal information, and character/spacing evasions. Reject when uncertain. Return only the requested JSON.',
+          content: 'Classify one short player callsign for a free, general-audience arcade used by children and adults. Return clean for a safe nickname. Otherwise classify profanity, sexual content, hate or slurs, targeted harassment, impersonation, actual identifying/contact information, or character/spacing evasion. Ordinary words and nicknames are not personal information. Use uncertain when unsure. Return only the requested JSON category.',
         },
         { role: 'user', content: `Callsign: ${JSON.stringify(local.normalizedName)}` },
       ],
@@ -127,13 +127,12 @@ export async function moderateCallsign(candidate: unknown, env: ArcadeBenchEnv):
         json_schema: {
           type: 'object',
           properties: {
-            allowed: { type: 'boolean' },
             category: {
               type: 'string',
               enum: ['clean', 'profanity', 'sexual', 'hate', 'harassment', 'impersonation', 'personal_information', 'evasive', 'uncertain'],
             },
           },
-          required: ['allowed', 'category'],
+          required: ['category'],
           additionalProperties: false,
         },
       },
