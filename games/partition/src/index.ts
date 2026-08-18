@@ -6,6 +6,7 @@ export * from './core/rng';
 export * from './core/replay';
 export * from './core/scenarios';
 export * from './core/types';
+export * from './core/version';
 export * from './runtime/session';
 export * from './runtime/program-controller';
 export * from './levels';

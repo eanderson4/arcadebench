@@ -55,6 +55,7 @@ export interface PublishReplayRequest<Replay> {
 export interface PublishedReplay {
   id: string;
   url: string;
+  replayUrl?: string;
   expiresAt: string;
 }
 

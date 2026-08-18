@@ -4,6 +4,12 @@ ArcadeBench should feel accountless by default. Games remain independent and
 consume the public `@arcadebench/sdk` in the same way a mobile game consumes a
 platform service for leaderboards or social state.
 
+The production implementation lives in `apps/platform`. Cloudflare D1 owns
+seasons, one-time challenges, scores, votes, replay metadata, moderation cache,
+and exact per-session rate windows. R2 owns immutable replay/proof bytes.
+Workers AI reviews callsign cache misses. Cloudflare's edge rate-limit binding
+adds a fast outer guard; D1 remains the exact per-session limit.
+
 ## Anonymous sessions and verified scores
 
 The browser receives a short-lived, signed, HttpOnly anonymous session cookie.
@@ -12,7 +18,8 @@ to the game version, board, seed, difficulty, and expiry. On submission:
 
 1. The game sends the run identifier, callsign, claimed result, and replay.
 2. The server checks that the challenge is unused and unexpired.
-3. A game-owned verifier deterministically replays the input stream.
+3. A game-owned verifier rebuilds the authored scenario from the bound seed and
+   deterministically replays the input stream.
 4. The server computes the canonical score and ignores conflicting client
    totals.
 5. The server hashes the accepted replay for deduplication and immutable proof
@@ -24,6 +31,11 @@ challenge and server-side replay verification provide the meaningful checks.
 No-login play also cannot prove that a player is human; human and model boards
 must describe what evidence they verify instead of claiming impossible identity
 assurance.
+
+Partition velocities are quantized at the game-protocol boundary because
+ECMAScript permits tiny cross-runtime differences in transcendental functions.
+This keeps authored browser and edge scenarios byte-stable without changing
+fixed-point engine physics.
 
 ## Callsign moderation
 

@@ -1,0 +1,17 @@
+{
+  "name": "@arcadebench/platform",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@arcadebench/partition": "0.1.0"
+  }
+}

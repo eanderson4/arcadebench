@@ -9,22 +9,25 @@ share it.
 The viewer should depend on this small storage-neutral API:
 
 ```text
-POST /api/replays
+POST /api/v1/games/partition/replays
 Content-Type: application/json
 
-<game replay artifact>
+{
+  "gameVersion": "0.1.0",
+  "replay": "<game replay artifact>",
+  "expiresInDays": 5
+}
 
 201 Created
 {
   "id": "p_7M4K2Q9D",
   "gameId": "partition",
-  "generation": "dev-0",
-  "sha256": "...",
-  "replayUrl": "/api/replays/p_7M4K2Q9D",
-  "viewerUrl": "/r/p_7M4K2Q9D"
+  "url": "/r/replay_7M4K2Q9D",
+  "replayUrl": "/api/v1/games/partition/replays/replay_7M4K2Q9D",
+  "expiresAt": "..."
 }
 
-GET /api/replays/:id
+GET /api/v1/games/partition/replays/:id
 GET /r/:id
 ```
 
@@ -41,8 +44,9 @@ work for human attempts, model runs, races, and future games.
 
 A Cloudflare Worker can implement the API with an R2 binding:
 
-- Store the replay bytes in R2 under a content-addressed key such as
-  `partition/dev-0/<sha256>.json`.
+- Store opt-in share bytes in R2 under immutable short-ID keys below `shares/`.
+- Apply a bucket lifecycle rule only to `shares/`, deleting objects after five
+  days. Persistent leaderboard proofs live below `proofs/` and are excluded.
 - Use a short random public ID rather than exposing the content hash directly.
 - Store the ID-to-object mapping and small mutable fields such as owner,
   visibility, moderation state, title, and view count in KV or another metadata

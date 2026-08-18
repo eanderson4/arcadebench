@@ -24,9 +24,13 @@
     "dev:partition": "npm run dev --workspace=@arcadebench/partition",
     "dev:board": "npm run dev --workspace=@arcadebench/board",
     "preview:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler dev",
-    "deploy:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy"
+    "deploy:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply arcadebench-platform --local",
+    "db:migrate:remote": "wrangler d1 migrations apply arcadebench-platform --remote"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.22.0",
+    "@cloudflare/workers-types": "^5.20260818.1",
     "@secretlint/secretlint-rule-preset-recommend": "^13.0.4",
     "@types/node": "^26.1.1",
     "husky": "^9.1.7",

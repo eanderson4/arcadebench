@@ -269,12 +269,19 @@ export class LeaderboardService {
     return rankLeaderboardEntries(page.entries.filter(isLeaderboardEntry), query).slice(0, limit);
   }
 
-  async submit(name: string, draft: LeaderboardDraft, proof: LeaderboardSubmitProof): Promise<LeaderboardEntry> {
+  async submit(
+    name: string,
+    draft: LeaderboardDraft,
+    proof: LeaderboardSubmitProof,
+    runId?: string,
+  ): Promise<LeaderboardEntry> {
     const review = reviewPlayerName(name);
     if (!review.allowed || !review.normalizedName) throw new Error(review.reason ?? 'Callsign was rejected.');
     if (!this.client) return this.localStore.submit(review.normalizedName, draft);
+    if (!runId) throw new Error('This was an unranked run. Start a new ranked attempt.');
     const { entry } = await this.client.leaderboards.submit<LeaderboardDraft, LeaderboardSubmitProof, unknown>({
       boardId: draft.scope,
+      runId,
       playerName: review.normalizedName,
       score: draft,
       proof,

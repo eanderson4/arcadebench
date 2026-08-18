@@ -11,24 +11,27 @@ Partition exposes two human-play scoreboards:
 Difficulty presets are separate boards. A score recorded on Easy never ranks
 against Medium, Hard, or Impossible.
 
-The browser uses local storage when
-`VITE_PARTITION_LEADERBOARD_API_URL` is unset. The UI labels this mode **Local
-preview · this device**. This is useful during game development but is not a
-public or trusted leaderboard.
+Production uses the same-origin ArcadeBench API automatically. Local Vite
+development uses local storage and labels the board **Local preview · this
+device** unless `VITE_ARCADEBENCH_API_URL=/api/v1` points it at a Worker dev
+server. `VITE_ARCADEBENCH_API_URL=local` explicitly forces the local adapter.
 
 ## Public HTTP surface
 
-Set `VITE_PARTITION_LEADERBOARD_API_URL` to the public API root. The client uses:
+The shared client uses:
 
 ```text
-GET /entries?scope=arcade&difficulty=medium&limit=25
-GET /entries?scope=level&difficulty=hard&levelId=archipelago&limit=25
+POST /api/v1/games/partition/runs
+GET /api/v1/games/partition/leaderboards/arcade?filter.difficulty=medium&limit=25
+GET /api/v1/games/partition/leaderboards/level?filter.difficulty=hard&filter.levelId=archipelago&limit=25
 
-POST /entries
+POST /api/v1/games/partition/leaderboards/arcade
 Content-Type: application/json
 
 {
-  "name": "SPARK PILOT",
+  "gameVersion": "0.1.0",
+  "runId": "run_...",
+  "playerName": "SPARK PILOT",
   "score": { "scope": "arcade", "difficulty": "medium", "...": "..." },
   "proof": { "replays": ["<Partition replay objects>"] }
 }
@@ -97,8 +100,8 @@ CREATE TABLE partition_scores (
   partitions INTEGER NOT NULL,
   captured_fraction REAL,
   replay_object_key TEXT NOT NULL,
-  replay_sha256 TEXT NOT NULL,
-  moderation_state TEXT NOT NULL,
+  proof_sha256 TEXT NOT NULL,
+  moderation_key TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
 

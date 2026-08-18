@@ -76,6 +76,14 @@ function activeCells(scenario: PartitionScenario): number[] {
     .filter((index) => !blocked.has(index));
 }
 
+// Authored scenarios cross browser, Node, and edge V8 versions before a ranked
+// replay is verified. ECMAScript does not require transcendental functions to
+// return the exact same final bit everywhere, so collapse harmless Math.sin /
+// Math.cos ULP differences into a stable scenario protocol value.
+function protocolVelocity(value: number): number {
+  return Math.round(value * 1_000_000_000) / 1_000_000_000;
+}
+
 export function applyDifficulty(base: PartitionScenario, difficultyId: DifficultyId): PartitionScenario {
   const preset = DIFFICULTY_PRESETS[difficultyId];
   const rng = mulberry32(hashString(`${base.id}:${difficultyId}`));
@@ -83,8 +91,8 @@ export function applyDifficulty(base: PartitionScenario, difficultyId: Difficult
     ...anomaly,
     position: [...anomaly.position] as [number, number],
     velocity: [
-      anomaly.velocity[0] * preset.anomalySpeedMultiplier,
-      anomaly.velocity[1] * preset.anomalySpeedMultiplier,
+      protocolVelocity(anomaly.velocity[0] * preset.anomalySpeedMultiplier),
+      protocolVelocity(anomaly.velocity[1] * preset.anomalySpeedMultiplier),
     ] as [number, number],
   }));
   const cells = activeCells(base);
@@ -102,7 +110,7 @@ export function applyDifficulty(base: PartitionScenario, difficultyId: Difficult
     anomalies.push({
       id: `difficulty-${difficultyId}-${bonus + 1}`,
       position: [x + 0.5, y + 0.5],
-      velocity: [Math.cos(angle) * speed, Math.sin(angle) * speed],
+      velocity: [protocolVelocity(Math.cos(angle) * speed), protocolVelocity(Math.sin(angle) * speed)],
     });
   }
 

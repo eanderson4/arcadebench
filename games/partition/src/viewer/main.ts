@@ -1,8 +1,14 @@
-import { createArcadeBenchClient } from '@arcadebench/sdk';
+import {
+  createArcadeBenchClient,
+  type ArcadeBenchClient,
+  type VoteSummary,
+  type VoteValue,
+} from '@arcadebench/sdk';
 import { PartitionEngine } from '../core/engine';
 import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
 import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
+import { PARTITION_GAME_ID, PARTITION_GAME_VERSION } from '../core/version';
 import { createPartitionCampaign, resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
 import {
   elapsedMilliseconds,
@@ -128,12 +134,14 @@ const playerNameInput = query<HTMLInputElement>('#player-name');
 const submitScoreButton = query<HTMLButtonElement>('#submit-score');
 const scoreEntryStatus = query<HTMLElement>('#score-entry-status');
 const scoreBoardLink = query<HTMLButtonElement>('#score-board-link');
+const launchFieldButton = query<HTMLButtonElement>('#launch-field');
+const shareReplayButton = query<HTMLButtonElement>('#share-replay');
 
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
 if (!Number.isFinite(seed)) seed = 11;
-const arcadeCampaign = resolvePartitionProgression(undefined, seed);
-const levelCatalog = createPartitionCampaign(seed);
+let arcadeCampaign = resolvePartitionProgression(undefined, seed);
+let levelCatalog = createPartitionCampaign(seed);
 let campaign = arcadeCampaign;
 let playContext: PlayContext = 'arcade';
 const requestedTier = params.get('tier');
@@ -197,23 +205,42 @@ let recordedScenarioId: string | null = null;
 let runStageResults: LeaderboardStageResult[] = [];
 let runStageReplays: PartitionReplay[] = [];
 let pendingLeaderboardSubmission: { draft: LeaderboardDraft; proof: LeaderboardSubmitProof } | null = null;
+let rankedRunId: string | null = null;
+let startingRankedRun = false;
 let leaderboardScope: LeaderboardScope = params.get('board') === 'level' ? 'level' : 'arcade';
 const requestedBoardLevel = params.get('field');
 let leaderboardLevelId = levelCatalog.some((level) => level.metadata.slug === requestedBoardLevel)
   ? requestedBoardLevel!
   : levelCatalog[0]!.metadata.slug;
 
-const leaderboardApiBaseUrl = import.meta.env.VITE_ARCADEBENCH_API_URL ?? '';
+const configuredApiBaseUrl = import.meta.env.VITE_ARCADEBENCH_API_URL;
+const localDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+const publicServicesEnabled = configuredApiBaseUrl === 'local'
+  ? false
+  : Boolean(configuredApiBaseUrl) || !localDevelopment;
+const arcadeClient: ArcadeBenchClient | undefined = publicServicesEnabled
+  ? createArcadeBenchClient({
+      gameId: PARTITION_GAME_ID,
+      gameVersion: PARTITION_GAME_VERSION,
+      baseUrl: configuredApiBaseUrl || '/api/v1',
+    })
+  : undefined;
 const leaderboardService = new LeaderboardService(
   new LocalLeaderboardStore(localStorage),
-  leaderboardApiBaseUrl
-    ? createArcadeBenchClient({
-        gameId: 'partition',
-        gameVersion: 'dev-0',
-        baseUrl: leaderboardApiBaseUrl,
-      })
-    : undefined,
+  arcadeClient,
 );
+
+interface CatalogVoteWidget {
+  root: HTMLElement;
+  up: HTMLButtonElement;
+  down: HTMLButtonElement;
+  score: HTMLElement;
+  detail: HTMLElement;
+}
+
+const catalogVoteWidgets = new Map<string, CatalogVoteWidget>();
+const catalogVotes = new Map<string, VoteSummary>();
+let catalogVoteRenderVersion = 0;
 
 const AUTO_ADVANCE_SECONDS = 5;
 
@@ -258,6 +285,7 @@ function resetRunRecord(): void {
   runStageResults = [];
   runStageReplays = [];
   pendingLeaderboardSubmission = null;
+  rankedRunId = null;
 }
 
 function catalogStat(label: string, value: string): HTMLElement {
@@ -331,6 +359,31 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
       : formatFieldClock(scenario.timeLimitTicks, scenario.ticksPerSecond)),
   );
 
+  const community = document.createElement('div');
+  community.className = 'catalog-community';
+  const communityLabel = document.createElement('span');
+  communityLabel.textContent = 'COMMUNITY SIGNAL';
+  const voteControls = document.createElement('div');
+  voteControls.className = 'catalog-votes';
+  const up = document.createElement('button');
+  up.type = 'button';
+  up.textContent = '↑';
+  up.setAttribute('aria-label', `Vote up ${level.metadata.title}`);
+  const score = document.createElement('b');
+  score.textContent = arcadeClient ? '…' : '—';
+  const down = document.createElement('button');
+  down.type = 'button';
+  down.textContent = '↓';
+  down.setAttribute('aria-label', `Vote down ${level.metadata.title}`);
+  const detail = document.createElement('small');
+  detail.textContent = arcadeClient ? 'LOADING VOTES' : 'PUBLIC BOARD ONLY';
+  voteControls.append(up, score, down);
+  community.append(communityLabel, voteControls, detail);
+  const widget = { root: community, up, down, score, detail };
+  catalogVoteWidgets.set(level.metadata.slug, widget);
+  up.addEventListener('click', () => void castCatalogVote(level.metadata.slug, 1));
+  down.addEventListener('click', () => void castCatalogVote(level.metadata.slug, -1));
+
   const launch = document.createElement('button');
   launch.className = 'catalog-play';
   launch.type = 'button';
@@ -339,7 +392,7 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
   const launchArrow = document.createElement('b');
   launchArrow.textContent = '→';
   launch.append(launchLabel, launchArrow);
-  launch.addEventListener('click', () => launchCatalogField(level));
+  launch.addEventListener('click', () => void launchCatalogField(level, launch));
 
   const leaders = document.createElement('button');
   leaders.className = 'catalog-leaders';
@@ -351,7 +404,7 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
   actions.className = 'catalog-card-actions';
   actions.append(launch, leaders);
 
-  card.append(preview, heading, tagline, challenge, features, stats, actions);
+  card.append(preview, heading, tagline, challenge, features, stats, community, actions);
   const previewEngine = new PartitionEngine(scenario);
   new PartitionRenderer(previewCanvas).render(previewEngine.snapshot(), {
     ambientTime: level.metadata.number * 0.73,
@@ -362,8 +415,77 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
 
 function renderCatalogCards(): void {
   const visible = levelCatalog.filter((level) => catalogTier === 'all' || level.metadata.tier === catalogTier);
+  catalogVoteWidgets.clear();
   catalogGrid.replaceChildren(...visible.map(createCatalogCard));
   catalogGrid.setAttribute('aria-label', `${visible.length} fields shown`);
+  void refreshCatalogVotes(visible);
+}
+
+function renderCatalogVote(levelId: string, summary: VoteSummary): void {
+  const widget = catalogVoteWidgets.get(levelId);
+  if (!widget) return;
+  widget.score.textContent = summary.score > 0 ? `+${summary.score}` : String(summary.score);
+  widget.detail.textContent = `${summary.up} UP · ${summary.down} DOWN`;
+  widget.up.setAttribute('aria-pressed', String(summary.viewerVote === 1));
+  widget.down.setAttribute('aria-pressed', String(summary.viewerVote === -1));
+  widget.root.dataset.state = 'ready';
+}
+
+function renderCatalogVoteFailure(levelId: string, message = 'VOTES OFFLINE'): void {
+  const widget = catalogVoteWidgets.get(levelId);
+  if (!widget) return;
+  widget.score.textContent = '—';
+  widget.detail.textContent = message;
+  widget.root.dataset.state = 'error';
+}
+
+async function refreshCatalogVotes(levels: readonly PartitionCampaignLevel[]): Promise<void> {
+  const renderVersion = ++catalogVoteRenderVersion;
+  if (!arcadeClient || levels.length === 0) return;
+  const load = async (level: PartitionCampaignLevel): Promise<void> => {
+    const cached = catalogVotes.get(level.metadata.slug);
+    if (cached) {
+      if (renderVersion === catalogVoteRenderVersion) renderCatalogVote(level.metadata.slug, cached);
+      return;
+    }
+    try {
+      const summary = await arcadeClient.social.get({ kind: 'level', id: level.metadata.slug });
+      catalogVotes.set(level.metadata.slug, summary);
+      if (renderVersion === catalogVoteRenderVersion) renderCatalogVote(level.metadata.slug, summary);
+    } catch {
+      if (renderVersion === catalogVoteRenderVersion) renderCatalogVoteFailure(level.metadata.slug);
+    }
+  };
+  // The first response establishes the signed anonymous cookie before the rest
+  // fan out, avoiding a race that could create several viewer identities.
+  await load(levels[0]!);
+  await Promise.all(levels.slice(1).map(load));
+}
+
+async function castCatalogVote(levelId: string, value: Exclude<VoteValue, 0>): Promise<void> {
+  const widget = catalogVoteWidgets.get(levelId);
+  if (!arcadeClient || !widget) {
+    showNotice('Community voting is available on arcadebench.org', 'error');
+    return;
+  }
+  const previous = catalogVotes.get(levelId);
+  const nextValue: VoteValue = previous?.viewerVote === value ? 0 : value;
+  widget.up.disabled = true;
+  widget.down.disabled = true;
+  widget.detail.textContent = nextValue === 0 ? 'CLEARING VOTE…' : 'SENDING SIGNAL…';
+  try {
+    const summary = await arcadeClient.social.vote({ kind: 'level', id: levelId }, nextValue);
+    catalogVotes.set(levelId, summary);
+    renderCatalogVote(levelId, summary);
+    showNotice(nextValue === 0 ? 'Community vote cleared' : 'Community signal recorded');
+  } catch (error) {
+    if (previous) renderCatalogVote(levelId, previous);
+    else renderCatalogVoteFailure(levelId);
+    showNotice(error instanceof Error ? error.message : 'Could not record vote', 'error');
+  } finally {
+    widget.up.disabled = false;
+    widget.down.disabled = false;
+  }
 }
 
 function updateHomeSelection(): void {
@@ -402,7 +524,9 @@ function resetLiveSession(): void {
   submitScoreButton.disabled = false;
   playerNameInput.disabled = false;
   scoreEntryStatus.dataset.tone = 'normal';
-  scoreEntryStatus.textContent = 'PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY';
+  scoreEntryStatus.textContent = rankedRunId || leaderboardService.mode === 'local'
+    ? 'PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY'
+    : 'UNRANKED RUN · REPLAY REMAINS AVAILABLE';
   captureFeedback.classList.remove('visible');
   stage.classList.remove('capture-pulse');
   updateFieldIdentity();
@@ -418,23 +542,98 @@ function launchSelectedField(): void {
   setMode('live');
 }
 
-function launchCatalogField(level: PartitionCampaignLevel): void {
-  resetRunRecord();
-  campaign = [level];
-  playContext = 'catalog';
-  selectedLevelIndex = 0;
-  launchSelectedField();
-  showNotice(`Catalog field ${String(level.metadata.number).padStart(2, '0')} · ${level.metadata.title}`);
+function installRankedSeed(challengeSeed: number | string): void {
+  const nextSeed = Number(challengeSeed);
+  if (!Number.isSafeInteger(nextSeed) || nextSeed < 0 || nextSeed > 0xffff_ffff) {
+    throw new Error('Ranked service returned an invalid field seed.');
+  }
+  seed = nextSeed;
+  arcadeCampaign = resolvePartitionProgression(undefined, seed);
+  levelCatalog = createPartitionCampaign(seed);
 }
 
-function startArcadeRun(): void {
+async function beginRankedAttempt(
+  boardId: LeaderboardScope,
+  levelId?: string,
+): Promise<void> {
+  rankedRunId = null;
+  if (!arcadeClient) return;
+  const challenge = await arcadeClient.runs.begin({
+    boardId,
+    context: {
+      difficulty: selectedDifficulty,
+      ...(boardId === 'level' && levelId ? { levelId } : {}),
+    },
+  });
+  installRankedSeed(challenge.seed);
+  rankedRunId = challenge.id;
+}
+
+async function launchCatalogField(
+  level: PartitionCampaignLevel,
+  launchButton?: HTMLButtonElement,
+): Promise<void> {
+  if (startingRankedRun) return;
+  startingRankedRun = true;
   resetRunRecord();
-  campaign = arcadeCampaign;
-  playContext = 'arcade';
-  selectedLevelIndex = 0;
-  levelSelect.value = '1';
-  updateHomeSelection();
-  launchSelectedField();
+  const slug = level.metadata.slug;
+  const priorLabel = launchButton?.innerHTML;
+  if (launchButton) {
+    launchButton.disabled = true;
+    launchButton.textContent = arcadeClient ? 'OPENING RANKED FIELD…' : 'OPENING FIELD…';
+  }
+  try {
+    try {
+      await beginRankedAttempt('level', slug);
+    } catch (error) {
+      rankedRunId = null;
+      showNotice(`${error instanceof Error ? error.message : 'Ranked board unavailable'} · starting unranked`, 'error');
+    }
+    const rankedLevel = levelCatalog.find((candidate) => candidate.metadata.slug === slug) ?? level;
+    campaign = [rankedLevel];
+    playContext = 'catalog';
+    selectedLevelIndex = 0;
+    launchSelectedField();
+    showNotice(
+      `Catalog field ${String(rankedLevel.metadata.number).padStart(2, '0')} · ${rankedLevel.metadata.title}${rankedRunId ? ' · ranked' : ''}`,
+    );
+  } finally {
+    startingRankedRun = false;
+    if (launchButton) {
+      launchButton.disabled = false;
+      if (priorLabel !== undefined) launchButton.innerHTML = priorLabel;
+    }
+  }
+}
+
+async function startArcadeRun(): Promise<void> {
+  if (startingRankedRun) return;
+  startingRankedRun = true;
+  resetRunRecord();
+  const priorLabel = launchFieldButton.innerHTML;
+  launchFieldButton.disabled = true;
+  launchFieldButton.innerHTML = arcadeClient
+    ? '<span>OPENING RANKED RUN…</span><b>⌁</b>'
+    : '<span>OPENING ARCADE…</span><b>⌁</b>';
+  try {
+    try {
+      await beginRankedAttempt('arcade');
+    } catch (error) {
+      rankedRunId = null;
+      showNotice(`${error instanceof Error ? error.message : 'Ranked board unavailable'} · starting unranked`, 'error');
+    }
+    campaign = arcadeCampaign;
+    playContext = 'arcade';
+    selectedLevelIndex = 0;
+    levelSelect.value = '1';
+    updateHomeSelection();
+    launchSelectedField();
+    if (rankedRunId) showNotice('Ranked arcade challenge locked · replay verification active');
+  } finally {
+    startingRankedRun = false;
+    launchFieldButton.disabled = false;
+    launchFieldButton.innerHTML = priorLabel;
+  }
 }
 
 function cancelAutoAdvance(): void {
@@ -599,10 +798,13 @@ function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubm
   scoreTime.textContent = formatLeaderboardTime(draft.elapsedMs);
   scorePartitions.textContent = String(draft.partitions).padStart(2, '0');
   submitScoreButton.innerHTML = 'ENTER SCORE <b>→</b>';
-  submitScoreButton.disabled = false;
-  playerNameInput.disabled = false;
+  const unrankedPublicRun = leaderboardService.mode === 'public' && !rankedRunId;
+  submitScoreButton.disabled = unrankedPublicRun;
+  playerNameInput.disabled = unrankedPublicRun;
   scoreEntryStatus.dataset.tone = 'normal';
-  scoreEntryStatus.textContent = leaderboardService.mode === 'public'
+  scoreEntryStatus.textContent = unrankedPublicRun
+    ? 'UNRANKED RUN · START A NEW ATTEMPT TO ENTER THE PUBLIC BOARD'
+    : leaderboardService.mode === 'public'
     ? 'CALLSIGN MODERATED · SCORE VERIFIED FROM REPLAY'
     : 'LOCAL PREVIEW · PUBLIC BOARD CONNECTS AT DEPLOYMENT';
   clearHumanControls();
@@ -1164,13 +1366,19 @@ async function renderLeaderboard(): Promise<void> {
     ? '<span>RANK</span><span>CALLSIGN</span><span>STAGE</span><span>TIME</span><span>PARTITIONS</span>'
     : '<span>RANK</span><span>CALLSIGN</span><span>RESULT</span><span>TIME</span><span>PARTITIONS</span><span>STABILITY</span>';
   leaderboardList.replaceChildren();
-  leaderboardEmpty.hidden = true;
+  leaderboardEmpty.hidden = false;
+  leaderboardEmpty.querySelector('span')!.textContent = 'TUNING VERIFIED BOARD…';
+  leaderboardEmpty.querySelector('p')!.textContent = 'Checking the current public season and replay-backed scores.';
   leaderboardList.setAttribute('aria-busy', 'true');
   try {
     const entries = await leaderboardService.list(query);
     if (renderVersion !== leaderboardRenderVersion) return;
     leaderboardList.replaceChildren(...entries.map((entry, index) => createLeaderboardRow(entry, index + 1)));
     leaderboardEmpty.hidden = entries.length !== 0;
+    if (entries.length === 0) {
+      leaderboardEmpty.querySelector('span')!.textContent = 'NO VERIFIED SIGNALS YET';
+      leaderboardEmpty.querySelector('p')!.textContent = 'Finish a ranked run and put the first callsign on this board.';
+    }
   } catch (error) {
     if (renderVersion !== leaderboardRenderVersion) return;
     leaderboardEmpty.hidden = false;
@@ -1423,7 +1631,12 @@ scoreEntry.addEventListener('submit', async (event) => {
     ? 'MODERATING CALLSIGN · VERIFYING REPLAY…'
     : 'RECORDING VERIFIED LOCAL SCORE…';
   try {
-    const entry = await leaderboardService.submit(review.normalizedName, submission.draft, submission.proof);
+    const entry = await leaderboardService.submit(
+      review.normalizedName,
+      submission.draft,
+      submission.proof,
+      rankedRunId ?? undefined,
+    );
     localStorage.setItem('arcadebench.partition.player-name', entry.name);
     leaderboardScope = entry.scope;
     selectedDifficulty = entry.difficulty;
@@ -1566,6 +1779,37 @@ query<HTMLButtonElement>('#download-replay').addEventListener('click', () => {
   link.download = `partition-${loadedReplay.scenario.id}-replay.json`;
   link.click();
   URL.revokeObjectURL(url);
+});
+
+shareReplayButton.addEventListener('click', async () => {
+  if (!arcadeClient) {
+    showNotice('Replay sharing is available on arcadebench.org', 'error');
+    return;
+  }
+  const priorLabel = shareReplayButton.textContent;
+  shareReplayButton.disabled = true;
+  shareReplayButton.textContent = 'VALIDATING + PUBLISHING…';
+  try {
+    const published = await arcadeClient.replays.publish({ replay: loadedReplay, expiresInDays: 5 });
+    const shareUrl = new URL(published.url, location.origin).toString();
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      shareReplayButton.textContent = 'SHARE LINK COPIED ✓';
+      showNotice('Replay link copied · expires in 5 days');
+    } catch {
+      shareReplayButton.textContent = 'REPLAY PUBLISHED ✓';
+      shareReplayButton.title = shareUrl;
+      showNotice('Replay published · link is available on this button');
+    }
+  } catch (error) {
+    shareReplayButton.textContent = 'SHARE FAILED · RETRY';
+    showNotice(error instanceof Error ? error.message : 'Could not publish replay', 'error');
+  } finally {
+    shareReplayButton.disabled = false;
+    setTimeout(() => {
+      if (!shareReplayButton.disabled) shareReplayButton.textContent = priorLabel;
+    }, 3500);
+  }
 });
 
 query<HTMLButtonElement>('#copy-link').addEventListener('click', async () => {

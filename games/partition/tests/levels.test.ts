@@ -17,6 +17,7 @@ import {
   wallsAroundMask,
 } from '../src/levels';
 import { FIXED_SCALE, PartitionEngine } from '../src/core/engine';
+import { applyDifficulty } from '../src/core/difficulty';
 
 describe('Partition level-authoring toolbox', () => {
   it('scales ASCII silhouettes and outlines only their playable frontier', () => {
@@ -158,6 +159,15 @@ describe('Partition campaign catalog', () => {
     expect(alternate.map((level) => level.scenario.initialWalls)).toEqual(
       campaign.map((level) => level.scenario.initialWalls),
     );
+  });
+
+  it('quantizes ranked velocities to protocol-stable precision', () => {
+    const scenario = applyDifficulty(campaign[0]!.scenario, 'hard');
+    for (const anomaly of scenario.anomalies) {
+      for (const velocity of anomaly.velocity) {
+        expect(Number(velocity.toFixed(9))).toBe(velocity);
+      }
+    }
   });
 
   it('supports number, id, slug, and tier lookup without exposing mutable catalog state', () => {

@@ -90,6 +90,25 @@ jobs:
           name: arcadebench-site
           path: dist/site
 
+      - name: Set up Node.js
+        if: steps.cloudflare.outputs.ready == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install locked deployment dependencies
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Apply production D1 migrations
+        if: steps.cloudflare.outputs.ready == 'true'
+        uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 migrations apply arcadebench-platform --remote
+
       - name: Deploy to Cloudflare Workers
         if: steps.cloudflare.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
