@@ -3,7 +3,7 @@
 ArcadeBench deploys as a Cloudflare Worker with Static Assets. The first
 production artifact exposes Partition at both `/` and its permanent
 `/partition/` route. When the cross-game launcher replaces `/`, existing game
-links will continue to work.
+links will continue to work. Production is live at <https://arcadebench.org>.
 
 ## Local production preview
 
@@ -37,22 +37,18 @@ the target account. Pull requests never receive the production secrets and
 never deploy. Until both secrets exist, the production job reports a notice and
 exits successfully; verification and artifact assembly still run normally.
 
-## First activation
+## Production domains
 
-The checked-in `wrangler.jsonc` publishes to the `arcadebench` Worker and keeps
-its `workers.dev` URL enabled. After registering the final domain:
+The checked-in `wrangler.jsonc` publishes to the `arcadebench` Worker, keeps its
+`workers.dev` URL enabled, and attaches both production custom domains. The
+small Worker entry point in `deploy/worker.js` serves the static asset binding
+and permanently redirects `www.arcadebench.org` to the canonical apex while
+preserving paths and query strings.
 
-1. Add the domain to the same Cloudflare account.
-2. Open **Workers & Pages → arcadebench → Settings → Domains & Routes**.
-3. Add the apex as a Custom Domain.
-4. Add `www` and redirect it to the canonical apex.
-5. Update the repository description and canonical metadata after the first
-   successful custom-domain deployment.
-
-Keeping the hostname out of `wrangler.jsonc` lets CI/CD go live before DNS is
-registered and avoids a failed deploy during domain activation. The intended
-primary hostname is `arcadebench.org`; the site can first ship to its generated
-`workers.dev` address.
+Cloudflare manages DNS and certificates for `arcadebench.org`. Because the
+routes are source-controlled, local and CI deployments publish the same domain
+behavior; do not add a competing apex or `www` DNS record outside the Worker
+custom-domain flow.
 
 ## Later API bindings
 

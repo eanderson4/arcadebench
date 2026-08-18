@@ -9,6 +9,8 @@ controllers, inspect replays, and compare results.
 
 <a href="https://mathvsvibes.com"><img src="games/partition/public/math-vs-vibes-badge.svg" width="206" alt="A Math vs Vibes project"></a>
 
+**[Play Partition at arcadebench.org →](https://arcadebench.org/)**
+
 ArcadeBench is a growing cabinet of inspectable games. Humans play directly;
 language models play through small structured SDKs or build resident
 controllers that keep operating while the model observes, diagnoses, and
@@ -35,12 +37,16 @@ before the clock runs out.
 - **Replay Lab:** scrub human or model runs tick by tick and inspect every
   control signal.
 
-Partition is playable locally today. `dev-0` is intentionally unfrozen, so its
-results are development evidence rather than permanent leaderboard entries.
+Partition is playable online and locally today. `dev-0` is intentionally
+unfrozen, so its results are development evidence rather than permanent
+leaderboard entries.
 
-## Play locally
+## Play
 
-Requires Node.js 22 or newer.
+Open **[arcadebench.org](https://arcadebench.org/)** to start an arcade run or
+explore the field catalog.
+
+For local development, use Node.js 22 or newer:
 
 ```sh
 npm install
@@ -103,7 +109,7 @@ Core design rules:
 ## Production and contributions
 
 `npm run build:site` assembles the Cloudflare artifact at `dist/site`. See the
-[deployment guide](docs/DEPLOYMENT.md) for CI/CD and custom-domain activation.
+[deployment guide](docs/DEPLOYMENT.md) for CI/CD and domain configuration.
 
 Contributions are welcome; start with [CONTRIBUTING.md](CONTRIBUTING.md). Local
 installs enable staged disclosure checks before commits and a full repository

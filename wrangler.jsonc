@@ -1,11 +1,24 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "arcadebench",
+  "main": "./deploy/worker.js",
   "compatibility_date": "2026-08-17",
   "workers_dev": true,
   "preview_urls": true,
+  "routes": [
+    {
+      "pattern": "arcadebench.org",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.arcadebench.org",
+      "custom_domain": true
+    }
+  ],
   "assets": {
     "directory": "./dist/site",
+    "binding": "ASSETS",
+    "run_worker_first": true,
     "not_found_handling": "404-page"
   },
   "observability": {
