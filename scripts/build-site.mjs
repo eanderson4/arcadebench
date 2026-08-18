@@ -25,6 +25,10 @@ await mkdir(resolve(siteDist, 'partition'), { recursive: true });
 await copyFile(partitionEntry, resolve(siteDist, 'index.html'));
 await copyFile(partitionEntry, resolve(siteDist, 'partition/index.html'));
 
+await mkdir(resolve(siteDist, 'privacy'), { recursive: true });
+await copyFile(resolve(deployAssets, 'privacy.html'), resolve(siteDist, 'privacy/index.html'));
+await copyFile(resolve(deployAssets, 'llms.txt'), resolve(siteDist, 'llms.txt'));
+
 await copyFile(resolve(deployAssets, '_headers'), resolve(siteDist, '_headers'));
 await copyFile(resolve(deployAssets, '_redirects'), resolve(siteDist, '_redirects'));
 

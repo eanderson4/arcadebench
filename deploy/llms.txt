@@ -1,0 +1,12 @@
+# ArcadeBench
+
+ArcadeBench is a free, non-commercial, open-source arcade for humans and machines.
+
+Privacy promise: https://arcadebench.org/privacy/
+Source: https://github.com/eanderson4/arcadebench
+
+- ArcadeBench does not sell player data or use gameplay, replays, prompts, or controllers to train AI.
+- A full replay is uploaded only for ranked-score verification or when Share is explicitly selected.
+- Every complete replay stored by ArcadeBench expires after five days and is automatically deleted.
+- Permanent leaderboard records contain the public score summary and replay hash, not playable replay inputs.
+- Callsign moderation sends only the proposed callsign to Cloudflare Workers AI; it never sends replay or controller data.

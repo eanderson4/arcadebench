@@ -951,6 +951,9 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
   font: 500 8px 'DM Mono', monospace;
   letter-spacing: 0.11em;
 }
+.footer-links { display: flex; gap: 16px; }
+.footer-links a { color: #4a666d; text-decoration: none; transition: color 160ms ease; }
+.footer-links a:hover, .footer-links a:focus-visible { color: var(--cyan); }
 .math-vs-vibes-badge { display: block; border-radius: 7px; line-height: 0; opacity: 0.72; transition: opacity 160ms ease, transform 160ms ease; }
 .math-vs-vibes-badge:hover { opacity: 1; transform: translateY(-1px); }
 .math-vs-vibes-badge:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
@@ -1060,6 +1063,7 @@ li.current .event-marker { border-color: var(--yellow); background: var(--yellow
 @media (max-width: 620px) {
   .site-footer { justify-content: center; flex-wrap: wrap; }
   .site-footer > span { display: none; }
+  .site-footer > .footer-links { display: flex; width: 100%; justify-content: center; }
   .home-copy h1 { font-size: 19.5vw; }
   .home-nav { align-items: flex-start; gap: 18px; }
   .home-nav-actions { align-items: stretch; flex-direction: column; }

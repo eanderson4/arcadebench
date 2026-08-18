@@ -1,8 +1,8 @@
 # Replay sharing contract
 
-Replay publishing is explicit and opt-in. Human and model runs produce the same
-validated JSON artifact locally; nothing is uploaded until a user chooses to
-share it.
+Human and model runs produce the same validated JSON artifact locally. A full
+replay is uploaded only when a ranked score is submitted for verification or a
+user explicitly chooses to share it.
 
 ## HTTP surface
 
@@ -45,13 +45,15 @@ work for human attempts, model runs, races, and future games.
 A Cloudflare Worker can implement the API with an R2 binding:
 
 - Store opt-in share bytes in R2 under immutable short-ID keys below `shares/`.
-- Apply a bucket lifecycle rule only to `shares/`, deleting objects after five
-  days. Persistent leaderboard proofs live below `proofs/` and are excluded.
+- Apply five-day bucket lifecycle rules to both `shares/` and `proofs/`.
+  Leaderboard proofs are temporary; only the score summary and proof hash
+  remain after deletion.
 - Use a short random public ID rather than exposing the content hash directly.
 - Store the ID-to-object mapping and small mutable fields such as owner,
   visibility, moderation state, title, and view count in KV or another metadata
   store. KV is optional if the public ID itself is the R2 object key.
-- Return immutable cache headers and an ETag for replay payloads.
+- Return short public cache headers and an ETag for replay payloads. Access ends
+  at the recorded expiry even if provider lifecycle cleanup is still settling.
 
 Upload protection belongs at the Worker boundary: rate limits, content length,
 allowed protocol generations, replay verification, abuse reporting, and a

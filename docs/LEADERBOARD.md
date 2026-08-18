@@ -50,7 +50,8 @@ The submitted `score` is a display hint, not authority. The server must:
 5. Derive stages reached/cleared, elapsed ticks, stabilized fraction, and
    `trace_completed` partition count from those verified replays.
 6. Compare the derived score with the hint and store only the derived values.
-7. Store the immutable replay proof in R2 and its hash beside the score.
+7. Store the replay proof in R2 for five days and its hash beside the permanent
+   score summary. Delete the full proof automatically after expiry.
 
 Ordered/filterable score queries fit Cloudflare D1 better than KV. R2 is a good
 fit for replay bytes. KV can still cache small top-score responses.
@@ -62,13 +63,13 @@ link-like, unsupported-character, and known unsafe names. This improves the
 form experience but is not a security boundary.
 
 The write handler repeats those deterministic checks. A small language model
-can then review names that pass them using a strict structured result:
+can then classify names that pass them using a strict single-category result.
+The server derives allow/reject from that category so the model cannot return
+contradictory fields:
 
 ```json
 {
-  "allowed": false,
-  "category": "hate_or_harassment",
-  "confidence": 0.98
+  "category": "hate"
 }
 ```
 
@@ -101,6 +102,8 @@ CREATE TABLE partition_scores (
   captured_fraction REAL,
   replay_object_key TEXT NOT NULL,
   proof_sha256 TEXT NOT NULL,
+  proof_expires_at TEXT NOT NULL,
+  proof_deleted_at TEXT,
   moderation_key TEXT NOT NULL,
   created_at TEXT NOT NULL
 );

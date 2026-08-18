@@ -6,7 +6,8 @@ platform service for leaderboards or social state.
 
 The production implementation lives in `apps/platform`. Cloudflare D1 owns
 seasons, one-time challenges, scores, votes, replay metadata, moderation cache,
-and exact per-session rate windows. R2 owns immutable replay/proof bytes.
+and exact per-session rate windows. R2 owns temporary replay/proof bytes; all
+complete replay payloads expire after five days.
 Workers AI reviews callsign cache misses. Cloudflare's edge rate-limit binding
 adds a fast outer guard; D1 remains the exact per-session limit.
 
@@ -22,8 +23,9 @@ to the game version, board, seed, difficulty, and expiry. On submission:
    deterministically replays the input stream.
 4. The server computes the canonical score and ignores conflicting client
    totals.
-5. The server hashes the accepted replay for deduplication and immutable proof
-   identity, then consumes the challenge.
+5. The server hashes the accepted replay for immutable proof identity, stores
+   the full proof for at most five days, then consumes the challenge. The score
+   summary and hash remain after the replay is deleted.
 
 A SHA-256 digest detects changed bytes but does not prove an honest client: a
 client that fabricates data can also calculate a new digest. The one-time
@@ -36,6 +38,14 @@ Partition velocities are quantized at the game-protocol boundary because
 ECMAScript permits tiny cross-runtime differences in transcendental functions.
 This keeps authored browser and edge scenarios byte-stable without changing
 fixed-point engine physics.
+
+## Privacy and retention
+
+ArcadeBench does not use gameplay, replays, prompts, or controller artifacts to
+train AI. Ranked proofs and opt-in replay shares receive explicit expirations,
+hourly deletion, and R2 lifecycle cleanup. D1 retains the public leaderboard
+summary and replay SHA-256 hash, but not playable inputs after expiry. The
+[plain-language privacy promise](PRIVACY.md) is part of the production contract.
 
 ## Callsign moderation
 

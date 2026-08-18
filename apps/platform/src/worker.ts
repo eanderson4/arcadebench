@@ -15,6 +15,7 @@ const CANONICAL_HOST = 'arcadebench.org';
 const API_PREFIX = `/api/v1/games/${PARTITION_GAME_ID}`;
 const MAX_SCORE_BYTES = 8 * 1024 * 1024;
 const MAX_REPLAY_BYTES = 2 * 1024 * 1024;
+const REPLAY_RETENTION_MS = 5 * 24 * 60 * 60 * 1000;
 
 interface SeasonRow {
   id: string;
@@ -53,6 +54,11 @@ interface ReplayShareRow {
   object_key: string;
   sha256: string;
   expires_at: string;
+}
+
+interface ExpiredReplayRow {
+  id: string;
+  object_key: string;
 }
 
 function decodeSegment(value: string): string {
@@ -260,14 +266,19 @@ async function submitScore(
     replays: verified.replays,
   });
   const proofSha = await sha256Hex(proofBytes);
-  const objectKey = `proofs/${PARTITION_GAME_ID}/${PARTITION_GAME_VERSION}/${proofSha}.json`;
+  const scoreId = randomId('score');
+  const proofExpiresAt = new Date(Date.now() + REPLAY_RETENTION_MS).toISOString();
+  const objectKey = `proofs/${PARTITION_GAME_ID}/${PARTITION_GAME_VERSION}/${scoreId}.json`;
   await env.REPLAYS.put(objectKey, proofBytes, {
     httpMetadata: { contentType: 'application/json', cacheControl: 'private, no-store' },
-    customMetadata: { sha256: proofSha, kind: 'leaderboard-proof' },
+    customMetadata: {
+      sha256: proofSha,
+      kind: 'leaderboard-proof',
+      expiresAt: proofExpiresAt,
+    },
   });
 
   const score = verified.score;
-  const scoreId = randomId('score');
   const createdAt = new Date().toISOString();
   const completed = score.scope === 'arcade' ? Boolean(score.completed) : Boolean(score.won);
   const statements = await env.DB.batch([
@@ -280,10 +291,11 @@ async function submitScore(
         id, run_id, season_id, game_id, game_version, board_id, player_name,
         normalized_name, difficulty, level_id, level_number, level_title, won,
         stage_reached, stages_cleared, completed, elapsed_ms, partitions,
-        captured_fraction, proof_object_key, proof_sha256, moderation_key, created_at
+        captured_fraction, proof_object_key, proof_sha256, proof_expires_at,
+        moderation_key, created_at
       )
       SELECT ?, id, season_id, game_id, game_version, board_id, ?, ?, difficulty,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       FROM run_challenges WHERE id = ? AND consumed_score_id = ?
     `).bind(
       scoreId,
@@ -301,6 +313,7 @@ async function submitScore(
       score.scope === 'level' ? score.capturedFraction : null,
       objectKey,
       proofSha,
+      proofExpiresAt,
       review.moderationKey,
       createdAt,
       runId,
@@ -328,6 +341,44 @@ async function submitScore(
     created_at: createdAt,
   };
   return json({ entry: scoreEntry(row) }, 201, { 'cache-control': 'no-store' });
+}
+
+export async function cleanupExpiredReplayData(
+  env: Pick<ArcadeBenchEnv, 'DB' | 'REPLAYS'>,
+  now = new Date(),
+): Promise<{ shares: number; proofs: number }> {
+  const nowIso = now.toISOString();
+  const [shareResult, proofResult] = await Promise.all([
+    env.DB.prepare(`
+      SELECT id, object_key FROM replay_shares
+      WHERE expires_at <= ? ORDER BY expires_at LIMIT 500
+    `).bind(nowIso).all<ExpiredReplayRow>(),
+    env.DB.prepare(`
+      SELECT id, proof_object_key AS object_key FROM scores
+      WHERE proof_expires_at <= ? AND proof_deleted_at IS NULL
+      ORDER BY proof_expires_at LIMIT 500
+    `).bind(nowIso).all<ExpiredReplayRow>(),
+  ]);
+  const shares = shareResult.results ?? [];
+  const proofs = proofResult.results ?? [];
+  const objectKeys = [...new Set([...shares, ...proofs].map((row) => row.object_key))];
+  if (objectKeys.length > 0) await env.REPLAYS.delete(objectKeys);
+
+  const statements: D1PreparedStatement[] = [];
+  if (shares.length > 0) {
+    const placeholders = shares.map(() => '?').join(', ');
+    statements.push(env.DB.prepare(`DELETE FROM replay_shares WHERE id IN (${placeholders})`)
+      .bind(...shares.map((row) => row.id)));
+  }
+  if (proofs.length > 0) {
+    const placeholders = proofs.map(() => '?').join(', ');
+    statements.push(env.DB.prepare(`
+      UPDATE scores SET proof_deleted_at = ?
+      WHERE proof_deleted_at IS NULL AND id IN (${placeholders})
+    `).bind(nowIso, ...proofs.map((row) => row.id)));
+  }
+  if (statements.length > 0) await env.DB.batch(statements);
+  return { shares: shares.length, proofs: proofs.length };
 }
 
 function validReplayId(value: string): boolean {
@@ -539,9 +590,9 @@ export default {
   async scheduled(_controller: ScheduledController, env: ArcadeBenchEnv): Promise<void> {
     const now = new Date().toISOString();
     const staleRateWindow = Date.now() - 24 * 60 * 60 * 1000;
+    await cleanupExpiredReplayData(env, new Date(now));
     await env.DB.batch([
       env.DB.prepare('DELETE FROM rate_windows WHERE window_start < ?').bind(staleRateWindow),
-      env.DB.prepare('DELETE FROM replay_shares WHERE expires_at <= ?').bind(now),
       env.DB.prepare(`
         DELETE FROM run_challenges
         WHERE expires_at <= ? AND consumed_score_id IS NULL

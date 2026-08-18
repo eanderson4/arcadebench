@@ -10,6 +10,7 @@ import {
 } from '@arcadebench/partition';
 import { CALLSIGN_MODEL, CALLSIGN_POLICY_VERSION } from '../src/moderation';
 import { sha256Hex } from '../src/crypto';
+import { cleanupExpiredReplayData } from '../src/worker';
 
 const origin = 'https://arcadebench.org';
 const api = `${origin}/api/v1/games/partition`;
@@ -84,7 +85,7 @@ describe('ArcadeBench public platform Worker', () => {
       }),
     });
     expect(scoreResponse.status, await scoreResponse.clone().text()).toBe(201);
-    const submitted = await scoreResponse.json<{ entry: { name: string; levelId: string } }>();
+    const submitted = await scoreResponse.json<{ entry: { id: string; name: string; levelId: string } }>();
     expect(submitted.entry).toMatchObject({ name: playerName, levelId: 'first-light' });
 
     const duplicateResponse = await exports.default.fetch(`${api}/leaderboards/level`, {
@@ -126,5 +127,36 @@ describe('ArcadeBench public platform Worker', () => {
     });
     expect(voteResponse.status).toBe(200);
     await expect(voteResponse.json()).resolves.toEqual({ up: 1, down: 0, score: 1, viewerVote: 1 });
+
+    const proof = await env.DB.prepare(`
+      SELECT proof_object_key AS objectKey, proof_sha256 AS sha256,
+        proof_expires_at AS expiresAt, proof_deleted_at AS deletedAt
+      FROM scores WHERE id = ?
+    `).bind(submitted.entry.id).first<{
+      objectKey: string;
+      sha256: string;
+      expiresAt: string;
+      deletedAt: string | null;
+    }>();
+    expect(proof?.expiresAt).toBeTruthy();
+    expect(proof?.deletedAt).toBeNull();
+    expect(await env.REPLAYS.get(proof!.objectKey)).not.toBeNull();
+
+    const expiredAt = new Date(Date.now() - 1_000).toISOString();
+    await env.DB.batch([
+      env.DB.prepare('UPDATE scores SET proof_expires_at = ? WHERE id = ?')
+        .bind(expiredAt, submitted.entry.id),
+      env.DB.prepare('UPDATE replay_shares SET expires_at = ? WHERE id = ?')
+        .bind(expiredAt, published.id),
+    ]);
+    await expect(cleanupExpiredReplayData(env)).resolves.toEqual({ shares: 1, proofs: 1 });
+    expect(await env.REPLAYS.get(proof!.objectKey)).toBeNull();
+    expect(await env.REPLAYS.get(`shares/partition/${PARTITION_GAME_VERSION}/${published.id}.json`)).toBeNull();
+    const deletedProof = await env.DB.prepare(`
+      SELECT proof_sha256 AS sha256, proof_deleted_at AS deletedAt
+      FROM scores WHERE id = ?
+    `).bind(submitted.entry.id).first<{ sha256: string; deletedAt: string | null }>();
+    expect(deletedProof).toMatchObject({ sha256: proof!.sha256 });
+    expect(deletedProof?.deletedAt).toBeTruthy();
   });
 });

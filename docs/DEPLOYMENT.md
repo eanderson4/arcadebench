@@ -59,12 +59,14 @@ The checked-in production bindings are:
 - D1 `arcadebench-platform`: seasons, anonymous sessions, one-time challenges,
   verified scores, level/game votes, replay metadata, moderation cache, and
   exact rate windows.
-- R2 `arcadebench-replays`: five-day opt-in shares below `shares/` and retained
-  leaderboard proofs below `proofs/`.
+- R2 `arcadebench-replays`: five-day opt-in shares below `shares/` and five-day
+  leaderboard verification proofs below `proofs/`.
 - Workers AI: cached callsign review with a strict structured response.
 - Two edge rate-limit bindings, backed by exact per-session D1 limits.
 - Secret `COOKIE_SIGNING_SECRET`, generated and stored only in Cloudflare.
 
-CI applies D1 migrations before each production deploy. R2 has a five-day
-lifecycle rule scoped only to the `shares/` prefix. Preview resources must never
-share bindings with production.
+CI applies D1 migrations before each production deploy. R2 has five-day
+lifecycle rules for both replay prefixes, while an hourly Worker job deletes
+expired objects and metadata proactively. The score summary and proof hash stay
+in D1 after proof deletion. Preview resources must never share bindings with
+production.
