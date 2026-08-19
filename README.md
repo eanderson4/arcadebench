@@ -100,6 +100,12 @@ Core design rules:
   replay/controller artifacts.
 - Continuous games never pause for model inference.
 
+## Hardware
+
+A parametric bartop cabinet enclosure for the platform is in design — see the
+[hardware guide](docs/HARDWARE.md) for the spec, verified component
+dimensions, and the Build123d workflow.
+
 ## Production and contributions
 
 `npm run build:site` assembles the Cloudflare artifact at `dist/site`. See the

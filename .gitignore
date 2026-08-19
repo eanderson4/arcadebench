@@ -17,3 +17,8 @@ coverage/
 # Local benchmark output. Published fixtures belong under fixtures/.
 runs/
 artifacts/
+
+# Hardware CAD: Python env and generated outputs
+hardware/.venv/
+hardware/out/
+__pycache__/
