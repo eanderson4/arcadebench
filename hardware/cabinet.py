@@ -45,9 +45,9 @@ PARAMS = {
     "lip_blend": 10.0,             # mm 3D fillet under the marquee lip
     "corner_fillet": 12.0,         # mm 3D fillet on vertical outer corners
     # --- side cheeks (side plates proud of the nose fascia) ---------------
-    "cheek_thickness": 4.0,        # mm; outer face flush with shell sides
+    "cheek_thickness": 8.0,        # mm; outer face flush with shell sides
     "cheek_front_overhang": 8.0,   # mm uniform buffer around the front matter
-    "cheek_edge_fillet": 2.0,      # mm 3D round on the outer plate perimeter
+    "cheek_edge_fillet": 3.2,      # mm 3D round on both plate perimeters
     "cheek_seam_blend": 8.0,       # mm 2D blend where cheek lip meets the face
     "hole_chamfer": 0.4,           # mm 45 deg break on deck control hole rims
     # --- control deck ---------------------------------------------------
@@ -81,8 +81,8 @@ PARAMS = {
     "chin_groove_depth": 1.0,
     "chin_groove_drop": 9.0,       # mm groove center below the face top
     # --- silhouette corner radii (2D profile) ----------------------------
-    "r_nose_bottom": 22.0,
-    "r_nose_top": 18.0,
+    "r_nose_bottom": 30.0,
+    "r_nose_top": 26.0,
     "r_back_bottom": 10.0,
     "r_back_top": 22.0,
     "r_marquee_top": 30.0,
@@ -354,12 +354,15 @@ def build_cabinet(p=None):
         cheek = Pos(sx * (p["cabinet_width"] / 2 - ct / 2), 0, 0) * extrude(
             csk.sketch, amount=ct / 2, both=True
         )
-        # machined-edge read: round the exposed outer perimeter of the plate
-        outer = cheek.edges().filter_by(
-            lambda e: abs(abs(e.center().X) - p["cabinet_width"] / 2) < 0.6
+        # machined-frame read: round BOTH plate perimeter loops — the outer
+        # face edge and the inner edge that frames the recessed front
+        half_w = p["cabinet_width"] / 2
+        perimeter = cheek.edges().filter_by(
+            lambda e: abs(abs(e.center().X) - half_w) < 0.6
+            or abs(abs(e.center().X) - (half_w - ct)) < 0.6
         )
         try:
-            cheek = cheek.fillet(p["cheek_edge_fillet"], outer)
+            cheek = cheek.fillet(p["cheek_edge_fillet"], perimeter)
         except Exception as exc:
             print(f"  ! cheek edge fillet skipped: {exc}")
         solid += cheek

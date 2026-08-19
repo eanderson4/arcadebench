@@ -379,3 +379,18 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   "hood screw holes" = nameplate magnet pockets (functional); Sonnet's
   heavy-base note deferred (structural volume); 8 mm cheek projection
   kept (uniform-buffer reading, user's call). Chain green, all guards OK.
+- Iteration 22 (2026-08-19, archived `iter-023`/`iter-024` / `asm-021`):
+  **softness pass** (user: "you have less rounding" vs the cream
+  reference). The reference's side frame reads THICK with a full
+  roundover; a 4 mm plate caps the 3D edge round at ~R2, so:
+  cheek_thickness 4 -> 8 mm (outer face still flush with the shell
+  sides), cheek_edge_fillet 2.8 -> 3.2 mm and now applied to BOTH
+  perimeter loops — the outer edge and the inner edge that frames the
+  recessed front (kills the hard 90 deg step where the cheek meets the
+  nose fascia / deck tray). Silhouette radii up: r_nose_bottom 22 -> 30,
+  r_nose_top 18 -> 26 (cheek radii auto-grow +8 via cheek_profile:
+  R38/R34). Volume 1738 -> 2521 cm^3 across the cheek iterations (print
+  path only). NOTE — path divergence: the flat-pack side plates stay
+  3 mm sheet (panel_thickness) with no 3D edge rounds; for sheet metal
+  that edge break is a fab-shop operation (deburr/roll), not geometry.
+  Chain green, all guards OK.
