@@ -303,8 +303,11 @@ def build_cabinet(p=None):
                 if radius is None:
                     continue
                 y, z = profile[idx]
+                # Plane.YZ maps profile (y, z) to world (X=y, Y=z, Z=0) —
+                # matching v.Y/v.Z here silently matched nothing for every
+                # corner except (0, 0) (all sketch vertices have Z=0)
                 vtx = sk.vertices().filter_by(
-                    lambda v, y=y, z=z: abs(v.Y - y) < 1.0 and abs(v.Z - z) < 1.0
+                    lambda v, y=y, z=z: abs(v.X - y) < 1.0 and abs(v.Y - z) < 1.0
                 )
                 fillet(vtx, radius=radius)
         extrude(amount=p["cabinet_width"] / 2, both=True)
@@ -349,7 +352,7 @@ def build_cabinet(p=None):
                     continue
                 y, z = cheek_pts[idx]
                 vtx = csk.vertices().filter_by(
-                    lambda v, y=y, z=z: abs(v.Y - y) < 1.0 and abs(v.Z - z) < 1.0
+                    lambda v, y=y, z=z: abs(v.X - y) < 1.0 and abs(v.Y - z) < 1.0
                 )
                 fillet(vtx, radius=radius)
         cheek = Pos(sx * (p["cabinet_width"] / 2 - ct / 2), 0, 0) * extrude(

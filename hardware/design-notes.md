@@ -409,3 +409,21 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   from PARAMS (recess w/d - 2 mm gap, corner_r = recess + 3.5). Wrist
   rest improves to 48 mm. Chain green, all guards OK; the tessellate
   retry did not trigger this run.
+- Iteration 24 (2026-08-19, archived `iter-027`): **THE FILLET BUG** —
+  user caught that the nose roll "wasn't done" despite iter 23's params.
+  Root cause: the 2D profile fillet vertex filter matched on v.Y/v.Z,
+  but on Plane.YZ the profile (y, z) lands on world (X=y, Y=z, Z=0) —
+  so EVERY sketch fillet silently no-oped except vertex (0, 0). All
+  silhouette radii (nose, back, marquee corners) had never applied, in
+  every iteration since the profile builder existed; the softness in
+  renders came only from the 3D edge fillets. fillet([], r) no-ops
+  silently — a selection guard should have caught this. Fixed the filter
+  to v.X/v.Y in both the shell and cheek sketches and VERIFIED each
+  corner matches exactly 1 vertex before running. The silhouette now
+  shows the real radii: nose roll R34 (cheek R42), nose bottom R32
+  (cheek R40), marquee corners R30/R20, back corners R10/R22; envelope
+  height 417.3 -> 410.6 mm (the marquee-top fillet actually removes
+  material now). panels.py side plates intentionally stay SHARP-cornered
+  (dead fillet code removed + documented): wrap panels span vertex to
+  vertex, so rounding plate corners would leave panel ends overhanging;
+  metal-build corner softness is a fab edge break, not geometry.

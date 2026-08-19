@@ -296,21 +296,16 @@ def make_cleat(v, seg_in, seg_out):
 
 
 def make_side_plate(profile, radii, cleat_bolt_pts, side):
-    """Full rounded silhouette plate, 3 mm, with clearance holes for the
-    cleat end bolts."""
+    """Full silhouette plate, 3 mm, with clearance holes for the cleat
+    end bolts. Corners stay SHARP by construction: the wrap panels span
+    vertex to vertex, so rounding a plate corner would leave the panel
+    ends overhanging. (Corner softness on a metal build is a fab-shop
+    edge break, not modeled geometry.)"""
     t = PP["panel_thickness"]
     with BuildSketch(Plane.YZ) as sk:
         with BuildLine():
             Polyline(profile, close=True)
         make_face()
-        for idx, radius in radii.items():
-            if radius is None:
-                continue
-            y, z = profile[idx]
-            vtx = sk.vertices().filter_by(
-                lambda v, y=y, z=z: abs(v.Y - y) < 1.0 and abs(v.Z - z) < 1.0
-            )
-            fillet(vtx, radius=radius)
     plate = extrude(sk.sketch, amount=t / 2, both=True)
     for cy, cz in cleat_bolt_pts:
         plate -= Pos(0, cy, cz) * Rot(0, 90, 0) * Cylinder(
