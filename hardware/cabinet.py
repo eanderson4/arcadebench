@@ -81,8 +81,8 @@ PARAMS = {
     "chin_groove_depth": 1.0,
     "chin_groove_drop": 9.0,       # mm groove center below the face top
     # --- silhouette corner radii (2D profile) ----------------------------
-    "r_nose_bottom": 30.0,
-    "r_nose_top": 26.0,
+    "r_nose_bottom": 32.0,
+    "r_nose_top": 34.0,
     "r_back_bottom": 10.0,
     "r_back_top": 22.0,
     "r_marquee_top": 30.0,
@@ -117,14 +117,15 @@ PARAMS = {
     "secondary_count": 4,
     "primary_pitch": 40.0,         # mm between primaries (front row)
     "secondary_pitch": 28.0,       # mm between secondaries (back row)
-    "primary_row_y": 56.0,         # front row (closest to the player)
+    "primary_row_y": 68.0,         # front row (closest to the player); wells
+                                   #   (Ø40) keep 4 mm margin inside the plate
     "secondary_row_y": 94.0,
     "primary_recess_dia": 40.0,    # shallow well: tactile "primary" indicator
     "primary_recess_depth": 0.8,   # below the control plate floor
     # --- control plate inlay (recessed zone under the whole cluster) ------
     "control_plate_w": 240.0,
-    "control_plate_d": 124.0,      # mm along the deck (y)
-    "control_plate_center_y": 81.0,# mm from deck front edge
+    "control_plate_d": 96.0,       # mm along the deck (y); front edge stays
+    "control_plate_center_y": 91.0,#   clear of the r_nose_top roll (~y=40)
     "control_plate_recess": 1.0,   # mm; deck 3 -> 2.0 effective (OBSF snap range)
     "control_plate_radius": 4.0,
     "option_hole_dia": 24.0,       # Sanwa OBSF-24 start/select
@@ -137,7 +138,7 @@ PARAMS = {
     "joystick_offset_y": 67.0,     # from deck front edge (40 mm wrist rest)
     "button_grid_offset_x": 15.0,  # first secondary column rel. cluster ctr
     "option_offset_x": 25.0,       # start/select straddle cabinet center
-    "option_offset_y": 126.0,
+    "option_offset_y": 120.0,
     # --- rear I/O + speaker grilles (BOM-driven) ---------------------------
     "power_switch_hole_dia": 19.0,  # Bulgin MPI002 class
     "power_switch_xz": (130.0, 40.0),  # single rear I/O row at z=40

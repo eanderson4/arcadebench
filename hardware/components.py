@@ -319,17 +319,22 @@ def nameplate_insert():
 
 
 def control_plate():
-    """Removable control-surface inlay (dark anodized), 238x122x0.8 mm.
+    """Removable control-surface inlay (dark anodized), 0.8 mm thick.
 
-    Sits in the deck's control_plate recess with a 1 mm perimeter gap and
-    0.2 mm setback. Frame: origin at the deck-layout origin (x across,
+    Sized from the deck's control_plate recess with a 1 mm perimeter gap
+    and 0.2 mm setback. Frame: origin at the deck-layout origin (x across,
     y from the deck front edge), plate spans z -0.2..-1.0 below the deck
     surface; holes match the cabinet control cutouts (primaries opened to
     the well diameter so the tactile wells stay visible).
     """
     from cabinet import PARAMS as CAB
 
-    dims = {"w": 238.0, "d": 122.0, "t": 0.8, "corner_r": 7.5}
+    dims = {
+        "w": CAB["control_plate_w"] - 2.0,
+        "d": CAB["control_plate_d"] - 2.0,
+        "t": 0.8,
+        "corner_r": CAB["control_plate_radius"] + 3.5,
+    }
     cy = CAB["control_plate_center_y"]
     with BuildSketch(Plane.XY) as sk:
         Rectangle(dims["w"], dims["d"])

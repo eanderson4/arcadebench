@@ -394,3 +394,18 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   3 mm sheet (panel_thickness) with no 3D edge rounds; for sheet metal
   that edge break is a fab-shop operation (deburr/roll), not geometry.
   Chain green, all guards OK.
+- Iteration 23 (2026-08-19, archived `iter-025`/`iter-026` / `asm-023`):
+  **the nose roll** (user: the rounding they wanted is the profile roll
+  where the control deck turns down the vertical nose, and the side plate
+  should carry the same radius — not the 3D plate-edge roundovers of
+  iter 22). r_nose_top 26 -> 34, r_nose_bottom 30 -> 32; cheek corners
+  auto-grow concentric via cheek_profile (+8 -> R42/R40). Cascade the
+  roll forced (tangent reaches y~39 on the deck): control plate recess
+  shrunk 124 -> 96 deep, center_y 81 -> 91 (spans 43..139 — clear of the
+  nose roll in front and the R20 seam blend behind); primary_row_y 56 ->
+  68 (Ø40 wells keep 4 mm margin inside the plate front edge);
+  option_offset_y 126 -> 120. components.py control_plate dims were
+  HARDCODED 238x122 (plate poked past the shrunken recess) — now derived
+  from PARAMS (recess w/d - 2 mm gap, corner_r = recess + 3.5). Wrist
+  rest improves to 48 mm. Chain green, all guards OK; the tessellate
+  retry did not trigger this run.
