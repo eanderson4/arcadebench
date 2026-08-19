@@ -320,3 +320,21 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   can be reviewed. Consult #6 notes deferred/accepted: roof depth reads
   slightly slab-like in side view after the marquee shrink (accepted for
   now); material hierarchy is render-limited (per-part colors only).
+- Iteration 19 (2026-08-19, archived `iter-019` / `asm-017`): **side cheeks
+  + top cleanup** (user refs: cream bartop demo with side cheeks wrapping
+  the front; classic bartop side-view drawing). The monocoque now grows
+  two full-silhouette side cheek plates (4 mm, outer face flush with the
+  shell sides, embedded 1 mm into the wall to fuse) whose front edge juts
+  `cheek_front_overhang`=8 mm past the nose fascia — the front of the
+  machine reads framed between two plates, matching both the reference
+  look and the flat-pack path (side plates there now carry the same
+  overhang; wrap panels stay on the base profile). Plinth groove cutter
+  extended forward so the line wraps onto the cheek front faces; the chin
+  datum groove now also wraps the cheeks (continuous shadow line around
+  the whole cabinet). Envelope depth 340 -> 348 mm. Top cleanup:
+  r_marquee_top 24->30, r_back_top 16->22, r_marquee_chin 16->20,
+  lip_blend 6->10 — softer cap and less harsh undercut under the lip.
+  Chain green: solid valid, parts 0.000 mm^3 seams, panels valid + deck
+  guard OK, assembly 28 components. Watch: cheek front vertical edges are
+  sharp 3D edges (2D silhouette radii only) — fine for sheet metal, may
+  want a small 3D fillet for the print path.

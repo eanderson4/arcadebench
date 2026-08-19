@@ -41,8 +41,11 @@ PARAMS = {
     "cabinet_depth_base": 340.0,   # mm, Y; base footprint depth
     "wall": 3.0,                   # mm shell wall
     "seam_fillet": 20.0,           # mm 3D blend at the deck/face seam edge
-    "lip_blend": 6.0,              # mm 3D fillet under the marquee lip
+    "lip_blend": 10.0,             # mm 3D fillet under the marquee lip
     "corner_fillet": 12.0,         # mm 3D fillet on vertical outer corners
+    # --- side cheeks (side plates proud of the nose fascia) ---------------
+    "cheek_thickness": 4.0,        # mm; outer face flush with shell sides
+    "cheek_front_overhang": 8.0,   # mm cheeks jut forward of the nose fascia
     # --- control deck ---------------------------------------------------
     "control_deck_depth": 155.0,   # mm, Y; interface span 139 + ~10% buffer
     "control_deck_height": 100.0,  # mm, Z; deck surface height at the seam
@@ -77,9 +80,9 @@ PARAMS = {
     "r_nose_bottom": 22.0,
     "r_nose_top": 18.0,
     "r_back_bottom": 10.0,
-    "r_back_top": 16.0,
-    "r_marquee_top": 24.0,
-    "r_marquee_chin": 16.0,
+    "r_back_top": 22.0,
+    "r_marquee_top": 30.0,
+    "r_marquee_chin": 20.0,
     # --- screen (13.5" 3:2 3004x2000 hi-DPI IPS + HDMI driver board) --------
     "panel_outline_w": 296.0,      # mm module outline — confirm on arrival
     "panel_outline_h": 206.0,
@@ -281,6 +284,29 @@ def build_cabinet(p=None):
         print(f"  ! vertical corner fillet skipped: {exc}")
     solid = solid.hollow([], -p["wall"])
 
+    # --- side cheeks: full-silhouette plates proud of the nose fascia -----
+    # Sheet-metal side-plate look: the cheeks frame the front of the machine
+    # and the nose fascia sits recessed between them. Outer face flush with
+    # the shell sides, plate embedded 1 mm into the wall so it always fuses.
+    ov, ct = p["cheek_front_overhang"], p["cheek_thickness"]
+    cheek_profile = [(y - ov if abs(y) < 1e-9 else y, z) for y, z in profile]
+    for sx in (-1, 1):
+        with BuildSketch(Plane.YZ) as csk:
+            with BuildLine():
+                Polyline(cheek_profile, close=True)
+            make_face()
+            for idx, radius in radii.items():
+                if radius is None:
+                    continue
+                y, z = cheek_profile[idx]
+                vtx = csk.vertices().filter_by(
+                    lambda v, y=y, z=z: abs(v.Y - y) < 1.0 and abs(v.Z - z) < 1.0
+                )
+                fillet(vtx, radius=radius)
+        solid += Pos(sx * (p["cabinet_width"] / 2 - ct / 2), 0, 0) * extrude(
+            csk.sketch, amount=ct / 2, both=True
+        )
+
     wall = p["wall"]
 
     # --- display window --------------------------------------------------
@@ -345,10 +371,17 @@ def build_cabinet(p=None):
         0, gd / 2 - 0.2, p["display_face_length"] - p["chin_groove_drop"]
     ) * Box(p["cabinet_width"] + 2, gd + 0.4, gw)
 
-    # recessed plinth line across the front fascia (wraps onto the sides)
+    # recessed plinth line across the front fascia (extended forward so the
+    # line wraps onto the proud cheek front faces too)
     solid -= Pos(
-        0, p["plinth_depth"] / 2 - 0.5, p["plinth_z_bottom"] + p["plinth_height"] / 2
-    ) * Box(p["cabinet_width"] + 2, p["plinth_depth"] + 1.0, p["plinth_height"])
+        0,
+        p["plinth_depth"] / 2 - 0.5 - p["cheek_front_overhang"] / 2,
+        p["plinth_z_bottom"] + p["plinth_height"] / 2,
+    ) * Box(
+        p["cabinet_width"] + 2,
+        p["plinth_depth"] + 1.0 + p["cheek_front_overhang"],
+        p["plinth_height"],
+    )
 
     # --- rear I/O cutouts (through the back wall) --------------------------
     back_y = p["cabinet_depth_base"]

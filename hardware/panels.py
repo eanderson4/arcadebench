@@ -324,6 +324,10 @@ def main():
     PANELS_DIR.mkdir(parents=True, exist_ok=True)
     profile, radii, info = side_profile(CAB)
     segs = seg_data(profile)
+    # side plates carry the cheek overhang: proud of the nose/bottom front
+    # edges, matching the monocoque cheeks (wrap panels stay on the profile)
+    ov = CAB["cheek_front_overhang"]
+    side_pts = [(y - ov if abs(y) < 1e-9 else y, z) for y, z in profile]
     t = PP["panel_thickness"]
 
     parts = {}
@@ -342,7 +346,7 @@ def main():
         cleat_pts.append(ctr)
 
     for side, sname in ((-1, "l"), (1, "r")):
-        parts[f"side_{sname}"] = make_side_plate(profile, radii, cleat_pts, side)
+        parts[f"side_{sname}"] = make_side_plate(side_pts, radii, cleat_pts, side)
 
     # --- deck hole-position guard (a y-mirror bug slipped through the
     # visuals once; verify holes land at layout positions, world coords) ---
