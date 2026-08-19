@@ -77,7 +77,9 @@ PARAMS = {
                                    # (consults: soften the base/neck shoulder)
     # --- hood speakers (slots in the hood floor, firing down) -------------
     "hood_speaker_spacing": 200.0, # mm between grille centers (x)
-    "hood_speaker_offset": 29.0,   # mm from the chin along the hood floor
+    "hood_speaker_offset": 32.0,   # mm from the chin along the hood floor;
+                                   # + 2 mm gasket lift = zero shell overlap
+                                   # (speaker_scan.py, iter 31)
     "hood_speaker_slot_len": 48.0, # overall, incl. the radiused ends
     "hood_speaker_slot_w": 4.0,
     "hood_speaker_pitch": 9.0,
@@ -706,6 +708,7 @@ def build_cabinet(p=None):
     )
 
     deck_holes = []  # (x, y, dia) of visible control holes, for rim chamfers
+    s_deg = p["control_deck_slope_deg"]  # holes cut square to the sloped deck
     for player in range(p["players"]):
         cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
             + p["cluster_offset_x"]
@@ -713,7 +716,7 @@ def build_cabinet(p=None):
         # joystick: shaft hole + 4x plate mounting holes
         jx = cluster_x + p["joystick_offset_x"]
         jy = p["joystick_offset_y"]
-        solid -= Pos(jx, jy, deck_z(jy)) * Cylinder(
+        solid -= Pos(jx, jy, deck_z(jy)) * Rot(s_deg, 0, 0) * Cylinder(
             radius=p["joystick_shaft_hole_dia"] / 2, height=cut_h
         )
         deck_holes.append((jx, jy, p["joystick_shaft_hole_dia"] / 2))
@@ -724,14 +727,16 @@ def build_cabinet(p=None):
                     jx + sx * p["jlf_mount_spacing_x"] / 2,
                     my,
                     deck_z(my),
-                ) * Cylinder(radius=p["jlf_mount_hole_dia"] / 2, height=cut_h)
+                ) * Rot(s_deg, 0, 0) * Cylinder(
+                    radius=p["jlf_mount_hole_dia"] / 2, height=cut_h
+                )
 
         # buttons: front row = 2 primaries (Ø30, recessed well), back row =
         # 4 secondaries (Ø24); primaries centered under the middle secondaries
         for i in range(p["secondary_count"]):
             bx = cluster_x + p["button_grid_offset_x"] + i * p["secondary_pitch"]
             by = p["secondary_row_y"]
-            solid -= Pos(bx, by, deck_z(by)) * Cylinder(
+            solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Cylinder(
                 radius=p["secondary_hole_dia"] / 2, height=cut_h
             )
             deck_holes.append((bx, by, p["secondary_hole_dia"] / 2))
@@ -740,13 +745,15 @@ def build_cabinet(p=None):
             bx = cluster_x + p["button_grid_offset_x"] + p["secondary_pitch"] * 1.5 \
                 + (i - 0.5) * p["primary_pitch"]
             by = p["primary_row_y"]
-            solid -= Pos(bx, by, deck_z(by)) * Cylinder(
+            solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Cylinder(
                 radius=p["primary_hole_dia"] / 2, height=cut_h
             )
             deck_holes.append((bx, by, p["primary_recess_dia"] / 2))
             # tactile recess well around each primary (below the plate floor)
             rd = p["primary_recess_depth"] + p["control_plate_recess"]
-            solid -= Pos(bx, by, deck_z(by) - rd / 2 + 0.1) * Cylinder(
+            solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Pos(
+                0, 0, -rd / 2 + 0.1
+            ) * Cylinder(
                 radius=p["primary_recess_dia"] / 2, height=rd + 0.2
             )
 
@@ -755,7 +762,9 @@ def build_cabinet(p=None):
         oy = p["option_offset_y"]
         solid -= Pos(
             sx * p["option_offset_x"], oy, deck_z(oy)
-        ) * Cylinder(radius=p["option_hole_dia"] / 2, height=cut_h)
+        ) * Rot(s_deg, 0, 0) * Cylinder(
+            radius=p["option_hole_dia"] / 2, height=cut_h
+        )
         deck_holes.append(
             (sx * p["option_offset_x"], oy, p["option_hole_dia"] / 2)
         )

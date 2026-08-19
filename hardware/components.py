@@ -322,9 +322,10 @@ def control_plate():
     """Removable control-surface inlay (dark anodized), 0.8 mm thick.
 
     Sized from the deck's control_plate recess with a 1 mm perimeter gap
-    and 0.2 mm setback. Frame: origin at the deck-layout origin (x across,
-    y from the deck front edge), plate spans z -0.2..-1.0 below the deck
-    surface; holes match the cabinet control cutouts (primaries opened to
+    and 0.2 mm setback. Frame: LOCAL to the plate — origin at the plate
+    center, z 0..t (assembly seats the top face 0.2 mm below the deck
+    surface via the slope-aligned deck plane); holes match the cabinet
+    control cutouts relative to the plate center (primaries opened to
     the well diameter so the tactile wells stay visible).
     """
     from cabinet import PARAMS as CAB
@@ -339,12 +340,12 @@ def control_plate():
     with BuildSketch(Plane.XY) as sk:
         Rectangle(dims["w"], dims["d"])
         fillet(sk.vertices(), radius=dims["corner_r"])
-    plate = Pos(0, cy, 0) * extrude(sk.sketch, amount=dims["t"])
+    plate = extrude(sk.sketch, amount=dims["t"])
     cut_h = dims["t"] + 2
 
     def hole(x, y, dia):
         nonlocal plate
-        plate -= Pos(x, y, dims["t"] / 2) * Cylinder(radius=dia / 2, height=cut_h)
+        plate -= Pos(x, y - cy, dims["t"] / 2) * Cylinder(radius=dia / 2, height=cut_h)
 
     for player in range(CAB["players"]):
         cx = (player - (CAB["players"] - 1) / 2) * CAB["player_spacing"] \

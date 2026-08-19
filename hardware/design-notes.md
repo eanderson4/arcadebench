@@ -518,3 +518,23 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   places it behind the panel (29 components now). Chain green;
   retainer valid, 1 body. Flat-pack (panels.py) retainer path still
   TODO — sheet-metal version wants a bent angle frame, not this part.
+- Iteration 31 (2026-08-19, archived `iter-036`, assembly `asm-032`):
+  **fit check + collision purge**. New `fit_check.py` intersects every
+  placed component with the shell and fails over 1 mm^3; first run
+  flagged 14 components. Root causes + fixes: (1) display stack
+  offsets in assembly.py predated the 4 mm window doubler — mask,
+  panel, and retainer frame were all ~1.5 mm embedded; now keyed off
+  wall+doubler. (2) control_plate was built in absolute deck coords
+  AND placed via the deck plane (double transform — it sliced through
+  the seam); components.py now builds it in a local plate frame.
+  (3) deck holes were cut vertical while the deck slopes 8 deg and
+  buttons were placed vertical — bezel rims wedged ~1.5 mm into the
+  deck; holes + buttons + primary wells are all cut/seated square to
+  the deck normal now. (4) SBC rear edge sat in the rear-wall corner
+  fillet; moved y 290 -> 272. (5) speakers: the Ø52 basket cannot fit
+  between the hood corner fillets at floor level at ANY offset
+  (speaker_scan.py parametric probe) — now at offset 32 with a 2 mm
+  foam-gasket lift (standard speaker sealing practice), zero overlap.
+  Result: 28 components, max overlap 0.294 mm^3 (known JLF plate
+  wedge on the sloped deck, by design). Bonus: the control plate now
+  renders as the dark inlay it was meant to be. Chain green.

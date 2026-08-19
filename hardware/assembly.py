@@ -28,11 +28,14 @@ LAYOUT = {
     "mask_thickness": 0.4,       # mm printed black mask behind the glass
     "mask_overlap": 2.0,         # mm mask overlaps the panel active area
     # --- interior boards (floor-mounted, z = wall) ------------------------
-    "sbc_pos": (0.0, 290.0),     # x, y of board center
+    "sbc_pos": (0.0, 272.0),     # x, y of board center; 275+ embedded the
+                                 # rear edge in the rear-wall fillet (fit 31)
     "encoder_pos": (0.0, 110.0),
     "amp_pos": (-100.0, 300.0),
     "buck_pos": (-60.0, 315.0),
     "speaker_height": 22.0,      # 2" driver stack height (catalog bbox)
+    "speaker_gasket": 2.0,       # foam seal under the flange; also clears the
+                                 # hood corner fillets (speaker_scan.py)
     # --- rear panel (outer surface y = cabinet_depth_base) ----------------
     "power_switch_xz": (130.0, 40.0),
     "dc_jack_xz": (-130.0, 40.0),
@@ -68,13 +71,15 @@ def display_face_plane():
 
 
 def place_components():
-    """Return (items, records): items = [(shape, color)] for rendering,
-    records = [{name, at}] for the archive meta."""
-    items, records = [], []
+    """Return (items, records, groups): items = [(shape, color)] for
+    rendering, records = [{name, at}] for the archive meta, groups =
+    [(name, [shape, ...])] for fit checks (shapes in world coords)."""
+    items, records, groups = [], [], []
 
     def add(name, placed_parts, at):
         items.extend(placed_parts)
         records.append({"name": name, "at": [round(v, 1) for v in at]})
+        groups.append((name, [s for s, _ in placed_parts]))
 
     wall = CAB["wall"]
 
@@ -84,9 +89,14 @@ def place_components():
     pc_h = CAB["glass_opening_h"] + 2 * CAB["polycarb_overlap"]
     rabbet_depth = CAB["polycarb_thickness"] + 0.2
     pc_off = wall + CAB["doubler_thickness"] - rabbet_depth / 2
-    mask_off = wall + CAB["polycarb_thickness"] + LAYOUT["mask_thickness"] / 2 + 0.1
+    # mask + panel sit BEHIND the doubler's inner face (the panel bears on
+    # the doubler ring around the rabbet); the clamp frame meets the boss
+    # tips at wall + doubler + gap + panel_thickness (retainer_boss_depth).
+    mask_off = (
+        wall + CAB["doubler_thickness"] + 0.1 + LAYOUT["mask_thickness"] / 2
+    )
     panel_off = (
-        wall + CAB["polycarb_thickness"] + LAYOUT["panel_gap"]
+        wall + CAB["doubler_thickness"] + LAYOUT["panel_gap"]
         + CAB["panel_thickness"] / 2
     )
 
@@ -119,7 +129,7 @@ def place_components():
     from parts import retainer_frame
 
     frame_off = (
-        wall + CAB["polycarb_thickness"] + LAYOUT["panel_gap"]
+        wall + CAB["doubler_thickness"] + LAYOUT["panel_gap"]
         + CAB["panel_thickness"]
     )
     add(
@@ -149,8 +159,9 @@ def place_components():
         (0, 0.1, 0),
     )
 
-    # control plate: flat insert on the slope-aligned deck recess, 0.2 mm
-    # setback below the deck surface
+    # control plate: local-frame insert placed via the slope-aligned deck
+    # plane; origin 1.0 mm below the deck surface along the normal seats the
+    # plate's top face (local z = t = 0.8) at the designed 0.2 mm setback
     s_slope0 = math.radians(CAB["control_deck_slope_deg"])
     nrm = (0.0, -math.sin(s_slope0), math.cos(s_slope0))  # deck outward normal
     cy0 = CAB["control_plate_center_y"]
@@ -190,14 +201,17 @@ def place_components():
             (jx, jy, jz),
         )
 
-        # buttons: 2 primaries (red, front row) + 4 secondaries (white)
+        # buttons: 2 primaries (red, front row) + 4 secondaries (white);
+        # seated square to the sloped deck (holes are cut the same way)
+        s_seat = CAB["control_deck_slope_deg"]
         for i in range(CAB["secondary_count"]):
             bx = cluster_x + CAB["button_grid_offset_x"] + i * CAB["secondary_pitch"]
             by = CAB["secondary_row_y"]
             _, btn_parts, _ = comp.button_obsf24(color=comp.WHITE)
             add(
                 f"secondary_p{player + 1}_{i}",
-                [(Pos(bx, by, deck_z(by)) * s, c) for s, c in btn_parts],
+                [(Pos(bx, by, deck_z(by)) * Rot(s_seat, 0, 0) * s, c)
+                 for s, c in btn_parts],
                 (bx, by, deck_z(by)),
             )
         for i in range(CAB["primary_count"]):
@@ -207,7 +221,8 @@ def place_components():
             _, btn_parts, _ = comp.button_obsf30(color=comp.RED)
             add(
                 f"primary_p{player + 1}_{i}",
-                [(Pos(bx, by, deck_z(by)) * s, c) for s, c in btn_parts],
+                [(Pos(bx, by, deck_z(by)) * Rot(s_seat, 0, 0) * s, c)
+                 for s, c in btn_parts],
                 (bx, by, deck_z(by)),
             )
 
@@ -217,7 +232,9 @@ def place_components():
         _, opt_parts, _ = comp.button_obsf24(color=LAYOUT["option_color"])
         add(
             f"option_{'sel' if sx < 0 else 'start'}",
-            [(Pos(sx * CAB["option_offset_x"], oy, deck_z(oy)) * s, c) for s, c in opt_parts],
+            [(Pos(sx * CAB["option_offset_x"], oy, deck_z(oy))
+              * Rot(CAB["control_deck_slope_deg"], 0, 0) * s, c)
+             for s, c in opt_parts],
             (sx * CAB["option_offset_x"], oy, deck_z(oy)),
         )
 
@@ -241,7 +258,7 @@ def place_components():
     sin_t, cos_t = math.sin(t_tilt), math.cos(t_tilt)
     _, _, sinfo = side_profile(CAB)
     spk_off = CAB["hood_speaker_offset"]
-    lift = wall + LAYOUT["speaker_height"]
+    lift = wall + LAYOUT["speaker_gasket"] + LAYOUT["speaker_height"]
     spk_y = sinfo["chin_y"] + cos_t * spk_off + sin_t * lift
     spk_z = sinfo["chin_z"] - sin_t * spk_off + cos_t * lift
     for sx in (-1, 1):
@@ -291,7 +308,7 @@ def place_components():
         fh = foot_dims["h"]
         add(f"foot_{i}", [(Pos(x, y, -fh) * s, c) for s, c in foot_parts], (x, y, -fh))
 
-    return items, records
+    return items, records, groups
 
 
 def archive_run(records):
@@ -317,7 +334,7 @@ def main():
     shell = build_cabinet()
     print(f"enclosure valid: {shell.is_valid}, solids: {len(shell.solids())}")
 
-    items, records = place_components()
+    items, records, _ = place_components()
     print(f"placed {len(records)} components")
 
     render_parts([(shell, CREAM)] + items, OUT_DIR, prefix="asm")
