@@ -102,9 +102,14 @@ Core design rules:
 
 ## Hardware
 
-A parametric bartop cabinet enclosure for the platform is in design — see the
-[hardware guide](docs/HARDWARE.md) for the spec, verified component
+ArcadeBench is software first, but we're designing a physical home for it: a
+parametric single-player bartop cabinet (340 × 340 × 441 mm, 13.5″ 3:2
+hi-DPI display, Sanwa controls) that may become a reference hardware build
+for in-person play. Everything is public — see the
+[hardware guide](docs/HARDWARE.md) for the spec, BOM, verified component
 dimensions, and the Build123d workflow.
+
+![Assembled bartop render](docs/images/hardware/asm_iso.png)
 
 ## Production and contributions
 

@@ -80,3 +80,13 @@ Status: **iteration 16** — 1P pivot with the 13.5″ 3:2 panel; shell valid,
 3 parts printable (0.000 mm³ seam overlap), 26 BOM components placed in the
 assembly fit check, 18 flat-pack panels valid. Next: display panel retainer
 brackets and the push-to-open keyboard door under consideration.
+
+## Current design (iteration 16)
+
+| Assembled | Front | Side |
+| --- | --- | --- |
+| ![assembled iso](images/hardware/asm_iso.png) | ![front](images/hardware/asm_front.png) | ![side](images/hardware/asm_side.png) |
+
+| Printable split (3 parts) | Flat-pack panel path (18 parts) |
+| --- | --- |
+| ![exploded parts](images/hardware/exploded_iso.png) | ![exploded panels](images/hardware/panels_exploded_iso.png) |
