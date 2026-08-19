@@ -464,7 +464,7 @@ def rubber_foot():
     Frame: origin at bottom face center (the face that touches the
     table), +Z up into the cabinet.
     """
-    dims = {"dia": 20.0, "h": 8.0}
+    dims = {"dia": 28.0, "h": 10.0}
     foot = Pos(0, 0, dims["h"] / 2) * Cylinder(dims["dia"] / 2, dims["h"])
     return "rubber_foot", [(foot, BLACK)], dims
 

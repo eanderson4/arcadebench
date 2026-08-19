@@ -20,7 +20,7 @@ from pathlib import Path
 
 from build123d import Box, Cylinder, Pos, Rot, export_step, export_stl
 
-from cabinet import OUT_DIR, PARAMS as CAB, build_cabinet
+from cabinet import OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
 from render import render_parts
 
 PARTS_DIR = OUT_DIR / "parts"
@@ -38,20 +38,70 @@ SPLIT = {
     "insert_hole_dia": 4.2,        # M3 heat-set insert pilot (4.0-4.2 spec)
     "insert_hole_depth": 7.0,
     "screw_hole_dia": 3.4,         # M3 clearance
-    # horizontal-seam joint positions (x, y) — on the wall ring at that z;
-    # x/y chosen to embed blocks ~0.5 mm into the adjacent wall (coplanar
-    # fuses produce invalid solids)
-    "deck_seam_joints": [(-160.5, 250), (160.5, 250), (-145, 330.5),
-                         (145, 330.5), (-145, 163), (145, 163)],
-    "hood_seam_joints": [(-160.5, 275), (160.5, 275), (-145, 332.5),
-                         (145, 332.5), (-145, 218), (145, 218)],
-    # vertical-seam joint positions (y, z); blocks fused to floor/back wall
+    # horizontal-seam joint positions (x, y) — on the wall ring at that z.
+    # y="rear"/"front" = auto: derived from the profile's wall at the seam
+    # height (the neck taper moves the rear wall, the tilt moves the face;
+    # static y values end up floating in the cavity). Side entries stay
+    # static; blocks embed ~0.5 mm into the wall (coplanar fuses produce
+    # invalid solids).
+    "deck_seam_joints": [(-160.5, 250), (160.5, 250), (-145, "rear"),
+                         (145, "rear"), (-145, "front"), (145, "front")],
+    "hood_seam_joints": [(-160.5, 275), (160.5, 275), (-145, "rear"),
+                         (145, "rear"), (-145, "front"), (145, "front")],
+    # vertical-seam joint positions (y, z); y=None = auto (rear wall at z)
     # (used only when split_vertical is on; names must NOT collide with the
     # horizontal-seam lists above)
     "base_v_seam_joints": [(120, 9.5), (190, 9.5), (260, 9.5)],   # into floor
-    "mid_v_seam_joints": [(330.5, 150), (330.5, 205), (330.5, 260)],
-    "hood_v_seam_joints": [(330.5, 340), (330.5, 370), (330.5, 395)],
+    "mid_v_seam_joints": [(None, 150), (None, 205), (None, 260)],
+    "hood_v_seam_joints": [(None, 340), (None, 370), (None, 395)],
 }
+
+
+def _wall_y(z, pick):
+    """Outermost profile-edge y crossing height z; pick=max for the rear
+    wall, min for the front (display face)."""
+    profile, _, _ = side_profile(CAB)
+    best = None
+    n = len(profile)
+    for i in range(n):
+        a, b = profile[i], profile[(i + 1) % n]
+        if a[1] == b[1] or (a[1] - z) * (b[1] - z) > 0:
+            continue
+        t = (z - a[1]) / (b[1] - a[1])
+        y = a[0] + t * (b[0] - a[0])
+        if best is None or (pick is max and y > best) or (pick is min and y < best):
+            best = y
+    if best is None:
+        raise ValueError(f"no wall at z={z}")
+    return best
+
+
+def rear_joint_y(z):
+    """Y for a seam-joint block fusing into the rear wall at height z:
+    in past the wall and half a block, embedding ~0.5 mm (the neck taper
+    moves the rear wall; static y values end up in air)."""
+    return _wall_y(z, max) - CAB["wall"] - SPLIT["joint_block"] / 2 + 0.5
+
+
+def front_joint_y(z):
+    """Same against the front (display-face) wall — the face y at a given
+    z moves with display_tilt_deg."""
+    return _wall_y(z, min) + CAB["wall"] + SPLIT["joint_block"] / 2 - 0.5
+
+
+def _resolve(positions, z=None):
+    """Fill in auto entries: "rear"/"front" derive y from the wall at the
+    seam z (horizontal seams) or the joint's own z (vertical seams)."""
+    out = []
+    for a, b in positions:
+        if z is not None:  # horizontal seam, (x, y)
+            y = (rear_joint_y(z) if b == "rear"
+                 else front_joint_y(z) if b == "front" else b)
+            out.append((a, y))
+        else:              # vertical seam, (y, z)
+            y = rear_joint_y(b) if a is None else a
+            out.append((y, b))
+    return out
 
 
 def slice_box(z0, z1, x0, x1):
@@ -105,8 +155,8 @@ def build_parts():
     mid = solid & slice_box(zd, zh, -w - 50, w + 50)
     hood = solid & slice_box(zh, CAB["cabinet_depth_base"] + 500, -w - 50, w + 50)
 
-    base, mid = h_seam_joints(base, mid, zd, p["deck_seam_joints"])
-    mid, hood = h_seam_joints(mid, hood, zh, p["hood_seam_joints"])
+    base, mid = h_seam_joints(base, mid, zd, _resolve(p["deck_seam_joints"], zd))
+    mid, hood = h_seam_joints(mid, hood, zh, _resolve(p["hood_seam_joints"], zh))
 
     layers = [("base", base), ("mid", mid), ("hood", hood)]
     v_joints = {
@@ -120,7 +170,7 @@ def build_parts():
         if p["split_vertical"]:
             left = layer & slice_box(-50, 500, -w - 50, 0)
             right = layer & slice_box(-50, 500, 0, w + 50)
-            left, right = v_seam_joints(left, right, v_joints[name])
+            left, right = v_seam_joints(left, right, _resolve(v_joints[name]))
             parts[f"{name}_l"] = left
             parts[f"{name}_r"] = right
         else:
@@ -160,14 +210,17 @@ def main():
 
     bed = SPLIT["print_bed"]
     for name, part in parts.items():
-        ok = part.is_valid and len(part.solids()) == 1
+        valid = part.is_valid
+        bodies = len(part.solids())
         bb = part.bounding_box()
         dims = [bb.max.X - bb.min.X, bb.max.Y - bb.min.Y, bb.max.Z - bb.min.Z]
         fits = all(d <= bed for d in dims)
         print(
-            f"{name:8s} valid={ok}  dims={dims[0]:.0f}x{dims[1]:.0f}x"
-            f"{dims[2]:.0f} mm  fits {bed:.0f} bed: {fits}"
+            f"{name:8s} valid={valid} bodies={bodies}  dims={dims[0]:.0f}x"
+            f"{dims[1]:.0f}x{dims[2]:.0f} mm  fits {bed:.0f} bed: {fits}"
         )
+        if not valid or bodies != 1:
+            raise RuntimeError(f"part {name}: valid={valid}, bodies={bodies}")
         export_step(part, str(PARTS_DIR / f"{name}.step"))
         export_stl(part, str(PARTS_DIR / f"{name}.stl"))
 

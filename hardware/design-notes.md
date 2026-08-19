@@ -448,3 +448,34 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   mm (undercut shortens the footprint; smaller marquee radii restore a
   little height vs iter 25). panels.py inherits the tilted nose segment
   for free (shared side_profile).
+- Iteration 27 (2026-08-19, archived `iter-031`, assembly `asm-028`):
+  **S3-crt-slim identity adopted** (style study: 4 wells — modern /
+  crt-deep / crt-slim / retro-full; Codex + Opus + Sonnet unanimous for
+  crt-slim: "premium, not nostalgic; the proud bezel is the hero
+  detail"). Params: display_tilt_deg 15 -> 12, neck taper ON
+  (neck_depth 100, back_taper_z 120, neck_join_z 140, r_back_taper 25 —
+  the consults' "soften the shoulder" note), marquee 68/58 -> 63/56,
+  window masked to 4:3 (glass 290x200 -> 253x190; games render 4:3),
+  proud bezel ring ON (12 mm wide, 3 mm proud; separate frame part on
+  the sheet-metal path), reveal_offset 7 -> 16 (frames the bezel), chin
+  groove drop 9 -> 5.5 (was going to collide with the reveal ring at
+  the new tilt). Consult-driven tactile batch in the same pass: feet
+  Ø20x8 -> Ø28x10, hood speaker slots 5 -> 4 rows of capsules
+  (radiused ends), 9 vertical rear vent fins z=85 (matches panels).
+  Side gill vents: 5 capsule slots (44x4, pitch 10) through both
+  cheeks at the neck zone (y=236, z=255) — vent the display-driver
+  cavity; mirrored on the flat-pack side plates. Marquee face stays
+  nameplate-only per user (no forward vents). Bug fix: parts.py seam
+  joints were STATIC y positions from the full-depth/15-deg geometry —
+  with the taper the rear blocks floated in air and the front blocks in
+  the cavity (mid/hood had 3 bodies; the report conflated is_valid
+  with solids==1). Joint Y now derives from the profile at the seam
+  height (rear_joint_y / front_joint_y); the report prints valid and
+  bodies separately and RAISES unless every part is a single valid
+  body. Envelope 340 x 346.5 x 411.1 mm, volume 2420 cm^3. Chain
+  green: parts 3x single-body, panels 22 valid (new taper + neck
+  panels), assembly 28 components. Known render quirk: cabinet-only
+  FRONT renders hide the window — the interior neck wall is parallel
+  to the face, so it catches identical light (two-sided shading);
+  geometry verified open by probes + tessellation scans; assembly
+  renders show the dark panel correctly.

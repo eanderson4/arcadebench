@@ -28,24 +28,33 @@ without restructuring the model.
   2 × OBSF-24 start/select.
 - **13.5″ 3:2 3004×2000 hi-DPI IPS** (~267 PPI) behind a 2.5 mm
   polycarbonate window with printed black mask; display deck tilted back
-  15° from vertical. First-party games render 3:2 native, edge to edge.
-- Envelope **340 × 348 × 417 mm** — the 1P pivot let the screen fill ~84%
-  of the face (the 2P version capped at ~49% because the controls set the
-  width floor). Full-silhouette **side cheek plates** frame the front: a
-  uniform 8 mm buffer around the front matter — proud of the deck surface
-  (the controls sit in a shallow tray) and proud of the recessed nose
-  fascia — with corner radii grown by the offset so the gap stays
-  constant around the corners (the sheet-metal side-plate look; the
-  flat-pack path shares the same overhang).
+  12° from vertical. The mask frames a **4:3 window** (253 × 190 mm)
+  with a proud 12 mm bezel ring — the S3 "crt-slim" identity (style
+  study, iteration 27): CRT cues on a slim tapered-neck skeleton.
+  First-party games render 4:3 into the window.
+- Envelope **340 × 346.5 × 411 mm** — the 1P pivot let the screen fill
+  ~84% of the face (the 2P version capped at ~49% because the controls
+  set the width floor). The back wall tapers above the deck
+  (`neck_depth` 100 mm — parallel to the face, keeping the 90°-bend
+  rule) so the display column reads slim without giving up base depth
+  for the computer. Full-silhouette **side cheek plates** frame the
+  front: a uniform 8 mm buffer around the front matter — proud of the
+  deck surface (the controls sit in a shallow tray) and proud of the
+  recessed nose fascia — with corner radii grown by the offset so the
+  gap stays constant around the corners (the sheet-metal side-plate
+  look; the flat-pack path shares the same overhang). Five **gill
+  vents** through each cheek at the neck zone vent the display-driver
+  cavity.
 - 90°-bend hood box (floor/top perpendicular to the display face) with
   down-firing speaker slots in the hood floor and a magnetic swappable
-  nameplate inlay on the marquee face.
+  nameplate inlay on the marquee face. Rear ventilation fins above the
+  I/O row.
 - Wall thickness 3 mm, internal ribs, fastener bosses accessible from the
   underside, no upward-facing shell seams.
 - Two build paths from the same parametric model: **3 printable parts**
   (base / face-column / hood, hidden M3 heat-set-insert joints, all fit a
-  360 mm bed) or a **flat-pack of 8 wrap panels + 8 cleats + 2 side
-  plates** — the sheet-aluminum path (~3.2 kg in 2 mm 5052).
+  360 mm bed) or a **flat-pack of 10 wrap panels + 10 cleats + 2 side
+  plates** — the sheet-aluminum path (~3.1 kg in 2 mm 5052).
 
 ## Bill of materials
 

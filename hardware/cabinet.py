@@ -55,19 +55,33 @@ PARAMS = {
     "control_deck_height": 100.0,  # mm, Z; deck surface height at the seam
     "control_deck_slope_deg": 8.0, # deck slopes down toward the front
     # --- display deck + marquee ------------------------------------------
-    "display_tilt_deg": 15.0,      # from vertical, leaning back
+    # S3-crt-slim identity (style study, unanimous consult pick): CRT cues
+    # on a slim skeleton — near-vertical face, tapered neck, proud bezel,
+    # 4:3 masked window
+    "display_tilt_deg": 12.0,      # from vertical, leaning back
     "display_face_length": 245.0,  # mm along slope, seam -> face top
     # hood is a rectangular box: floor/top PERPENDICULAR to the display
     # face, marquee face PARALLEL to it — all brake bends 90 deg
-    "marquee_height": 68.0,        # mm, chin -> marquee top, parallel to face
-    "marquee_overhang": 58.0,      # mm chin forward of face top, perp. to face
+    "marquee_height": 63.0,        # mm, chin -> marquee top, parallel to face
+    "marquee_overhang": 56.0,      # mm chin forward of face top, perp. to face
+    # --- neck (display column behind the screen) --------------------------
+    # neck_depth: perpendicular distance from the display face to the neck
+    # back line (parallel to the face, so the hood/top bends stay 90 deg).
+    # None = full-depth vertical back (whole cabinet cabinet_depth_base deep).
+    # When set, the back wall rises vertically to back_taper_z, then tapers
+    # in a straight run to the neck line at neck_join_z.
+    "neck_depth": 100.0,           # mm; consults: don't exceed ~100
+    "back_taper_z": 120.0,         # mm; just above the deck/seam zone
+    "neck_join_z": 140.0,          # mm where the taper meets the neck line
+    "r_back_taper": 25.0,          # mm 2D radius on both taper corners
+                                   # (consults: soften the base/neck shoulder)
     # --- hood speakers (slots in the hood floor, firing down) -------------
     "hood_speaker_spacing": 200.0, # mm between grille centers (x)
     "hood_speaker_offset": 29.0,   # mm from the chin along the hood floor
-    "hood_speaker_slot_len": 44.0,
+    "hood_speaker_slot_len": 48.0, # overall, incl. the radiused ends
     "hood_speaker_slot_w": 4.0,
-    "hood_speaker_pitch": 8.0,
-    "hood_speaker_rows": 5,
+    "hood_speaker_pitch": 9.0,
+    "hood_speaker_rows": 4,
     # --- marquee nameplate (magnetic swappable inlay) ---------------------
     "nameplate_w": 200.0,
     "nameplate_h": 48.0,
@@ -79,7 +93,16 @@ PARAMS = {
     # --- chin datum groove (shadow line under the hood) -------------------
     "chin_groove_width": 3.0,      # mm along-slope groove height
     "chin_groove_depth": 1.0,
-    "chin_groove_drop": 9.0,       # mm groove center below the face top
+    "chin_groove_drop": 5.5,       # mm groove center below the face top
+                                   # (hugs the chin; stays clear of the
+                                   # reveal ring around the 4:3 window)
+    # --- side vents (gill slots through both cheeks, neck zone) -----------
+    "side_vent_count": 5,
+    "side_vent_slot_len": 44.0,    # mm along Y (capsule, radiused ends)
+    "side_vent_slot_w": 4.0,
+    "side_vent_pitch": 10.0,
+    "side_vent_y": 236.0,          # centered on the neck at z ~255
+    "side_vent_z": 255.0,          # vents the display-driver cavity
     # --- silhouette corner radii (2D profile) ----------------------------
     "r_nose_bottom": 22.4,         # iter 25: silhouette radii scaled to 70%
     "r_nose_top": 23.8,            # (iter 24's full radii read too soft)
@@ -94,8 +117,9 @@ PARAMS = {
     "panel_thickness": 5.0,        # slim laptop-class panel (driver board separate)
     "panel_active_w": 285.0,       # mm active area
     "panel_active_h": 190.0,
-    "glass_opening_w": 290.0,      # mm visible glass/mask area (reference look:
-    "glass_opening_h": 200.0,      #   big glass, black mask, active centered)
+    "glass_opening_w": 253.0,      # mm visible glass/mask area — 4:3 mask
+    "glass_opening_h": 190.0,      #   inside the 3:2 panel (S3 CRT cue);
+                                   #   games render 4:3 into it
     "window_corner_radius": 10.0,  # mm rounded corners on the glass opening
     "polycarb_thickness": 2.5,
     "polycarb_overlap": 6.0,       # mm sheet beyond window opening
@@ -103,9 +127,14 @@ PARAMS = {
     "doubler_thickness": 4.0,      # mm inner reinforcement around window
     "doubler_margin": 8.0,         # mm doubler beyond polycarb sheet
     "screen_center_frac": 0.50,    # screen center along display face
-    "reveal_offset": 7.0,          # mm reveal ring offset beyond the window
+    "reveal_offset": 16.0,         # mm reveal ring offset beyond the window
+                                   #   (frames the bezel, not the glass)
     "reveal_width": 2.5,           # mm reveal ring width (shadow-gap read)
     "reveal_depth": 1.2,           # mm reveal groove depth
+    # --- proud bezel ring (CRT cue; 0 = off) ------------------------------
+    "bezel_width": 12.0,           # mm radial width of the frame around the
+                                   # window, standing proud of the face
+    "bezel_proud": 3.0,            # mm the bezel stands off the face
     # --- fascia -----------------------------------------------------------
     # (the plinth groove was removed in iter 20: the proud cheek edges do
     # its visual job now, and it notched the cheek fronts)
@@ -148,6 +177,12 @@ PARAMS = {
     "usbc_slot_w": 30.0,
     "usbc_slot_h": 14.0,
     "usbc_xz": (-95.0, 40.0),
+    # --- rear ventilation (vertical fin slots above the I/O row) ----------
+    "rear_vent_z": 85.0,           # mm slot center height
+    "rear_vent_slot_len": 34.0,    # mm, vertical
+    "rear_vent_slot_w": 4.0,
+    "rear_vent_pitch": 16.0,
+    "rear_vent_count": 9,
     # --- structure ------------------------------------------------------
     "rib_thickness": 3.0,
     "rib_offset_x": 145.0,         # fore-aft webs at +/- x (clear of controls)
@@ -192,30 +227,68 @@ def side_profile(p):
     mrq_y = chin_y + face_dir[0] * p["marquee_height"]
     mrq_z = chin_z + face_dir[1] * p["marquee_height"]
     back_y = p["cabinet_depth_base"]
-    # top cap runs parallel to the hood floor until it meets the back wall
-    back_top_z = mrq_z + u[1] * (back_y - mrq_y) / u[0]
-
-    # (y, z) points; corner radii per vertex index (None = stay sharp)
-    profile = [
-        (nose_undercut, 0.0),
-        (back_y, 0.0),
-        (back_y, back_top_z),
-        (mrq_y, mrq_z),
-        (chin_y, chin_z),
-        (face_top_y, face_top_z),  # underside of the marquee lip (reflex)
-        (seam_y, seam_z),
-        (0.0, nose_z),
-    ]
-    radii = {
-        0: p["r_nose_bottom"],
-        1: p["r_back_bottom"],
-        2: p["r_back_top"],
-        3: p["r_marquee_top"],
-        4: p["r_marquee_chin"],
-        5: None,  # lip underside: reflex corner
-        6: None,  # seam: reflex corner, filleted in 3D below
-        7: p["r_nose_top"],
-    }
+    nd = p.get("neck_depth")
+    if nd is None:
+        # full-depth back: top cap runs parallel to the hood floor until it
+        # meets the vertical back wall
+        back_top_z = mrq_z + u[1] * (back_y - mrq_y) / u[0]
+        # (y, z) points; corner radii per vertex index (None = stay sharp)
+        profile = [
+            (nose_undercut, 0.0),
+            (back_y, 0.0),
+            (back_y, back_top_z),
+            (mrq_y, mrq_z),
+            (chin_y, chin_z),
+            (face_top_y, face_top_z),  # underside of the marquee lip (reflex)
+            (seam_y, seam_z),
+            (0.0, nose_z),
+        ]
+        radii = {
+            0: p["r_nose_bottom"],
+            1: p["r_back_bottom"],
+            2: p["r_back_top"],
+            3: p["r_marquee_top"],
+            4: p["r_marquee_chin"],
+            5: None,  # lip underside: reflex corner
+            6: None,  # seam: reflex corner, filleted in 3D below
+            7: p["r_nose_top"],
+        }
+    else:
+        # tapered neck: hood back sits on the neck line (parallel to the
+        # display face, neck_depth behind it); the back wall tapers from
+        # (back_y, back_taper_z) up to the neck line at neck_join_z
+        hood_back = (
+            mrq_y + u[0] * (p["marquee_overhang"] + nd),
+            mrq_z + u[1] * (p["marquee_overhang"] + nd),
+        )
+        s_join = (hood_back[1] - p["neck_join_z"]) / cos_t
+        neck_join = (hood_back[0] - s_join * sin_t, p["neck_join_z"])
+        assert neck_join[0] < back_y, "neck line must sit ahead of the back wall"
+        assert p["back_taper_z"] < p["neck_join_z"] < hood_back[1]
+        profile = [
+            (nose_undercut, 0.0),
+            (back_y, 0.0),
+            (back_y, p["back_taper_z"]),
+            neck_join,
+            hood_back,
+            (mrq_y, mrq_z),
+            (chin_y, chin_z),
+            (face_top_y, face_top_z),  # underside of the marquee lip (reflex)
+            (seam_y, seam_z),
+            (0.0, nose_z),
+        ]
+        radii = {
+            0: p["r_nose_bottom"],
+            1: p["r_back_bottom"],
+            2: p["r_back_taper"],
+            3: p["r_back_taper"],
+            4: p["r_back_top"],
+            5: p["r_marquee_top"],
+            6: p["r_marquee_chin"],
+            7: None,  # lip underside: reflex corner
+            8: None,  # seam: reflex corner, filleted in 3D below
+            9: p["r_nose_top"],
+        }
     info = {
         "sin_t": sin_t,
         "cos_t": cos_t,
@@ -228,7 +301,8 @@ def side_profile(p):
         "mrq_y": mrq_y,
         "mrq_z": mrq_z,
         "back_y": back_y,
-        "back_top_z": back_top_z,
+        # overall height = hood back corner (top cap end) either way
+        "back_top_z": back_top_z if nd is None else hood_back[1],
         "deck_z": deck_z,
     }
     return profile, radii, info
@@ -258,7 +332,9 @@ def cheek_profile(p):
     if ov <= 0:
         return profile, dict(radii)
 
-    seam, nose_top = profile[6], profile[7]
+    # seam/nose_top are always the last two vertices; the rear profile
+    # (vertical back or tapered neck) passes through untouched
+    seam, nose_top = profile[-2], profile[-1]
     nose_bot = profile[0]
     d_len = math.hypot(nose_top[0] - seam[0], nose_top[1] - seam[1])
     d = ((nose_top[0] - seam[0]) / d_len, (nose_top[1] - seam[1]) / d_len)
@@ -281,11 +357,12 @@ def cheek_profile(p):
     v_bot = _line_intersect(off_nose, nd, (0.0, 0.0), (1.0, 0.0))
     v_nose = _line_intersect(off_seam, d, off_nose, nd)
 
-    new_profile = [v_bot] + profile[1:6] + [v_seam, v_nose]
+    new_profile = [v_bot] + profile[1:-2] + [v_seam, v_nose]
+    n_new = len(new_profile)
     new_radii = dict(radii)
     new_radii[0] = p["r_nose_bottom"] + ov
-    new_radii[6] = p["cheek_seam_blend"]  # blend the lip/face kink
-    new_radii[7] = p["r_nose_top"] + ov
+    new_radii[n_new - 2] = p["cheek_seam_blend"]  # blend the lip/face kink
+    new_radii[n_new - 1] = p["r_nose_top"] + ov
     return new_profile, new_radii
 
 
@@ -443,6 +520,24 @@ def build_cabinet(p=None):
     )
     solid -= ring_outer - ring_inner
 
+    # proud bezel ring around the window (CRT cue); sits ON the face,
+    # embedded 0.5 mm so it always fuses. For the sheet-metal path this
+    # becomes a separate frame part, not a bend.
+    bw = p["bezel_width"]
+    if bw > 0:
+        proud = p["bezel_proud"]
+        bezel_outer = _rounded_cutter(
+            face, (0.5 - proud) / 2,
+            open_w + 2 * bw, proud + 0.5, open_h + 2 * bw,
+            p["window_corner_radius"] + bw,
+        )
+        bezel_inner = _rounded_cutter(
+            face, (0.5 - proud) / 2,
+            open_w - 2, proud + 2.5, open_h - 2,
+            p["window_corner_radius"],
+        )
+        solid += bezel_outer - bezel_inner
+
     # chin datum groove: shadow line on the display face just under the
     # hood chin, separating marquee and display zones. Width stops short
     # of the cheeks so their silhouette edges stay clean (matches the
@@ -465,19 +560,54 @@ def build_cabinet(p=None):
     ux, uz = p["usbc_xz"]
     solid -= Pos(ux, back_y, uz) * Box(p["usbc_slot_w"], wall + 4, p["usbc_slot_h"])
 
+    # --- rear ventilation: vertical fin slots above the I/O row ----------
+    for i in range(p["rear_vent_count"]):
+        vx = (i - (p["rear_vent_count"] - 1) / 2) * p["rear_vent_pitch"]
+        solid -= Pos(vx, back_y, p["rear_vent_z"]) * Box(
+            p["rear_vent_slot_w"], wall + 4, p["rear_vent_slot_len"]
+        )
+
     # --- hood floor speaker grilles (down-firing at the player) -----------
     # frame on the hood floor: X across, local Y into the cabinet (up-slope)
     floor_dir = (cos_t, -sin_t)  # perpendicular to the face, back-down
     fp_y = chin_y + floor_dir[0] * p["hood_speaker_offset"]
     fp_z = chin_z + floor_dir[1] * p["hood_speaker_offset"]
     floor_plane = Plane(origin=(0, fp_y, fp_z), x_dir=(1, 0, 0), z_dir=(0, -cos_t, sin_t))
+    sl, sw = p["hood_speaker_slot_len"], p["hood_speaker_slot_w"]
     for sx2 in (-1, 1):
         gx = sx2 * p["hood_speaker_spacing"] / 2
         for i in range(p["hood_speaker_rows"]):
             z_r = (i - (p["hood_speaker_rows"] - 1) / 2) * p["hood_speaker_pitch"]
+            # capsule slot: bar + round end caps (radiused ends read finished,
+            # and match what a laser/punch actually produces)
             solid -= floor_plane * Pos(gx, wall / 2, z_r) * Box(
-                p["hood_speaker_slot_len"], wall + 2, p["hood_speaker_slot_w"]
+                sl - sw, wall + 2, sw
             )
+            for sx3 in (-1, 1):
+                solid -= floor_plane * Pos(
+                    gx + sx3 * (sl - sw) / 2, wall / 2, z_r
+                ) * Rot(90, 0, 0) * Cylinder(radius=sw / 2, height=wall + 2)
+
+    # --- side vents: gill capsules through both cheeks + shell sides -----
+    # Neck zone (display-driver cavity); the powerful/stylized read comes
+    # from cutting through the proud 8 mm cheeks, not just the wall.
+    svw, svl = p["side_vent_slot_w"], p["side_vent_slot_len"]
+    half_w = p["cabinet_width"] / 2
+    for sx in (-1, 1):
+        xc = sx * (half_w - p["cheek_thickness"] / 2)
+        for i in range(p["side_vent_count"]):
+            z = p["side_vent_z"] + (i - (p["side_vent_count"] - 1) / 2) * p[
+                "side_vent_pitch"
+            ]
+            solid -= Pos(xc, p["side_vent_y"], z) * Box(
+                p["cheek_thickness"] + 6, svl - svw, svw
+            )
+            for sy3 in (-1, 1):
+                solid -= Pos(
+                    xc, p["side_vent_y"] + sy3 * (svl - svw) / 2, z
+                ) * Rot(0, 90, 0) * Cylinder(
+                    radius=svw / 2, height=p["cheek_thickness"] + 6
+                )
 
     # --- marquee nameplate recess + magnet pockets ------------------------
     mrq_y, mrq_z = info["mrq_y"], info["mrq_z"]

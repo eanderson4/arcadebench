@@ -58,8 +58,14 @@ PP = {
     "print_density": 1.27e-3,      # g/mm^3 PETG
 }
 
-# panel names in profile order (vertex i -> vertex i+1)
-PANEL_NAMES = ["bottom", "back", "top", "marquee", "lip", "face", "deck", "nose"]
+# panel names in profile order (vertex i -> vertex i+1); the tapered-neck
+# profile (10 vertices) adds "taper" + "neck" between back and top
+def panel_names(profile):
+    names = ["bottom", "back", "top", "marquee", "lip", "face", "deck", "nose"]
+    if len(profile) == 10:
+        names = names[:2] + ["taper", "neck"] + names[2:]
+    assert len(names) == len(profile)
+    return names
 
 
 def unit(v):
@@ -177,7 +183,9 @@ def panel_features(name, panel, length):
 
     elif name == "lip":
         # hood floor: speaker slots firing down at the player; the lip panel
-        # carries the exposed strip (chin -> face top)
+        # carries the exposed strip (chin -> face top). Capsule slots
+        # (radiused ends) match the cabinet shell.
+        sl, sw = p["hood_speaker_slot_len"], p["hood_speaker_slot_w"]
         for sx2 in (-1, 1):
             gx = sx2 * p["hood_speaker_spacing"] / 2
             for i in range(p["hood_speaker_rows"]):
@@ -186,9 +194,11 @@ def panel_features(name, panel, length):
                 ly = -half + p["hood_speaker_offset"] + (
                     i - (p["hood_speaker_rows"] - 1) / 2
                 ) * p["hood_speaker_pitch"]
-                panel -= Pos(gx, ly, 0) * Box(
-                    p["hood_speaker_slot_len"], p["hood_speaker_slot_w"], cut_h
-                )
+                panel -= Pos(gx, ly, 0) * Box(sl - sw, sw, cut_h)
+                for sx3 in (-1, 1):
+                    panel -= Pos(gx + sx3 * (sl - sw) / 2, ly, 0) * Cylinder(
+                        sw / 2, cut_h
+                    )
 
     elif name == "marquee":
         # nameplate recess + magnet pockets; local +Z maps to the INWARD normal
@@ -212,6 +222,12 @@ def panel_features(name, panel, length):
         panel -= Pos(p["usbc_xz"][0], p["usbc_xz"][1] - half, 0) * Box(
             p["usbc_slot_w"], p["usbc_slot_h"], cut_h
         )
+        # ventilation fins above the I/O row (matches the shell)
+        for i in range(p["rear_vent_count"]):
+            vx = (i - (p["rear_vent_count"] - 1) / 2) * p["rear_vent_pitch"]
+            panel -= Pos(vx, p["rear_vent_z"] - half, 0) * Box(
+                p["rear_vent_slot_w"], p["rear_vent_slot_len"], cut_h
+            )
 
     elif name == "bottom":
         fx = p["cabinet_width"] / 2 - 40.0
@@ -311,6 +327,18 @@ def make_side_plate(profile, radii, cleat_bolt_pts, side):
         plate -= Pos(0, cy, cz) * Rot(0, 90, 0) * Cylinder(
             radius=PP["screw_hole_dia"] / 2, height=t + 2
         )
+    # side-vent gills (same positions as the shell cheeks)
+    p = CAB
+    svw, svl = p["side_vent_slot_w"], p["side_vent_slot_len"]
+    for i in range(p["side_vent_count"]):
+        z = p["side_vent_z"] + (i - (p["side_vent_count"] - 1) / 2) * p[
+            "side_vent_pitch"
+        ]
+        plate -= Pos(0, p["side_vent_y"], z) * Box(t + 2, svl - svw, svw)
+        for sy3 in (-1, 1):
+            plate -= Pos(0, p["side_vent_y"] + sy3 * (svl - svw) / 2, z) * Rot(
+                0, 90, 0
+            ) * Cylinder(radius=svw / 2, height=t + 2)
     x_off = CAB["cabinet_width"] / 2 - t / 2
     return Pos(side * x_off, 0, 0) * plate
 
@@ -319,6 +347,7 @@ def main():
     PANELS_DIR.mkdir(parents=True, exist_ok=True)
     profile, radii, info = side_profile(CAB)
     segs = seg_data(profile)
+    names = panel_names(profile)
     # side plates carry the cheek outline: the uniform proud buffer around
     # the front matter, identical to the monocoque cheeks
     side_pts, side_radii = cheek_profile(CAB)
@@ -326,7 +355,7 @@ def main():
 
     parts = {}
     panel_shapes = {}
-    for i, name in enumerate(PANEL_NAMES):
+    for i, name in enumerate(names):
         a, b, length, e, n_in = segs[i]
         panel = make_panel(name, a, b, length, e, n_in)
         parts[f"panel_{name}"] = panel
@@ -406,7 +435,7 @@ def main():
 
     # exploded: panels/cleats pushed along their normals, sides out in X
     exploded = []
-    for i, name in enumerate(PANEL_NAMES):
+    for i, name in enumerate(names):
         a, b, length, e, n_in = segs[i]
         off = 45
         exploded.append((

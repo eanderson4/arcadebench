@@ -273,8 +273,9 @@ def place_components():
     for i, (x, y) in enumerate(
         ((-fx, fy), (fx, fy), (-fx, back_y - fy), (fx, back_y - fy))
     ):
-        _, foot_parts, _ = comp.rubber_foot()
-        add(f"foot_{i}", [(Pos(x, y, -8.0) * s, c) for s, c in foot_parts], (x, y, -8))
+        _, foot_parts, foot_dims = comp.rubber_foot()
+        fh = foot_dims["h"]
+        add(f"foot_{i}", [(Pos(x, y, -fh) * s, c) for s, c in foot_parts], (x, y, -fh))
 
     return items, records
 
