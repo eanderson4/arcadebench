@@ -34,7 +34,16 @@ def render_parts(parts, out_dir, prefix="view", size=1000, views=None):
 
     pts_list, tri_list, tri_rgb = [], [], []
     for shape, rgb in parts:
-        verts, tris = shape.tessellate(tolerance=0.2)
+        # some micro-faces (chamfer/well intersections) fail OCC meshing at
+        # fine tolerances; fall back coarser rather than killing the render
+        for tol in (0.2, 0.3, 0.5, 1.0):
+            try:
+                verts, tris = shape.tessellate(tolerance=tol)
+                break
+            except AttributeError:
+                if tol == 1.0:
+                    raise
+                print(f"  ! tessellate retry at {tol}")
         base = len(pts_list)
         pts_list.extend((v.X, v.Y, v.Z) for v in verts)
         tri_list.extend((t[0] + base, t[1] + base, t[2] + base) for t in tris)

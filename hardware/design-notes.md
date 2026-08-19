@@ -358,3 +358,24 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   solid valid, 0.000 mm^3 seams, panels valid + deck guard OK, assembly
   28 components. Verified numerically: cheek nose top (-8, 85.17) vs
   deck surface 78.22 at y=0 — exactly 8 mm perpendicular.
+- Iteration 21 (2026-08-19, archived `iter-022` / `asm-020`): **edge
+  treatment pass** from consult #7 (Codex + Claude Sonnet — they
+  converged on the same list). Applied: (a) cheek outer perimeter 3D
+  fillet R2 (cheek_edge_fillet) — the plates no longer read as unfinished
+  fins; (b) cheek_seam_blend R8 2D fillet where the raised cheek lip
+  meets the display face — kills the side-view kink Codex flagged;
+  (c) 0.4 mm 45 deg rim chamfers on all 9 visible deck holes via cone
+  cutters aligned to the deck normal; primaries chamfer the Ø40 well rim
+  (the visible rim), not the Ø30 through-hole. **Bug found:** edge
+  SELECTION for chamfers is unreliable here — Edge.center() on a closed
+  circle returns a point ON the rim (offset by the radius), not the
+  circle center, and OCC splits the primary well rims into arc fragments
+  (well/hole/recess three-way intersection). Cone cutters at cut time are
+  deterministic; selection approach deleted. **Bug found 2:** the chamfer
+  micro-faces fail OCC meshing at render tolerance 0.2 (assembly renders
+  don't mesh the shape via STL export first) — render.py now falls back
+  0.2 -> 1.0 per shape instead of dying. Consult items deferred/misread:
+  rear "ports on one baseline" = rear I/O seen THROUGH the glass (fine);
+  "hood screw holes" = nameplate magnet pockets (functional); Sonnet's
+  heavy-base note deferred (structural volume); 8 mm cheek projection
+  kept (uniform-buffer reading, user's call). Chain green, all guards OK.

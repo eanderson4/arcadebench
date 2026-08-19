@@ -28,6 +28,7 @@ from build123d import (
     Pos,
     Rectangle,
     Rot,
+    Cone,
     export_step,
     export_stl,
     extrude,
@@ -45,7 +46,10 @@ PARAMS = {
     "corner_fillet": 12.0,         # mm 3D fillet on vertical outer corners
     # --- side cheeks (side plates proud of the nose fascia) ---------------
     "cheek_thickness": 4.0,        # mm; outer face flush with shell sides
-    "cheek_front_overhang": 8.0,   # mm cheeks jut forward of the nose fascia
+    "cheek_front_overhang": 8.0,   # mm uniform buffer around the front matter
+    "cheek_edge_fillet": 2.0,      # mm 3D round on the outer plate perimeter
+    "cheek_seam_blend": 8.0,       # mm 2D blend where cheek lip meets the face
+    "hole_chamfer": 0.4,           # mm 45 deg break on deck control hole rims
     # --- control deck ---------------------------------------------------
     "control_deck_depth": 155.0,   # mm, Y; interface span 139 + ~10% buffer
     "control_deck_height": 100.0,  # mm, Z; deck surface height at the seam
@@ -264,7 +268,7 @@ def cheek_profile(p):
     new_profile = [(-ov, 0.0)] + profile[1:6] + [v_seam, v_nose]
     new_radii = dict(radii)
     new_radii[0] = p["r_nose_bottom"] + ov
-    new_radii[6] = None  # lip meets the face past the seam: sharp corner
+    new_radii[6] = p["cheek_seam_blend"]  # blend the lip/face kink
     new_radii[7] = p["r_nose_top"] + ov
     return new_profile, new_radii
 
@@ -347,9 +351,18 @@ def build_cabinet(p=None):
                     lambda v, y=y, z=z: abs(v.Y - y) < 1.0 and abs(v.Z - z) < 1.0
                 )
                 fillet(vtx, radius=radius)
-        solid += Pos(sx * (p["cabinet_width"] / 2 - ct / 2), 0, 0) * extrude(
+        cheek = Pos(sx * (p["cabinet_width"] / 2 - ct / 2), 0, 0) * extrude(
             csk.sketch, amount=ct / 2, both=True
         )
+        # machined-edge read: round the exposed outer perimeter of the plate
+        outer = cheek.edges().filter_by(
+            lambda e: abs(abs(e.center().X) - p["cabinet_width"] / 2) < 0.6
+        )
+        try:
+            cheek = cheek.fillet(p["cheek_edge_fillet"], outer)
+        except Exception as exc:
+            print(f"  ! cheek edge fillet skipped: {exc}")
+        solid += cheek
 
     wall = p["wall"]
 
@@ -487,6 +500,7 @@ def build_cabinet(p=None):
         plate_sk.sketch, amount=-(lift + p["control_plate_recess"] + 0.2)
     )
 
+    deck_holes = []  # (x, y, dia) of visible control holes, for rim chamfers
     for player in range(p["players"]):
         cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
             + p["cluster_offset_x"]
@@ -497,6 +511,7 @@ def build_cabinet(p=None):
         solid -= Pos(jx, jy, deck_z(jy)) * Cylinder(
             radius=p["joystick_shaft_hole_dia"] / 2, height=cut_h
         )
+        deck_holes.append((jx, jy, p["joystick_shaft_hole_dia"] / 2))
         for sx in (-1, 1):
             for sy in (-1, 1):
                 my = jy + sy * p["jlf_mount_spacing_y"] / 2
@@ -514,6 +529,7 @@ def build_cabinet(p=None):
             solid -= Pos(bx, by, deck_z(by)) * Cylinder(
                 radius=p["secondary_hole_dia"] / 2, height=cut_h
             )
+            deck_holes.append((bx, by, p["secondary_hole_dia"] / 2))
         for i in range(p["primary_count"]):
             # centered under the secondary span, at primary_pitch
             bx = cluster_x + p["button_grid_offset_x"] + p["secondary_pitch"] * 1.5 \
@@ -522,6 +538,7 @@ def build_cabinet(p=None):
             solid -= Pos(bx, by, deck_z(by)) * Cylinder(
                 radius=p["primary_hole_dia"] / 2, height=cut_h
             )
+            deck_holes.append((bx, by, p["primary_recess_dia"] / 2))
             # tactile recess well around each primary (below the plate floor)
             rd = p["primary_recess_depth"] + p["control_plate_recess"]
             solid -= Pos(bx, by, deck_z(by) - rd / 2 + 0.1) * Cylinder(
@@ -534,6 +551,23 @@ def build_cabinet(p=None):
         solid -= Pos(
             sx * p["option_offset_x"], oy, deck_z(oy)
         ) * Cylinder(radius=p["option_hole_dia"] / 2, height=cut_h)
+        deck_holes.append(
+            (sx * p["option_offset_x"], oy, p["option_hole_dia"] / 2)
+        )
+
+    # --- hole rim chamfers: 45 deg break on every visible control hole ---
+    # Done with cone cutters aligned to the deck normal (edge selection on
+    # the sloped-deck rims is unreliable — OCC splits them into arcs).
+    # Primaries chamfer the visible Ø40 well rim, not the Ø30 through-hole.
+    cham = p["hole_chamfer"]
+    rec = p["control_plate_recess"]
+    for hx, hy, hr in deck_holes:
+        floor_pt = (hx, hy + rec * math.sin(s_slope),
+                    deck_z(hy) - rec * math.cos(s_slope))
+        frame = Plane(origin=floor_pt, x_dir=(1, 0, 0), z_dir=nrm)
+        solid -= frame * Pos(0, 0, 0.2 - cham / 2) * Cone(
+            bottom_radius=hr, top_radius=hr + cham + 0.4, height=cham + 0.4
+        )
 
     # --- ribs -------------------------------------------------------------
     rib_z_top = deck_z(p["rib_front_margin"]) - wall  # stay under the deck
