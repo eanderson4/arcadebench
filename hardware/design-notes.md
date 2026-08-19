@@ -427,3 +427,11 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   (dead fillet code removed + documented): wrap panels span vertex to
   vertex, so rounding plate corners would leave panel ends overhanging;
   metal-build corner softness is a fab edge break, not geometry.
+- Iteration 25 (2026-08-19, archived `iter-028`): **radii backed off
+  30%** (user: iter 24 read too soft). All silhouette radii x0.7:
+  r_nose_top 34 -> 23.8, r_nose_bottom 32 -> 22.4, r_marquee_top 30 ->
+  21, r_marquee_chin 20 -> 14, r_back_top 22 -> 15.4, r_back_bottom 10
+  -> 7 (cheek corners auto-derive +8). 3D edge treatments unchanged
+  (seam blend R20, lip blend R10, corner R12, cheek edge R3.2) — those
+  predate the complaint. Envelope 340 x 348 x 412.6 mm. Chain green,
+  all guards OK.

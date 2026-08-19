@@ -81,12 +81,12 @@ PARAMS = {
     "chin_groove_depth": 1.0,
     "chin_groove_drop": 9.0,       # mm groove center below the face top
     # --- silhouette corner radii (2D profile) ----------------------------
-    "r_nose_bottom": 32.0,
-    "r_nose_top": 34.0,
-    "r_back_bottom": 10.0,
-    "r_back_top": 22.0,
-    "r_marquee_top": 30.0,
-    "r_marquee_chin": 20.0,
+    "r_nose_bottom": 22.4,         # iter 25: silhouette radii scaled to 70%
+    "r_nose_top": 23.8,            # (iter 24's full radii read too soft)
+    "r_back_bottom": 7.0,
+    "r_back_top": 15.4,
+    "r_marquee_top": 21.0,
+    "r_marquee_chin": 14.0,
     # --- screen (13.5" 3:2 3004x2000 hi-DPI IPS + HDMI driver board) --------
     "panel_outline_w": 296.0,      # mm module outline — confirm on arrival
     "panel_outline_h": 206.0,
