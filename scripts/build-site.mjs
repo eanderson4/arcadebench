@@ -29,6 +29,8 @@ await mkdir(resolve(siteDist, 'privacy'), { recursive: true });
 await copyFile(resolve(deployAssets, 'privacy.html'), resolve(siteDist, 'privacy/index.html'));
 await mkdir(resolve(siteDist, 'terms'), { recursive: true });
 await copyFile(resolve(deployAssets, 'terms.html'), resolve(siteDist, 'terms/index.html'));
+await mkdir(resolve(siteDist, 'sms'), { recursive: true });
+await copyFile(resolve(deployAssets, 'sms.html'), resolve(siteDist, 'sms/index.html'));
 await copyFile(resolve(deployAssets, 'llms.txt'), resolve(siteDist, 'llms.txt'));
 
 await copyFile(resolve(deployAssets, '_headers'), resolve(siteDist, '_headers'));
