@@ -435,3 +435,16 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   (seam blend R20, lip blend R10, corner R12, cheek edge R3.2) — those
   predate the complaint. Envelope 340 x 348 x 412.6 mm. Chain green,
   all guards OK.
+- Iteration 26 (2026-08-19, archived `iter-029`): **crisper hood cap +
+  nose undercut** (user refs: commercial bartop spec sheet + hood
+  close-up — its top edge is much crisper than our R21 roll; red-line
+  markup asking for a slight negative angle at the bottom of the nose).
+  r_marquee_top 21 -> 10, r_marquee_chin 14 -> 10. New param
+  nose_undercut_deg = 4: the nose face leans back toward the floor
+  (bottom recedes ~5.5 mm), lifting the front visually. cheek_profile
+  generalized: the cheek front offsets along the TILTED nose edge's
+  outward normal (was a fixed vertical line); cheek bottom-front corner
+  is the intersection with the floor line. Envelope 340 x 346.5 x 415.1
+  mm (undercut shortens the footprint; smaller marquee radii restore a
+  little height vs iter 25). panels.py inherits the tilted nose segment
+  for free (shared side_profile).

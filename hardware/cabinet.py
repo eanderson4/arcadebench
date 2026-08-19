@@ -85,8 +85,9 @@ PARAMS = {
     "r_nose_top": 23.8,            # (iter 24's full radii read too soft)
     "r_back_bottom": 7.0,
     "r_back_top": 15.4,
-    "r_marquee_top": 21.0,
-    "r_marquee_chin": 14.0,
+    "r_marquee_top": 10.0,         # iter 26: crisper hood cap (reference look)
+    "r_marquee_chin": 10.0,
+    "nose_undercut_deg": 4.0,      # nose face leans back toward the bottom
     # --- screen (13.5" 3:2 3004x2000 hi-DPI IPS + HDMI driver board) --------
     "panel_outline_w": 296.0,      # mm module outline — confirm on arrival
     "panel_outline_h": 206.0,
@@ -171,6 +172,9 @@ def side_profile(p):
     seam_y = p["control_deck_depth"]
     seam_z = p["control_deck_height"]
     nose_z = seam_z - math.tan(math.radians(p["control_deck_slope_deg"])) * seam_y
+    # bottom of the nose face recedes (undercut): adds visual depth, lifts
+    # the front of the machine off the table visually
+    nose_undercut = math.tan(math.radians(p["nose_undercut_deg"])) * nose_z
 
     def deck_z(y):
         """Outer deck surface height at distance y from the front edge."""
@@ -193,7 +197,7 @@ def side_profile(p):
 
     # (y, z) points; corner radii per vertex index (None = stay sharp)
     profile = [
-        (0.0, 0.0),
+        (nose_undercut, 0.0),
         (back_y, 0.0),
         (back_y, back_top_z),
         (mrq_y, mrq_z),
@@ -255,18 +259,29 @@ def cheek_profile(p):
         return profile, dict(radii)
 
     seam, nose_top = profile[6], profile[7]
+    nose_bot = profile[0]
     d_len = math.hypot(nose_top[0] - seam[0], nose_top[1] - seam[1])
     d = ((nose_top[0] - seam[0]) / d_len, (nose_top[1] - seam[1]) / d_len)
     n = (-d[1], d[0])  # deck outward normal (up); deck runs seam -> nose
     if n[1] < 0:
         n = (-n[0], -n[1])
     off_seam = (seam[0] + n[0] * ov, seam[1] + n[1] * ov)
-    # offset deck edge meets the display-face edge just past the seam, and
-    # the forward-shifted nose face at the raised front corner
+    # offset deck edge meets the display-face edge just past the seam
     v_seam = _line_intersect(off_seam, d, seam, (info["sin_t"], info["cos_t"]))
-    v_nose = _line_intersect(off_seam, d, (-ov, 0.0), (0.0, 1.0))
+    # nose edge (possibly undercut) offsets along its own outward normal;
+    # the cheek front corners are where that offset line meets the bottom
+    # edge and the offset deck edge
+    nd_len = math.hypot(nose_top[0] - nose_bot[0], nose_top[1] - nose_bot[1])
+    nd = ((nose_top[0] - nose_bot[0]) / nd_len,
+          (nose_top[1] - nose_bot[1]) / nd_len)
+    nn = (-nd[1], nd[0])  # nose outward normal (forward)
+    if nn[0] > 0:
+        nn = (-nn[0], -nn[1])
+    off_nose = (nose_bot[0] + nn[0] * ov, nose_bot[1] + nn[1] * ov)
+    v_bot = _line_intersect(off_nose, nd, (0.0, 0.0), (1.0, 0.0))
+    v_nose = _line_intersect(off_seam, d, off_nose, nd)
 
-    new_profile = [(-ov, 0.0)] + profile[1:6] + [v_seam, v_nose]
+    new_profile = [v_bot] + profile[1:6] + [v_seam, v_nose]
     new_radii = dict(radii)
     new_radii[0] = p["r_nose_bottom"] + ov
     new_radii[6] = p["cheek_seam_blend"]  # blend the lip/face kink
