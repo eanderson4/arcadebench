@@ -281,3 +281,42 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   **Render note:** the mpl "front" view shows +x on image-left (mirrored vs
   a person facing the machine) — the model is stick-left correct; read
   front renders as the machine looking at YOU.
+- Iteration 17 (2026-08-18, archived `iter-014..016` / `asm-014`): **consult
+  #5 polish batch**. Codex review called the design "good but basic"-fixable;
+  applied, one at a time: (3) marquee face 93->68 mm + nameplate 200x48x1.5
+  (overhang kept at 58 — the 2" speaker frames need the 57 mm hood floor);
+  cabinet height 441->417 mm. (4) full-width chin datum groove (8x1.5 mm)
+  under the hood separating marquee/display zones. (5) reveal ring
+  tightened to 2.5x1.2 mm shadow gap. (10) rear I/O consolidated to one
+  z=40 row (power 130, usbc -95, dc -130). (6) control plate inlay:
+  slope-aligned recess 240x124x1.0 R4 under the whole cluster (sketch+
+  extrude — a box corner fillet can't exceed a thin cutter's depth);
+  primary wells adjusted to 0.8 below the plate floor (1.2 mm web);
+  options moved 130->126 to stay on the plate. (7) flat-pack seams as
+  reveals: wrap panels inset 1.0 mm from the side-plate edges (panel_inset
+  param). Consult verdict on construction: side-plate chassis is the
+  premium path — simplify toward 3-4 folded self-registering modules
+  (flanged rails, not 8 loose panels + block cleats); the 3-layer
+  horizontal split stays as the prototype path only. Flange/hem anti-
+  drumming notes for the sheet-metal path recorded here for the fab
+  stage: 10-15 mm return flanges on deck/back/top, bonded ribs, deck
+  locks the side plates together.
+  **Bug found:** panels.py deck features were MIRRORED front-to-back
+  (local +y maps seam->nose; layout is front-relative so local_y =
+  half - layout_y). Caught by a point-in-solid scan, fixed, and the scan
+  is now a permanent guard in panels.py (raises on mismatch). First guard
+  run caught its own bug: the primary test point used the midpoint
+  BETWEEN the two primaries — solid deck by design; use a real center.
+- Iteration 18 (2026-08-18, archived `iter-017` / `asm-015`): consult #6
+  follow-ups. The nameplate and control plate are now **real modeled
+  parts**, not just recesses: `nameplate_insert` (198.8x46.8x1.4, R3.5,
+  0.6 mm perimeter gap, 0.1 mm setback — charcoal anodized) and
+  `control_plate` (238x122x0.8, R7.5, 1 mm gap, 0.2 mm setback, holes
+  match the deck cutouts with primaries opened to the Ø40.2 well diameter
+  so the tactile wells stay visible). Both render as distinct dark objects
+  — the marquee finally reads as purposeful. Chin groove slimmed 8x1.5 ->
+  3x1.0 mm, centered 9 mm below the chin (was merging into the hood
+  shadow band). Added a rear ortho view to render.py so the rear I/O row
+  can be reviewed. Consult #6 notes deferred/accepted: roof depth reads
+  slightly slab-like in side view after the marquee shrink (accepted for
+  now); material hierarchy is render-limited (per-part colors only).

@@ -34,7 +34,7 @@ LAYOUT = {
     "buck_pos": (-60.0, 315.0),
     "speaker_height": 22.0,      # 2" driver stack height (catalog bbox)
     # --- rear panel (outer surface y = cabinet_depth_base) ----------------
-    "power_switch_xz": (0.0, 365.0),
+    "power_switch_xz": (130.0, 40.0),
     "dc_jack_xz": (-130.0, 40.0),
     "usbc_xz": (-95.0, 40.0),
     # --- externals ---------------------------------------------------------
@@ -113,6 +113,47 @@ def place_components():
         "display_panel",
         [(face * Pos(0, panel_off, 0) * s, c) for s, c in panel_parts],
         (0, panel_off, 0),
+    )
+
+    # --- inserts: magnetic nameplate + control plate (distinct objects) ---
+    t_tilt0 = math.radians(CAB["display_tilt_deg"])
+    st0, ct0 = math.sin(t_tilt0), math.cos(t_tilt0)
+    _, _, np_info = side_profile(CAB)
+    mface = Plane(
+        origin=(
+            0,
+            (np_info["chin_y"] + np_info["mrq_y"]) / 2,
+            (np_info["chin_z"] + np_info["mrq_z"]) / 2,
+        ),
+        x_dir=(1, 0, 0),
+        z_dir=(0, st0, ct0),
+    )
+    _, np_parts, _ = comp.nameplate_insert()
+    add(
+        "nameplate_insert",
+        [(mface * Pos(0, 0.1, 0) * Rot(-90, 0, 0) * s, c) for s, c in np_parts],
+        (0, 0.1, 0),
+    )
+
+    # control plate: flat insert on the slope-aligned deck recess, 0.2 mm
+    # setback below the deck surface
+    s_slope0 = math.radians(CAB["control_deck_slope_deg"])
+    nrm = (0.0, -math.sin(s_slope0), math.cos(s_slope0))  # deck outward normal
+    cy0 = CAB["control_plate_center_y"]
+    cplane = Plane(
+        origin=(
+            0,
+            cy0 + math.sin(s_slope0),
+            deck_z(cy0) - math.cos(s_slope0),
+        ),
+        x_dir=(1, 0, 0),
+        z_dir=nrm,
+    )
+    _, cp_parts, _ = comp.control_plate()
+    add(
+        "control_plate",
+        [(cplane * s, c) for s, c in cp_parts],
+        (0, cy0, deck_z(cy0)),
     )
 
     # --- control deck -------------------------------------------------------

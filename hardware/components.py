@@ -14,7 +14,18 @@ All geometry in millimeters. Colors are floats 0-1.
 Estimated dimensions (not from a datasheet) are marked with # ESTIMATED.
 """
 
-from build123d import Box, Cylinder, Sphere, Pos, Rot
+from build123d import (
+    Box,
+    BuildSketch,
+    Cylinder,
+    Plane,
+    Pos,
+    Rectangle,
+    Rot,
+    Sphere,
+    extrude,
+    fillet,
+)
 
 # --- color constants (r, g, b) 0-1 -----------------------------------------
 GLASS = (0.10, 0.11, 0.13)      # dark charcoal display glass
@@ -291,6 +302,65 @@ def speaker_2in():
     return "speaker_2in", parts, dims
 
 
+def nameplate_insert():
+    """Magnetic marquee nameplate insert (charcoal anodized aluminum).
+
+    Sits in the cabinet's 200x48x1.5 recess with a 0.6 mm perimeter gap and
+    0.1 mm setback. Frame: origin at center, X width, Y height, Z thickness
+    (extrude direction = through the marquee wall, handled by the caller's
+    plane).
+    """
+    dims = {"w": 198.8, "h": 46.8, "t": 1.4, "corner_r": 3.5}
+    with BuildSketch(Plane.XY) as sk:
+        Rectangle(dims["w"], dims["h"])
+        fillet(sk.vertices(), radius=dims["corner_r"])
+    plate = extrude(sk.sketch, amount=dims["t"])
+    return "nameplate_insert", [(plate, DARK)], dims
+
+
+def control_plate():
+    """Removable control-surface inlay (dark anodized), 238x122x0.8 mm.
+
+    Sits in the deck's control_plate recess with a 1 mm perimeter gap and
+    0.2 mm setback. Frame: origin at the deck-layout origin (x across,
+    y from the deck front edge), plate spans z -0.2..-1.0 below the deck
+    surface; holes match the cabinet control cutouts (primaries opened to
+    the well diameter so the tactile wells stay visible).
+    """
+    from cabinet import PARAMS as CAB
+
+    dims = {"w": 238.0, "d": 122.0, "t": 0.8, "corner_r": 7.5}
+    cy = CAB["control_plate_center_y"]
+    with BuildSketch(Plane.XY) as sk:
+        Rectangle(dims["w"], dims["d"])
+        fillet(sk.vertices(), radius=dims["corner_r"])
+    plate = Pos(0, cy, 0) * extrude(sk.sketch, amount=dims["t"])
+    cut_h = dims["t"] + 2
+
+    def hole(x, y, dia):
+        nonlocal plate
+        plate -= Pos(x, y, dims["t"] / 2) * Cylinder(radius=dia / 2, height=cut_h)
+
+    for player in range(CAB["players"]):
+        cx = (player - (CAB["players"] - 1) / 2) * CAB["player_spacing"] \
+            + CAB["cluster_offset_x"]
+        hole(cx + CAB["joystick_offset_x"], CAB["joystick_offset_y"], 30.0)
+        for i in range(CAB["secondary_count"]):
+            hole(cx + CAB["button_grid_offset_x"] + i * CAB["secondary_pitch"],
+                 CAB["secondary_row_y"], CAB["secondary_hole_dia"] + 1.0)
+        for i in range(CAB["primary_count"]):
+            hole(
+                cx + CAB["button_grid_offset_x"] + CAB["secondary_pitch"] * 1.5
+                + (i - 0.5) * CAB["primary_pitch"],
+                CAB["primary_row_y"],
+                CAB["primary_recess_dia"] + 0.4,  # reveal the tactile wells
+            )
+    for sx in (-1, 1):
+        hole(sx * CAB["option_offset_x"], CAB["option_offset_y"],
+             CAB["option_hole_dia"] + 1.0)
+    return "control_plate", [(plate, DARK)], dims
+
+
 def power_switch_19mm():
     """Bulgin MPI002 class 19 mm vandal-resistant pushbutton switch.
 
@@ -412,4 +482,6 @@ CATALOG = [
     psu_brick,
     heat_insert_m3,
     rubber_foot,
+    nameplate_insert,
+    control_plate,
 ]

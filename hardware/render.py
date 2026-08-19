@@ -17,6 +17,7 @@ import matplotlib.image as mpimg
 VIEWS = {
     "front": (0, -90, None),
     "side": (0, 180, None),
+    "rear": (0, 90, None),
     "top": (89.9, -90, None),
     "iso": (25, -60, None),
     "section": (15, -25, 0.0),  # x<=0 half, camera front-right

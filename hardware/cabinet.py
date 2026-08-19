@@ -26,6 +26,7 @@ from build123d import (
     Plane,
     Polyline,
     Pos,
+    Rectangle,
     Rot,
     export_step,
     export_stl,
@@ -51,7 +52,7 @@ PARAMS = {
     "display_face_length": 245.0,  # mm along slope, seam -> face top
     # hood is a rectangular box: floor/top PERPENDICULAR to the display
     # face, marquee face PARALLEL to it — all brake bends 90 deg
-    "marquee_height": 93.0,        # mm, chin -> marquee top, parallel to face
+    "marquee_height": 68.0,        # mm, chin -> marquee top, parallel to face
     "marquee_overhang": 58.0,      # mm chin forward of face top, perp. to face
     # --- hood speakers (slots in the hood floor, firing down) -------------
     "hood_speaker_spacing": 200.0, # mm between grille centers (x)
@@ -61,13 +62,17 @@ PARAMS = {
     "hood_speaker_pitch": 8.0,
     "hood_speaker_rows": 5,
     # --- marquee nameplate (magnetic swappable inlay) ---------------------
-    "nameplate_w": 240.0,
-    "nameplate_h": 60.0,
-    "nameplate_recess": 2.0,       # mm pocket depth in the marquee face
+    "nameplate_w": 200.0,
+    "nameplate_h": 48.0,
+    "nameplate_recess": 1.5,       # mm pocket depth in the marquee face
     "magnet_dia": 6.2,             # 6x2.5 mm disc magnets, corner pockets
     "magnet_depth": 2.5,
-    "magnet_inset_x": 105.0,       # +/- from center
-    "magnet_inset_z": 18.0,        # +/- from nameplate center
+    "magnet_inset_x": 90.0,        # +/- from center
+    "magnet_inset_z": 14.0,        # +/- from nameplate center
+    # --- chin datum groove (shadow line under the hood) -------------------
+    "chin_groove_width": 3.0,      # mm along-slope groove height
+    "chin_groove_depth": 1.0,
+    "chin_groove_drop": 9.0,       # mm groove center below the face top
     # --- silhouette corner radii (2D profile) ----------------------------
     "r_nose_bottom": 22.0,
     "r_nose_top": 18.0,
@@ -91,8 +96,8 @@ PARAMS = {
     "doubler_margin": 8.0,         # mm doubler beyond polycarb sheet
     "screen_center_frac": 0.50,    # screen center along display face
     "reveal_offset": 7.0,          # mm reveal ring offset beyond the window
-    "reveal_width": 4.0,           # mm reveal ring width
-    "reveal_depth": 1.0,           # mm reveal groove depth
+    "reveal_width": 2.5,           # mm reveal ring width (shadow-gap read)
+    "reveal_depth": 1.2,           # mm reveal groove depth
     # --- fascia -----------------------------------------------------------
     "plinth_z_bottom": 24.0,       # mm plinth groove bottom above base
     "plinth_height": 8.0,          # mm groove height
@@ -109,7 +114,13 @@ PARAMS = {
     "primary_row_y": 56.0,         # front row (closest to the player)
     "secondary_row_y": 94.0,
     "primary_recess_dia": 40.0,    # shallow well: tactile "primary" indicator
-    "primary_recess_depth": 1.2,
+    "primary_recess_depth": 0.8,   # below the control plate floor
+    # --- control plate inlay (recessed zone under the whole cluster) ------
+    "control_plate_w": 240.0,
+    "control_plate_d": 124.0,      # mm along the deck (y)
+    "control_plate_center_y": 81.0,# mm from deck front edge
+    "control_plate_recess": 1.0,   # mm; deck 3 -> 2.0 effective (OBSF snap range)
+    "control_plate_radius": 4.0,
     "option_hole_dia": 24.0,       # Sanwa OBSF-24 start/select
     "joystick_shaft_hole_dia": 24.0,
     "jlf_mount_spacing_x": 84.0,   # JLF-P1 plate slots (verified drawing)
@@ -120,10 +131,10 @@ PARAMS = {
     "joystick_offset_y": 67.0,     # from deck front edge (40 mm wrist rest)
     "button_grid_offset_x": 15.0,  # first secondary column rel. cluster ctr
     "option_offset_x": 25.0,       # start/select straddle cabinet center
-    "option_offset_y": 130.0,
+    "option_offset_y": 126.0,
     # --- rear I/O + speaker grilles (BOM-driven) ---------------------------
     "power_switch_hole_dia": 19.0,  # Bulgin MPI002 class
-    "power_switch_xz": (0.0, 365.0),
+    "power_switch_xz": (130.0, 40.0),  # single rear I/O row at z=40
     "dc_jack_hole_dia": 11.0,
     "dc_jack_xz": (-130.0, 40.0),
     "usbc_slot_w": 30.0,
@@ -327,6 +338,13 @@ def build_cabinet(p=None):
     )
     solid -= ring_outer - ring_inner
 
+    # chin datum groove: full-width shadow line just under the hood chin,
+    # separating marquee and display zones and hiding the construction seam
+    gw, gd = p["chin_groove_width"], p["chin_groove_depth"]
+    solid -= face * Pos(
+        0, gd / 2 - 0.2, p["display_face_length"] - p["chin_groove_drop"]
+    ) * Box(p["cabinet_width"] + 2, gd + 0.4, gw)
+
     # recessed plinth line across the front fascia (wraps onto the sides)
     solid -= Pos(
         0, p["plinth_depth"] / 2 - 0.5, p["plinth_z_bottom"] + p["plinth_height"] / 2
@@ -383,6 +401,25 @@ def build_cabinet(p=None):
     # --- control deck cutouts (vertical holes through the sloped deck) ---
     cut_h = wall + 4
 
+    # control plate inlay: shallow slope-aligned recess under the whole
+    # cluster (future swappable plate seat). Sketch+extrude because a box
+    # corner fillet can't exceed the thin cutter's depth.
+    s_slope = math.radians(p["control_deck_slope_deg"])
+    nrm = (0.0, -math.sin(s_slope), math.cos(s_slope))  # deck outward normal
+    cy_plate = p["control_plate_center_y"]
+    lift = 0.2
+    plate_plane = Plane(
+        origin=(0, cy_plate + lift * nrm[1], deck_z(cy_plate) + lift * nrm[2]),
+        x_dir=(1, 0, 0),
+        z_dir=nrm,
+    )
+    with BuildSketch(plate_plane) as plate_sk:
+        Rectangle(p["control_plate_w"], p["control_plate_d"])
+        fillet(plate_sk.vertices(), radius=p["control_plate_radius"])
+    solid -= extrude(
+        plate_sk.sketch, amount=-(lift + p["control_plate_recess"] + 0.2)
+    )
+
     for player in range(p["players"]):
         cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
             + p["cluster_offset_x"]
@@ -418,8 +455,8 @@ def build_cabinet(p=None):
             solid -= Pos(bx, by, deck_z(by)) * Cylinder(
                 radius=p["primary_hole_dia"] / 2, height=cut_h
             )
-            # tactile recess well around each primary
-            rd = p["primary_recess_depth"]
+            # tactile recess well around each primary (below the plate floor)
+            rd = p["primary_recess_depth"] + p["control_plate_recess"]
             solid -= Pos(bx, by, deck_z(by) - rd / 2 + 0.1) * Cylinder(
                 radius=p["primary_recess_dia"] / 2, height=rd + 0.2
             )

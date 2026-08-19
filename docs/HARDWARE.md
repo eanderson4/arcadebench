@@ -83,9 +83,9 @@ brackets and the push-to-open keyboard door under consideration.
 
 ## Current design (iteration 16)
 
-| Assembled | Front | Side |
-| --- | --- | --- |
-| ![assembled iso](images/hardware/asm_iso.png) | ![front](images/hardware/asm_front.png) | ![side](images/hardware/asm_side.png) |
+| Assembled | Front | Side | Rear |
+| --- | --- | --- | --- |
+| ![assembled iso](images/hardware/asm_iso.png) | ![front](images/hardware/asm_front.png) | ![side](images/hardware/asm_side.png) | ![rear](images/hardware/asm_rear.png) |
 
 | Printable split (3 parts) | Flat-pack panel path (18 parts) |
 | --- | --- |

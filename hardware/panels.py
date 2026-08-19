@@ -26,6 +26,7 @@ from build123d import (
     Plane,
     Polyline,
     Pos,
+    Rectangle,
     Rot,
     export_step,
     export_stl,
@@ -41,6 +42,8 @@ PANELS_DIR = OUT_DIR / "panels"
 
 PP = {
     "panel_thickness": 3.0,        # == wall; panels span between side plates
+    "panel_inset": 1.0,            # mm panels step in from side-plate edges
+                                   # (consistent dark reveal, not a flush seam)
     "cleat_land": 25.0,            # mm cleat face length along each panel
     "cleat_depth": 15.0,           # mm cleat wedge depth into the interior
     "cleat_max_span": 60.0,        # clamp for very convex corners
@@ -118,42 +121,59 @@ def panel_features(name, panel, length):
                 hole(sx * fx, ey * (half - PP["cleat_land"] / 2), PP["screw_hole_dia"])
 
     if name == "deck":
-        # local y=0 is the segment midpoint; deck layout is measured from the
-        # FRONT edge (vertex B), so local_y = layout_y - half
+        # local y=0 is the segment midpoint and local +Y maps onto the
+        # segment direction seam->nose (vertex A->B), i.e. toward the FRONT;
+        # deck layout is measured from the front edge, so
+        # local_y = half - layout_y  (verified by point-in-solid scan)
         for player in range(p["players"]):
             cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
                 + p["cluster_offset_x"]
             jx = cluster_x + p["joystick_offset_x"]
-            hole(jx, p["joystick_offset_y"] - half, p["joystick_shaft_hole_dia"])
+            hole(jx, half - p["joystick_offset_y"], p["joystick_shaft_hole_dia"])
             for sx in (-1, 1):
                 for sy in (-1, 1):
                     hole(
                         jx + sx * p["jlf_mount_spacing_x"] / 2,
-                        p["joystick_offset_y"] + sy * p["jlf_mount_spacing_y"] / 2 - half,
+                        half - (p["joystick_offset_y"]
+                                + sy * p["jlf_mount_spacing_y"] / 2),
                         p["jlf_mount_hole_dia"],
                     )
             for i in range(p["secondary_count"]):
                 hole(
                     cluster_x + p["button_grid_offset_x"] + i * p["secondary_pitch"],
-                    p["secondary_row_y"] - half,
+                    half - p["secondary_row_y"],
                     p["secondary_hole_dia"],
                 )
             for i in range(p["primary_count"]):
                 hole(
                     cluster_x + p["button_grid_offset_x"]
                     + p["secondary_pitch"] * 1.5 + (i - 0.5) * p["primary_pitch"],
-                    p["primary_row_y"] - half,
+                    half - p["primary_row_y"],
                     p["primary_hole_dia"],
                 )
         for sx in (-1, 1):
-            hole(sx * p["option_offset_x"], p["option_offset_y"] - half,
+            hole(sx * p["option_offset_x"], half - p["option_offset_y"],
                  p["option_hole_dia"])
+        # control plate recess on the outer face (local -z), rounded corners
+        rec = p["control_plate_recess"]
+        with BuildSketch(
+            Pos(0, half - p["control_plate_center_y"], -t / 2 + rec) * Plane.XY
+        ) as plate_sk:
+            Rectangle(p["control_plate_w"], p["control_plate_d"])
+            fillet(plate_sk.vertices(), radius=p["control_plate_radius"])
+        panel -= extrude(plate_sk.sketch, amount=-(rec + 0.3))
 
     elif name == "face":
         # window, centered on the face, rounded corners
         cutter = Pos(0, 0, 0) * Box(p["glass_opening_w"], p["glass_opening_h"], cut_h)
         short = cutter.edges().filter_by(lambda ed: ed.length < cut_h + 1)
         panel -= cutter.fillet(p["window_corner_radius"], short)
+        # chin datum groove on the outer face; the face segment runs
+        # face_top -> seam, so the groove sits just past local -half
+        gd, gw = p["chin_groove_depth"], p["chin_groove_width"]
+        panel -= Pos(
+            0, -half + p["chin_groove_drop"], -(t / 2 - gd / 2 + 0.1)
+        ) * Box(p["cabinet_width"] + 1, gw, gd + 0.2)
 
     elif name == "lip":
         # hood floor: speaker slots firing down at the player; the lip panel
@@ -204,7 +224,7 @@ def panel_features(name, panel, length):
 
 def make_panel(name, a, b, length, e, n_in):
     t = PP["panel_thickness"]
-    w = CAB["cabinet_width"] - 2 * t
+    w = CAB["cabinet_width"] - 2 * t - 2 * PP["panel_inset"]
     panel = Box(w, length, t)
     panel = panel_features(name, panel, length)
     return place_panel(panel, a, b, e, n_in, t)
@@ -323,6 +343,36 @@ def main():
 
     for side, sname in ((-1, "l"), (1, "r")):
         parts[f"side_{sname}"] = make_side_plate(profile, radii, cleat_pts, side)
+
+    # --- deck hole-position guard (a y-mirror bug slipped through the
+    # visuals once; verify holes land at layout positions, world coords) ---
+    from build123d import Vector
+
+    deck = parts["panel_deck"]
+    deck_z = info["deck_z"]
+    expected, negatives = [], []
+    for player in range(CAB["players"]):
+        cx = (player - (CAB["players"] - 1) / 2) * CAB["player_spacing"] \
+            + CAB["cluster_offset_x"]
+        expected.append((cx + CAB["joystick_offset_x"], CAB["joystick_offset_y"]))
+        # first primary center (primaries straddle the secondary span center)
+        expected.append((
+            cx + CAB["button_grid_offset_x"] + CAB["secondary_pitch"] * 1.5
+            - CAB["primary_pitch"] / 2,
+            CAB["primary_row_y"],
+        ))
+    expected.append((CAB["option_offset_x"], CAB["option_offset_y"]))
+    negatives.append((0.0, 20.0))  # wrist rest: no hole
+    fails = []
+    for x, ly in expected + negatives:
+        want = (x, ly) in expected
+        got = not deck.is_inside(Vector(x, ly, deck_z(ly) - 1.5))
+        if got != want:
+            fails.append((x, ly, want, got))
+    if fails:
+        raise RuntimeError(f"deck hole guard FAILED: {fails}")
+    print(f"deck hole guard: {len(expected)} holes + "
+          f"{len(negatives)} negative checks OK")
 
     bed = PP["print_bed"]
     print(f"{'part':14s} {'valid':6s} dims (mm)                 fits {bed:.0f}")
