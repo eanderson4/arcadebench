@@ -96,13 +96,14 @@ PARAMS = {
     "chin_groove_drop": 5.5,       # mm groove center below the face top
                                    # (hugs the chin; stays clear of the
                                    # reveal ring around the 4:3 window)
-    # --- side vents (gill slots through both cheeks, neck zone) -----------
-    "side_vent_count": 5,
-    "side_vent_slot_len": 44.0,    # mm along Y (capsule, radiused ends)
+    # --- side vents (gill slots through both cheeks, hood zone) -----------
+    # raked parallel to the hood cap — the CRT top-vent read, on the sides
+    "side_vent_count": 4,
+    "side_vent_slot_len": 56.0,    # mm along the cap direction (capsule)
     "side_vent_slot_w": 4.0,
-    "side_vent_pitch": 10.0,
-    "side_vent_y": 236.0,          # centered on the neck at z ~255
-    "side_vent_z": 255.0,          # vents the display-driver cavity
+    "side_vent_pitch": 12.0,       # stacking from the cap toward the floor
+    "side_vent_center_u": 78.0,    # mm from the marquee top along the cap
+    "side_vent_drop": 10.0,        # mm from the cap to the TOP slot center
     # --- silhouette corner radii (2D profile) ----------------------------
     "r_nose_bottom": 22.4,         # iter 25: silhouette radii scaled to 70%
     "r_nose_top": 23.8,            # (iter 24's full radii read too soft)
@@ -177,12 +178,19 @@ PARAMS = {
     "usbc_slot_w": 30.0,
     "usbc_slot_h": 14.0,
     "usbc_xz": (-95.0, 40.0),
-    # --- rear ventilation (vertical fin slots above the I/O row) ----------
-    "rear_vent_z": 85.0,           # mm slot center height
-    "rear_vent_slot_len": 34.0,    # mm, vertical
-    "rear_vent_slot_w": 4.0,
-    "rear_vent_pitch": 16.0,
-    "rear_vent_count": 9,
+    # --- LED admin buttons (rear row: exit/pause/select etc.) -------------
+    "admin_button_hole_dia": 12.2, # 12 mm LED pushbuttons
+    "admin_button_xs": (-40.0, 0.0, 40.0),
+    "admin_button_z": 40.0,        # same rear I/O row
+    # --- rear service hatch (SBC/USB access) -------------------------------
+    "hatch_w": 170.0,
+    "hatch_h": 90.0,
+    "hatch_z": 60.0,               # center height (rear wall, below taper)
+    "hatch_boss_offset": 8.0,      # screw bosses OUTSIDE the opening edge
+                                   # (inside = the cut leaves them floating)
+    "hatch_boss_size": 10.0,       # mm boss cross-section
+    "hatch_boss_depth": 6.0,       # mm boss protrusion into the cavity
+    "hatch_screw_pilot_dia": 4.2,  # M3 heat-set insert pilot
     # --- structure ------------------------------------------------------
     "rib_thickness": 3.0,
     "rib_offset_x": 145.0,         # fore-aft webs at +/- x (clear of controls)
@@ -384,6 +392,7 @@ def build_cabinet(p=None):
     seam_y, seam_z = info["seam_y"], info["seam_z"]
     face_top_y, face_top_z = info["face_top_y"], info["face_top_z"]
     chin_y, chin_z = info["chin_y"], info["chin_z"]
+    mrq_y, mrq_z = info["mrq_y"], info["mrq_z"]
     deck_z = info["deck_z"]
 
     with BuildPart() as bp:
@@ -560,12 +569,27 @@ def build_cabinet(p=None):
     ux, uz = p["usbc_xz"]
     solid -= Pos(ux, back_y, uz) * Box(p["usbc_slot_w"], wall + 4, p["usbc_slot_h"])
 
-    # --- rear ventilation: vertical fin slots above the I/O row ----------
-    for i in range(p["rear_vent_count"]):
-        vx = (i - (p["rear_vent_count"] - 1) / 2) * p["rear_vent_pitch"]
-        solid -= Pos(vx, back_y, p["rear_vent_z"]) * Box(
-            p["rear_vent_slot_w"], wall + 4, p["rear_vent_slot_len"]
+    # LED admin buttons on the same rear row
+    for ax in p["admin_button_xs"]:
+        solid -= Pos(ax, back_y, p["admin_button_z"]) * Rot(90, 0, 0) * Cylinder(
+            radius=p["admin_button_hole_dia"] / 2, height=wall + 4
         )
+
+    # rear service hatch + corner screw bosses (M3 insert pilots)
+    hw, hh, hz = p["hatch_w"], p["hatch_h"], p["hatch_z"]
+    solid -= Pos(0, back_y, hz) * Box(hw, wall + 4, hh)
+    bi, bs = p["hatch_boss_offset"], p["hatch_boss_size"]
+    bd = p["hatch_boss_depth"]
+    boss_y = back_y - wall - bd / 2 + 0.5  # embeds 0.5 into the inner wall
+    for sx4 in (-1, 1):
+        for sz4 in (-1, 1):
+            bx = sx4 * (hw / 2 + bi)
+            bz = hz + sz4 * (hh / 2 + bi)
+            solid += Pos(bx, boss_y, bz) * Box(bs, bd, bs)
+            solid -= Pos(bx, boss_y, bz) * Rot(90, 0, 0) * Cylinder(
+                radius=p["hatch_screw_pilot_dia"] / 2,
+                height=bd + p["hatch_screw_pilot_dia"],
+            )
 
     # --- hood floor speaker grilles (down-firing at the player) -----------
     # frame on the hood floor: X across, local Y into the cabinet (up-slope)
@@ -588,29 +612,30 @@ def build_cabinet(p=None):
                     gx + sx3 * (sl - sw) / 2, wall / 2, z_r
                 ) * Rot(90, 0, 0) * Cylinder(radius=sw / 2, height=wall + 2)
 
-    # --- side vents: gill capsules through both cheeks + shell sides -----
-    # Neck zone (display-driver cavity); the powerful/stylized read comes
-    # from cutting through the proud 8 mm cheeks, not just the wall.
+    # --- side vents: raked gill capsules through both cheeks, hood zone ---
+    # Slots run parallel to the hood cap (the CRT top-vent read, on the
+    # side plates), stacked from just under the cap toward the hood floor.
     svw, svl = p["side_vent_slot_w"], p["side_vent_slot_len"]
     half_w = p["cabinet_width"] / 2
+    u_dir = (cos_t, -sin_t)  # along the hood cap, toward the back
+    vc_y = mrq_y + u_dir[0] * p["side_vent_center_u"]
+    vc_z = mrq_z + u_dir[1] * p["side_vent_center_u"]
+    tilt_deg = p["display_tilt_deg"]
     for sx in (-1, 1):
         xc = sx * (half_w - p["cheek_thickness"] / 2)
         for i in range(p["side_vent_count"]):
-            z = p["side_vent_z"] + (i - (p["side_vent_count"] - 1) / 2) * p[
-                "side_vent_pitch"
-            ]
-            solid -= Pos(xc, p["side_vent_y"], z) * Box(
-                p["cheek_thickness"] + 6, svl - svw, svw
-            )
+            # stack from just under the cap down toward the hood floor
+            drop = p["side_vent_drop"] + i * p["side_vent_pitch"]
+            vy = vc_y - sin_t * drop
+            vz = vc_z - cos_t * drop
+            slot = Pos(xc, vy, vz) * Rot(-tilt_deg, 0, 0)
+            solid -= slot * Box(p["cheek_thickness"] + 6, svl - svw, svw)
             for sy3 in (-1, 1):
-                solid -= Pos(
-                    xc, p["side_vent_y"] + sy3 * (svl - svw) / 2, z
-                ) * Rot(0, 90, 0) * Cylinder(
-                    radius=svw / 2, height=p["cheek_thickness"] + 6
-                )
+                solid -= slot * Pos(0, sy3 * (svl - svw) / 2, 0) * Rot(
+                    0, 90, 0
+                ) * Cylinder(radius=svw / 2, height=p["cheek_thickness"] + 6)
 
     # --- marquee nameplate recess + magnet pockets ------------------------
-    mrq_y, mrq_z = info["mrq_y"], info["mrq_z"]
     mface = Plane(
         origin=(0, (chin_y + mrq_y) / 2, (chin_z + mrq_z) / 2),
         x_dir=(1, 0, 0),

@@ -222,12 +222,18 @@ def panel_features(name, panel, length):
         panel -= Pos(p["usbc_xz"][0], p["usbc_xz"][1] - half, 0) * Box(
             p["usbc_slot_w"], p["usbc_slot_h"], cut_h
         )
-        # ventilation fins above the I/O row (matches the shell)
-        for i in range(p["rear_vent_count"]):
-            vx = (i - (p["rear_vent_count"] - 1) / 2) * p["rear_vent_pitch"]
-            panel -= Pos(vx, p["rear_vent_z"] - half, 0) * Box(
-                p["rear_vent_slot_w"], p["rear_vent_slot_len"], cut_h
-            )
+        # LED admin buttons on the same row
+        for ax in p["admin_button_xs"]:
+            hole(ax, p["admin_button_z"] - half, p["admin_button_hole_dia"])
+        # service hatch + door screw clearances (outside the opening edge)
+        hw, hh = p["hatch_w"], p["hatch_h"]
+        panel -= Pos(0, p["hatch_z"] - half, 0) * Box(hw, hh, cut_h)
+        bi = p["hatch_boss_offset"]
+        for sx4 in (-1, 1):
+            for sz4 in (-1, 1):
+                hole(sx4 * (hw / 2 + bi),
+                     p["hatch_z"] + sz4 * (hh / 2 + bi) - half,
+                     PP["screw_hole_dia"])
 
     elif name == "bottom":
         fx = p["cabinet_width"] / 2 - 40.0
@@ -327,16 +333,22 @@ def make_side_plate(profile, radii, cleat_bolt_pts, side):
         plate -= Pos(0, cy, cz) * Rot(0, 90, 0) * Cylinder(
             radius=PP["screw_hole_dia"] / 2, height=t + 2
         )
-    # side-vent gills (same positions as the shell cheeks)
+    # side-vent gills (same raked hood-zone positions as the shell cheeks)
     p = CAB
+    _, _, info = side_profile(p)
+    t_rad = math.radians(p["display_tilt_deg"])
+    sin_t, cos_t = math.sin(t_rad), math.cos(t_rad)
+    vc_y = info["mrq_y"] + cos_t * p["side_vent_center_u"]
+    vc_z = info["mrq_z"] - sin_t * p["side_vent_center_u"]
     svw, svl = p["side_vent_slot_w"], p["side_vent_slot_len"]
     for i in range(p["side_vent_count"]):
-        z = p["side_vent_z"] + (i - (p["side_vent_count"] - 1) / 2) * p[
-            "side_vent_pitch"
-        ]
-        plate -= Pos(0, p["side_vent_y"], z) * Box(t + 2, svl - svw, svw)
+        drop = p["side_vent_drop"] + i * p["side_vent_pitch"]
+        vy = vc_y - sin_t * drop
+        vz = vc_z - cos_t * drop
+        slot = Pos(0, vy, vz) * Rot(-p["display_tilt_deg"], 0, 0)
+        plate -= slot * Box(t + 2, svl - svw, svw)
         for sy3 in (-1, 1):
-            plate -= Pos(0, p["side_vent_y"] + sy3 * (svl - svw) / 2, z) * Rot(
+            plate -= slot * Pos(0, sy3 * (svl - svw) / 2, 0) * Rot(
                 0, 90, 0
             ) * Cylinder(radius=svw / 2, height=t + 2)
     x_off = CAB["cabinet_width"] / 2 - t / 2

@@ -479,3 +479,20 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   to the face, so it catches identical light (two-sided shading);
   geometry verified open by probes + tessellation scans; assembly
   renders show the dark panel correctly.
+- Iteration 28 (2026-08-19, archived `iter-033`, assembly `asm-029`):
+  **vents relocated to the hood sides + serviceability pass** (user:
+  vent grilles on the side plate at the hood, raked with the hood
+  angle — not forward-facing, not across the hood face). Side gills
+  moved from the neck zone (horizontal, z=255) to the hood zone: 4
+  raked capsules (56x4, pitch 12) parallel to the hood cap, stacked
+  from 10 mm under the cap toward the floor, center 78 mm along the
+  cap from the marquee top. Rear fins DELETED (hood sides + speaker
+  area carry ventilation now). New: 3x LED admin button holes
+  (Ø12.2) on the rear I/O row (x -40/0/+40, z=40); rear service
+  hatch 170x90 at z=60 with 4 corner boss blocks (M3 heat-set
+  pilots) for a screw-on door — bosses sit 8 mm OUTSIDE the opening
+  edge (the first pass put them inside the opening and the new
+  multi-body guard in parts.py caught the floaters immediately:
+  cabinet reported solids=5). panels.py: back panel gets the hatch +
+  door screw clearances, side plates get the raked vents. Envelope
+  unchanged 340 x 346.5 x 411.1 mm. Chain green.
