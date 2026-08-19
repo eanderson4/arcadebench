@@ -98,11 +98,13 @@ PARAMS = {
                                    # reveal ring around the 4:3 window)
     # --- side vents (gill slots through both cheeks, hood zone) -----------
     # raked parallel to the hood cap — the CRT top-vent read, on the sides
-    "side_vent_count": 4,
-    "side_vent_slot_len": 56.0,    # mm along the cap direction (capsule)
+    "side_vent_count": 3,
+    "side_vent_slot_len": 110.0,   # mm along the cap direction (capsule);
+                                   # cap run is overhang+neck = 156, so 110 leaves
+                                   # a healthy ~23 mm buffer at each end
     "side_vent_slot_w": 4.0,
     "side_vent_pitch": 12.0,       # stacking from the cap toward the floor
-    "side_vent_center_u": 78.0,    # mm from the marquee top along the cap
+    "side_vent_center_u": 78.0,    # mm from the marquee top along the cap (centered)
     "side_vent_drop": 10.0,        # mm from the cap to the TOP slot center
     # --- silhouette corner radii (2D profile) ----------------------------
     "r_nose_bottom": 22.4,         # iter 25: silhouette radii scaled to 70%

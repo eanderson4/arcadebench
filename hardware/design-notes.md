@@ -496,3 +496,11 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   cabinet reported solids=5). panels.py: back panel gets the hatch +
   door screw clearances, side plates get the raked vents. Envelope
   unchanged 340 x 346.5 x 411.1 mm. Chain green.
+- Iteration 29 (2026-08-19, archived `iter-034`, assembly `asm-030`):
+  **hood side vents widened + centered** (user: vents go more along
+  the top, healthy buffer to the sides, centered, consuming the
+  width of the overhang). Slots 56 -> 110 mm along the cap (cap run
+  = overhang 56 + neck 100 = 156 mm, so ~23 mm buffer at each end),
+  count 4 -> 3 (drops 10/22/34 under the cap; lowest slot clears
+  the hood floor by ~29 mm), center stays at u=78 (midpoint of the
+  cap). Envelope unchanged. Chain green.
