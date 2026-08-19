@@ -115,6 +115,20 @@ def place_components():
         (0, panel_off, 0),
     )
 
+    # clamp frame pressing the panel against the rabbet (part from parts.py)
+    from parts import retainer_frame
+
+    frame_off = (
+        wall + CAB["polycarb_thickness"] + LAYOUT["panel_gap"]
+        + CAB["panel_thickness"]
+    )
+    add(
+        "retainer_frame",
+        [(face * Pos(0, frame_off, 0) * Rot(-90, 0, 0) * retainer_frame(),
+          (0.30, 0.30, 0.33))],
+        (0, frame_off, 0),
+    )
+
     # --- inserts: magnetic nameplate + control plate (distinct objects) ---
     t_tilt0 = math.radians(CAB["display_tilt_deg"])
     st0, ct0 = math.sin(t_tilt0), math.cos(t_tilt0)

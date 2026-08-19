@@ -138,6 +138,12 @@ PARAMS = {
     "bezel_width": 12.0,           # mm radial width of the frame around the
                                    # window, standing proud of the face
     "bezel_proud": 3.0,            # mm the bezel stands off the face
+    # --- display retainer (clamp frame bosses on the face interior) -------
+    "retainer_boss_offset": 6.0,   # mm boss centers beyond the panel outline
+    "retainer_boss_dia": 10.0,     # mm standoff diameter
+    "retainer_boss_depth": 10.0,   # mm standoff from the face wall
+    "retainer_pilot_dia": 4.2,     # M3 heat-set insert pilot (parts.py spec)
+    "retainer_pilot_depth": 7.0,
     # --- fascia -----------------------------------------------------------
     # (the plinth groove was removed in iter 20: the proud cheek edges do
     # its visual job now, and it notched the cheek fronts)
@@ -548,6 +554,26 @@ def build_cabinet(p=None):
             p["window_corner_radius"],
         )
         solid += bezel_outer - bezel_inner
+
+    # display retainer bosses: 4 standoffs just outside the panel outline on
+    # the face interior; M3 heat-set-insert pilots take the clamp-frame
+    # screws (the frame part lives in parts.py). Pilots open at the boss tip.
+    rb_off = p["retainer_boss_offset"]
+    rb_d, rb_r = p["retainer_boss_depth"], p["retainer_boss_dia"] / 2
+    rb_y = wall + rb_d / 2 - 0.5  # embeds 0.5 into the wall/doubler
+    pilot_y = wall + rb_d - 0.5 - p["retainer_pilot_depth"] / 2
+    for sx5 in (-1, 1):
+        for sz5 in (-1, 1):
+            bx = sx5 * (p["panel_outline_w"] / 2 + rb_off)
+            bz = sz5 * (p["panel_outline_h"] / 2 + rb_off)
+            solid += face * Pos(bx, rb_y, bz) * Cylinder(
+                radius=rb_r, height=rb_d, rotation=(90, 0, 0)
+            )
+            solid -= face * Pos(bx, pilot_y, bz) * Cylinder(
+                radius=p["retainer_pilot_dia"] / 2,
+                height=p["retainer_pilot_depth"] + 1,
+                rotation=(90, 0, 0),
+            )
 
     # chin datum groove: shadow line on the display face just under the
     # hood chin, separating marquee and display zones. Width stops short

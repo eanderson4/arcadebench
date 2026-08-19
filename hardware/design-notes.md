@@ -504,3 +504,17 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   count 4 -> 3 (drops 10/22/34 under the cap; lowest slot clears
   the hood floor by ~29 mm), center stays at u=78 (midpoint of the
   cap). Envelope unchanged. Chain green.
+- Iteration 30 (2026-08-19, archived `iter-035`, assembly `asm-031`):
+  **display retainer** (polish batch: mechanical mounting for the
+  panel stack). Shell: 4 x Ø10 x 10 mm standoff bosses on the face
+  interior, centers 6 mm beyond the panel outline (±154 x ±109 mm),
+  each with an M3 heat-set-insert pilot (Ø4.2 x 7) opening at the
+  boss tip. New printed part in parts.py (`retainer_frame`, STEP +
+  STL in out/parts/): 3 mm clamp frame, rounded corners (R8 outer /
+  R6 opening), 8 mm bearing lip on the panel border, 4 x M3
+  clearance holes with 90 deg countersinks on the rear face, 50 mm
+  cable notch in the bottom rail. Frame outer 319 x 229 mm vs 324 mm
+  between the cheeks — 2.5 mm assembly clearance per side. assembly.py
+  places it behind the panel (29 components now). Chain green;
+  retainer valid, 1 body. Flat-pack (panels.py) retainer path still
+  TODO — sheet-metal version wants a bent angle frame, not this part.

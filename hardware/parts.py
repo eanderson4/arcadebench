@@ -18,7 +18,20 @@ Out:  hardware/out/parts/<name>.step|.stl + exploded.png + parts sheet
 import math
 from pathlib import Path
 
-from build123d import Box, Cylinder, Pos, Rot, export_step, export_stl
+from build123d import (
+    Box,
+    BuildPart,
+    BuildSketch,
+    Cone,
+    Cylinder,
+    Mode,
+    Pos,
+    RectangleRounded,
+    Rot,
+    export_step,
+    export_stl,
+    extrude,
+)
 
 from cabinet import OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
 from render import render_parts
@@ -54,6 +67,19 @@ SPLIT = {
     "base_v_seam_joints": [(120, 9.5), (190, 9.5), (260, 9.5)],   # into floor
     "mid_v_seam_joints": [(None, 150), (None, 205), (None, 260)],
     "hood_v_seam_joints": [(None, 340), (None, 370), (None, 395)],
+}
+
+# --- display retainer clamp frame (printed part) --------------------------
+RET = {
+    "frame_thickness": 3.0,
+    "frame_bearing": 8.0,        # mm the frame presses on the panel border
+    "frame_edge": 5.5,           # mm frame material beyond the boss centers
+    "frame_corner_r": 8.0,
+    "opening_corner_r": 6.0,
+    "screw_hole_dia": 3.4,       # M3 clearance
+    "countersink_dia": 6.4,      # M3 flat-head, 90 deg
+    "countersink_depth": 1.8,
+    "cable_notch_w": 50.0,       # panel cable exit through the bottom rail
 }
 
 
@@ -178,6 +204,48 @@ def build_parts():
     return parts
 
 
+def retainer_frame():
+    """Clamp frame holding the display panel against the polycarb rabbet.
+
+    Screws (M3 flat-head, countersunk on the rear face) drive through the
+    corner holes into the heat-set inserts in the shell's retainer bosses.
+    Print orientation: flat on the bed, sketch in XY (X across, Y up-slope),
+    thickness +Z. The cable notch sits on the +Y rail, which maps to the
+    physical bottom when mounted with Rot(-90, 0, 0) in the face frame.
+    """
+    p = CAB
+    ow = p["panel_outline_w"] + 2 * (p["retainer_boss_offset"] + RET["frame_edge"])
+    oh = p["panel_outline_h"] + 2 * (p["retainer_boss_offset"] + RET["frame_edge"])
+    iw = p["panel_outline_w"] - 2 * RET["frame_bearing"]
+    ih = p["panel_outline_h"] - 2 * RET["frame_bearing"]
+    t = RET["frame_thickness"]
+    hx = p["panel_outline_w"] / 2 + p["retainer_boss_offset"]
+    hy = p["panel_outline_h"] / 2 + p["retainer_boss_offset"]
+    with BuildPart() as bp:
+        with BuildSketch():
+            RectangleRounded(ow, oh, RET["frame_corner_r"])
+            RectangleRounded(iw, ih, RET["opening_corner_r"], mode=Mode.SUBTRACT)
+        extrude(amount=t)
+    frame = bp.part
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cx, cy = sx * hx, sy * hy
+            frame -= Pos(cx, cy, t / 2) * Cylinder(
+                radius=RET["screw_hole_dia"] / 2, height=t + 2
+            )
+            frame -= Pos(cx, cy, t - RET["countersink_depth"] / 2 + 0.1) * Cone(
+                bottom_radius=RET["screw_hole_dia"] / 2,
+                top_radius=RET["countersink_dia"] / 2,
+                height=RET["countersink_depth"] + 0.2,
+            )
+    # cable notch through the +Y rail
+    rail_c = (ih + oh) / 4
+    frame -= Pos(0, rail_c, t / 2) * Box(
+        RET["cable_notch_w"], (oh - ih) / 2 + 2, t + 2
+    )
+    return frame
+
+
 def check_collisions(parts):
     """Intersect every part pair that shares a seam; expect ~zero volume.
     (Consult #4 finding: exploded views can't prove assembly clearance.)"""
@@ -226,6 +294,15 @@ def main():
 
     check_collisions(parts)
 
+    # display retainer clamp frame (independent printed part)
+    frame = retainer_frame()
+    f_valid, f_bodies = frame.is_valid, len(frame.solids())
+    print(f"retainer valid={f_valid} bodies={f_bodies}")
+    if not f_valid or f_bodies != 1:
+        raise RuntimeError(f"retainer frame: valid={f_valid}, bodies={f_bodies}")
+    export_step(frame, str(PARTS_DIR / "retainer_frame.step"))
+    export_stl(frame, str(PARTS_DIR / "retainer_frame.stl"))
+
     # exploded view: layers separated in Z, halves in X
     shades = [(0.87, 0.85, 0.80), (0.80, 0.77, 0.72), (0.72, 0.69, 0.64)]
     exploded = []
@@ -238,7 +315,7 @@ def main():
         exploded, OUT_DIR, prefix="exploded", size=1200,
         views={"iso": (25, -60, None), "front": (0, -90, None)},
     )
-    print(f"exported {len(parts)} parts + exploded view to {PARTS_DIR}")
+    print(f"exported {len(parts)} parts + retainer frame + exploded to {PARTS_DIR}")
 
 
 if __name__ == "__main__":
