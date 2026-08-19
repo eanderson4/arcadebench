@@ -31,9 +31,12 @@ without restructuring the model.
   15° from vertical. First-party games render 3:2 native, edge to edge.
 - Envelope **340 × 348 × 417 mm** — the 1P pivot let the screen fill ~84%
   of the face (the 2P version capped at ~49% because the controls set the
-  width floor). Full-silhouette **side cheek plates** frame the front,
-  jutting 8 mm past the recessed nose fascia (the sheet-metal side-plate
-  look; the flat-pack path shares the same overhang).
+  width floor). Full-silhouette **side cheek plates** frame the front: a
+  uniform 8 mm buffer around the front matter — proud of the deck surface
+  (the controls sit in a shallow tray) and proud of the recessed nose
+  fascia — with corner radii grown by the offset so the gap stays
+  constant around the corners (the sheet-metal side-plate look; the
+  flat-pack path shares the same overhang).
 - 90°-bend hood box (floor/top perpendicular to the display face) with
   down-firing speaker slots in the hood floor and a magnetic swappable
   nameplate inlay on the marquee face.

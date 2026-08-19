@@ -338,3 +338,23 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   guard OK, assembly 28 components. Watch: cheek front vertical edges are
   sharp 3D edges (2D silhouette radii only) — fine for sheet metal, may
   want a small 3D fillet for the print path.
+- Iteration 20 (2026-08-19, archived `iter-020` / `asm-018`): **cheeks v2 —
+  uniform engineered buffer**. User feedback: the iter-19 cheeks (nose
+  points simply shifted forward) left a tapered ~1 mm sliver where the
+  cheek top edge met the deck — read as sloppy tolerancing — and the old
+  plinth groove notched the proud cheek fronts ("weird notch"). Rework:
+  `cheek_profile()` in cabinet.py does a true parallel-curve offset of
+  the whole front contour: deck edge offsets 8 mm along its outward
+  normal (controls now sit in a shallow tray between raised cheek rails,
+  like the cream reference), nose face offsets 8 mm straight forward,
+  nose corner radii grow by the offset (R30 bottom / R26 top) so the
+  buffer stays constant around the corners; the raised lip meets the
+  display-face edge just past the seam (computed line intersection).
+  Plinth groove REMOVED (params + cutter) — the cheek edges do its
+  visual job now. Chin datum groove narrowed to 328 mm so it stops short
+  of the cheeks. panels.py side plates now consume the same
+  cheek_profile() — monocoque and flat-pack cannot drift apart again
+  (user caught the two paths rendering different builds). Chain green:
+  solid valid, 0.000 mm^3 seams, panels valid + deck guard OK, assembly
+  28 components. Verified numerically: cheek nose top (-8, 85.17) vs
+  deck surface 78.22 at y=0 — exactly 8 mm perpendicular.

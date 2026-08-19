@@ -102,9 +102,8 @@ PARAMS = {
     "reveal_width": 2.5,           # mm reveal ring width (shadow-gap read)
     "reveal_depth": 1.2,           # mm reveal groove depth
     # --- fascia -----------------------------------------------------------
-    "plinth_z_bottom": 24.0,       # mm plinth groove bottom above base
-    "plinth_height": 8.0,          # mm groove height
-    "plinth_depth": 1.5,           # mm groove depth
+    # (the plinth groove was removed in iter 20: the proud cheek edges do
+    # its visual job now, and it notched the cheek fronts)
     # --- controls -------------------------------------------------------
     "players": 1,
     "cluster_offset_x": -8.0,      # recenters the asymmetric cluster (stick-left)
@@ -226,6 +225,50 @@ def side_profile(p):
     return profile, radii, info
 
 
+def _line_intersect(p1, d1, p2, d2):
+    """Intersection of lines p1+t*d1, p2+s*d2 (2D, y/z tuples)."""
+    det = d1[0] * (-d2[1]) - (-d2[0]) * d1[1]
+    rhs = (p2[0] - p1[0], p2[1] - p1[1])
+    t = (rhs[0] * (-d2[1]) - (-d2[0]) * rhs[1]) / det
+    return (p1[0] + t * d1[0], p1[1] + t * d1[1])
+
+
+def cheek_profile(p):
+    """Side-cheek / side-plate outline: the base silhouette with the front
+    contour offset outward by cheek_front_overhang — a uniform engineered
+    buffer around the front matter.
+
+    The deck edge offsets along its outward normal (the cheeks stand proud
+    of the deck surface, so the controls sit in a shallow tray) and the
+    nose face offsets straight forward; the nose corner radii grow by the
+    offset, keeping the buffer width constant around the corners. Returns
+    (profile, radii) in the same format as side_profile().
+    """
+    profile, radii, info = side_profile(p)
+    ov = p["cheek_front_overhang"]
+    if ov <= 0:
+        return profile, dict(radii)
+
+    seam, nose_top = profile[6], profile[7]
+    d_len = math.hypot(nose_top[0] - seam[0], nose_top[1] - seam[1])
+    d = ((nose_top[0] - seam[0]) / d_len, (nose_top[1] - seam[1]) / d_len)
+    n = (-d[1], d[0])  # deck outward normal (up); deck runs seam -> nose
+    if n[1] < 0:
+        n = (-n[0], -n[1])
+    off_seam = (seam[0] + n[0] * ov, seam[1] + n[1] * ov)
+    # offset deck edge meets the display-face edge just past the seam, and
+    # the forward-shifted nose face at the raised front corner
+    v_seam = _line_intersect(off_seam, d, seam, (info["sin_t"], info["cos_t"]))
+    v_nose = _line_intersect(off_seam, d, (-ov, 0.0), (0.0, 1.0))
+
+    new_profile = [(-ov, 0.0)] + profile[1:6] + [v_seam, v_nose]
+    new_radii = dict(radii)
+    new_radii[0] = p["r_nose_bottom"] + ov
+    new_radii[6] = None  # lip meets the face past the seam: sharp corner
+    new_radii[7] = p["r_nose_top"] + ov
+    return new_profile, new_radii
+
+
 def _rounded_cutter(plane, y_ctr, w, d, h, r):
     """Box built on a face frame with its in-plane corners filleted.
 
@@ -284,21 +327,22 @@ def build_cabinet(p=None):
         print(f"  ! vertical corner fillet skipped: {exc}")
     solid = solid.hollow([], -p["wall"])
 
-    # --- side cheeks: full-silhouette plates proud of the nose fascia -----
-    # Sheet-metal side-plate look: the cheeks frame the front of the machine
-    # and the nose fascia sits recessed between them. Outer face flush with
-    # the shell sides, plate embedded 1 mm into the wall so it always fuses.
-    ov, ct = p["cheek_front_overhang"], p["cheek_thickness"]
-    cheek_profile = [(y - ov if abs(y) < 1e-9 else y, z) for y, z in profile]
+    # --- side cheeks: full-silhouette plates proud of the front matter ----
+    # Sheet-metal side-plate look: the cheeks overhang the nose fascia and
+    # stand proud of the deck surface by a uniform buffer (cheek_profile),
+    # so the front of the machine reads framed with an even, precise gap.
+    # Outer face flush with the shell sides, embedded 1 mm into the wall.
+    ct = p["cheek_thickness"]
+    cheek_pts, cheek_radii = cheek_profile(p)
     for sx in (-1, 1):
         with BuildSketch(Plane.YZ) as csk:
             with BuildLine():
-                Polyline(cheek_profile, close=True)
+                Polyline(cheek_pts, close=True)
             make_face()
-            for idx, radius in radii.items():
+            for idx, radius in cheek_radii.items():
                 if radius is None:
                     continue
-                y, z = cheek_profile[idx]
+                y, z = cheek_pts[idx]
                 vtx = csk.vertices().filter_by(
                     lambda v, y=y, z=z: abs(v.Y - y) < 1.0 and abs(v.Z - z) < 1.0
                 )
@@ -364,24 +408,14 @@ def build_cabinet(p=None):
     )
     solid -= ring_outer - ring_inner
 
-    # chin datum groove: full-width shadow line just under the hood chin,
-    # separating marquee and display zones and hiding the construction seam
+    # chin datum groove: shadow line on the display face just under the
+    # hood chin, separating marquee and display zones. Width stops short
+    # of the cheeks so their silhouette edges stay clean (matches the
+    # flat-pack path, where the groove lives on the face panel only).
     gw, gd = p["chin_groove_width"], p["chin_groove_depth"]
     solid -= face * Pos(
         0, gd / 2 - 0.2, p["display_face_length"] - p["chin_groove_drop"]
-    ) * Box(p["cabinet_width"] + 2, gd + 0.4, gw)
-
-    # recessed plinth line across the front fascia (extended forward so the
-    # line wraps onto the proud cheek front faces too)
-    solid -= Pos(
-        0,
-        p["plinth_depth"] / 2 - 0.5 - p["cheek_front_overhang"] / 2,
-        p["plinth_z_bottom"] + p["plinth_height"] / 2,
-    ) * Box(
-        p["cabinet_width"] + 2,
-        p["plinth_depth"] + 1.0 + p["cheek_front_overhang"],
-        p["plinth_height"],
-    )
+    ) * Box(p["cabinet_width"] - 2 * p["cheek_thickness"] - 4, gd + 0.4, gw)
 
     # --- rear I/O cutouts (through the back wall) --------------------------
     back_y = p["cabinet_depth_base"]
