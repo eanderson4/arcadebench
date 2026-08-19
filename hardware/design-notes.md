@@ -538,3 +538,10 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   Result: 28 components, max overlap 0.294 mm^3 (known JLF plate
   wedge on the sloped deck, by design). Bonus: the control plate now
   renders as the dark inlay it was meant to be. Chain green.
+- Colorway study (2026-08-19, `out/colorway_study.png`): 6 palettes
+  on the iter-31 assembly via `colorway_study.py` (role-based
+  recolor: shell / control plate / primaries / secondaries / options
+  / stick ball / nameplate accent; mask + screen stay near-black in
+  all). Candidates: cream-classic (current), graphite-red,
+  alu-orange, sage-amber, navy-brass, snow-coral. Awaiting user pick;
+  the winner becomes the default colorway in assembly.py LAYOUT.
