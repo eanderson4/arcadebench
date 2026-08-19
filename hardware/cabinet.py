@@ -36,7 +36,7 @@ from build123d import (
 
 PARAMS = {
     # --- envelope -------------------------------------------------------
-    "cabinet_width": 500.0,        # mm, X; layout floor for 2P is ~500
+    "cabinet_width": 340.0,        # mm, X; 1P cluster span 210 + margins
     "cabinet_depth_base": 340.0,   # mm, Y; base footprint depth
     "wall": 3.0,                   # mm shell wall
     "seam_fillet": 20.0,           # mm 3D blend at the deck/face seam edge
@@ -54,19 +54,19 @@ PARAMS = {
     "marquee_height": 93.0,        # mm, chin -> marquee top, parallel to face
     "marquee_overhang": 58.0,      # mm chin forward of face top, perp. to face
     # --- hood speakers (slots in the hood floor, firing down) -------------
-    "hood_speaker_spacing": 300.0, # mm between grille centers (x)
+    "hood_speaker_spacing": 200.0, # mm between grille centers (x)
     "hood_speaker_offset": 29.0,   # mm from the chin along the hood floor
     "hood_speaker_slot_len": 44.0,
     "hood_speaker_slot_w": 4.0,
     "hood_speaker_pitch": 8.0,
     "hood_speaker_rows": 5,
     # --- marquee nameplate (magnetic swappable inlay) ---------------------
-    "nameplate_w": 300.0,
+    "nameplate_w": 240.0,
     "nameplate_h": 60.0,
     "nameplate_recess": 2.0,       # mm pocket depth in the marquee face
     "magnet_dia": 6.2,             # 6x2.5 mm disc magnets, corner pockets
     "magnet_depth": 2.5,
-    "magnet_inset_x": 135.0,       # +/- from center
+    "magnet_inset_x": 105.0,       # +/- from center
     "magnet_inset_z": 18.0,        # +/- from nameplate center
     # --- silhouette corner radii (2D profile) ----------------------------
     "r_nose_bottom": 22.0,
@@ -75,22 +75,22 @@ PARAMS = {
     "r_back_top": 16.0,
     "r_marquee_top": 24.0,
     "r_marquee_chin": 16.0,
-    # --- screen (12.1" 4:3 industrial + HDMI driver board) ----------------
-    "panel_outline_w": 261.0,      # mm module outline — confirm on arrival
-    "panel_outline_h": 204.0,
-    "panel_thickness": 8.0,        # industrial panels are much thicker
-    "panel_active_w": 245.8,       # mm active area
-    "panel_active_h": 184.3,
-    "glass_opening_w": 300.0,      # mm visible glass/mask area (reference look:
-    "glass_opening_h": 205.0,      #   big glass, black mask, active centered)
+    # --- screen (13.5" 3:2 3004x2000 hi-DPI IPS + HDMI driver board) --------
+    "panel_outline_w": 296.0,      # mm module outline — confirm on arrival
+    "panel_outline_h": 206.0,
+    "panel_thickness": 5.0,        # slim laptop-class panel (driver board separate)
+    "panel_active_w": 285.0,       # mm active area
+    "panel_active_h": 190.0,
+    "glass_opening_w": 290.0,      # mm visible glass/mask area (reference look:
+    "glass_opening_h": 200.0,      #   big glass, black mask, active centered)
     "window_corner_radius": 10.0,  # mm rounded corners on the glass opening
     "polycarb_thickness": 2.5,
-    "polycarb_overlap": 8.0,       # mm sheet beyond window opening
+    "polycarb_overlap": 6.0,       # mm sheet beyond window opening
     "polycarb_clearance": 0.3,     # mm rabbet clearance per side
     "doubler_thickness": 4.0,      # mm inner reinforcement around window
-    "doubler_margin": 10.0,        # mm doubler beyond polycarb sheet
+    "doubler_margin": 8.0,         # mm doubler beyond polycarb sheet
     "screen_center_frac": 0.50,    # screen center along display face
-    "reveal_offset": 11.0,         # mm reveal ring offset beyond the window
+    "reveal_offset": 7.0,          # mm reveal ring offset beyond the window
     "reveal_width": 4.0,           # mm reveal ring width
     "reveal_depth": 1.0,           # mm reveal groove depth
     # --- fascia -----------------------------------------------------------
@@ -98,7 +98,8 @@ PARAMS = {
     "plinth_height": 8.0,          # mm groove height
     "plinth_depth": 1.5,           # mm groove depth
     # --- controls -------------------------------------------------------
-    "players": 2,
+    "players": 1,
+    "cluster_offset_x": -8.0,      # recenters the asymmetric cluster (stick-left)
     "primary_hole_dia": 30.0,      # 2 primaries/player: Sanwa OBSF-30
     "secondary_hole_dia": 24.0,    # 4 secondaries/player: Sanwa OBSF-24
     "primary_count": 2,
@@ -124,13 +125,13 @@ PARAMS = {
     "power_switch_hole_dia": 19.0,  # Bulgin MPI002 class
     "power_switch_xz": (0.0, 365.0),
     "dc_jack_hole_dia": 11.0,
-    "dc_jack_xz": (-240.0, 40.0),
+    "dc_jack_xz": (-130.0, 40.0),
     "usbc_slot_w": 30.0,
     "usbc_slot_h": 14.0,
-    "usbc_xz": (-195.0, 40.0),
+    "usbc_xz": (-95.0, 40.0),
     # --- structure ------------------------------------------------------
     "rib_thickness": 3.0,
-    "rib_offset_x": 160.0,         # fore-aft webs at +/- x
+    "rib_offset_x": 145.0,         # fore-aft webs at +/- x (clear of controls)
     "rib_front_margin": 25.0,      # clear of front wall
     "rib_rear_margin": 25.0,       # clear of seam zone
 }
@@ -381,10 +382,10 @@ def build_cabinet(p=None):
 
     # --- control deck cutouts (vertical holes through the sloped deck) ---
     cut_h = wall + 4
-    half_gap = p["player_spacing"] / 2
 
     for player in range(p["players"]):
-        cluster_x = -half_gap + player * p["player_spacing"]
+        cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
+            + p["cluster_offset_x"]
 
         # joystick: shaft hole + 4x plate mounting holes
         jx = cluster_x + p["joystick_offset_x"]

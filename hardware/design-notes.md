@@ -254,3 +254,30 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   hood floor/back-wall junction (~304) stays in the hood part. All checks
   green: shell valid, 6 parts valid + 0.000 mm³ seams, 33 components, 18
   panels valid.
+- Iteration 16 (2026-08-18, archived `iter-013` / `asm-013`): **1P PIVOT +
+  premium panel**. All first-party games are single-player and render 3:2
+  native (no legacy-aspect constraint), so the cabinet went single-player:
+  width 500→340 mm (1P cluster span 210.5 + margins), players=1 with a new
+  `cluster_offset_x` (-8) recentring the asymmetric stick-left cluster.
+  Panel: 12.1" 4:3 -> **13.5" 3:2 3004x2000 hi-DPI IPS** (Surface-class kit,
+  ~267 PPI, no OLED burn-in risk on static HUDs) — outline ~296x206x5,
+  active 285x190, glass 290x200 -> **screen fill 49% -> 84%**, mask bars
+  2.5 mm (panel centring tolerance +/-1 mm — the retainer must locate it).
+  Speaker spacing 300->200, nameplate 300->240, ribs 160->145, rear I/O
+  reseated, polycarb overlap 8->6 / doubler margin 10->8 / reveal 11->7
+  (narrow face clearances). `split_vertical` OFF — 340 mm parts fit a 360
+  bed whole: 3 parts (base/mid/hood), all valid, 0.000 mm^3 seams.
+  Commercial-feature audit (subagent, recroommasters/GRS/X-Arcade sources)
+  landed as ideas list; adopted-so-far: none, noted for later: swappable
+  deck insert, plexi over control panel, push-to-open keyboard/service
+  door, LED admin buttons, IPAC-style keyboard-mode firmware.
+  **Bug found:** `parts.py` SPLIT dict had a DUPLICATE KEY —
+  `hood_seam_joints` defined twice (horizontal + vertical seam lists); the
+  vertical one silently won, so the mid/hood seam NEVER had bosses, and
+  with the vertical split off the ghost bosses (x=330) floated free ->
+  4 solids, 508 mm bbox. Masked before because the x=0 split sliced the
+  ghosts away. Fixed by renaming the vertical lists `*_v_seam_joints`;
+  collision-check pair logic also fixed for the 3-part (unsplit) case.
+  **Render note:** the mpl "front" view shows +x on image-left (mirrored vs
+  a person facing the machine) — the model is stick-left correct; read
+  front renders as the machine looking at YOU.

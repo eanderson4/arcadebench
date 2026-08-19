@@ -30,13 +30,13 @@ LAYOUT = {
     # --- interior boards (floor-mounted, z = wall) ------------------------
     "sbc_pos": (0.0, 290.0),     # x, y of board center
     "encoder_pos": (0.0, 110.0),
-    "amp_pos": (-180.0, 300.0),
-    "buck_pos": (-110.0, 315.0),
+    "amp_pos": (-100.0, 300.0),
+    "buck_pos": (-60.0, 315.0),
     "speaker_height": 22.0,      # 2" driver stack height (catalog bbox)
     # --- rear panel (outer surface y = cabinet_depth_base) ----------------
     "power_switch_xz": (0.0, 365.0),
-    "dc_jack_xz": (-240.0, 40.0),
-    "usbc_xz": (-195.0, 40.0),
+    "dc_jack_xz": (-130.0, 40.0),
+    "usbc_xz": (-95.0, 40.0),
     # --- externals ---------------------------------------------------------
     "psu_offset_y": 45.0,        # mm behind the rear wall
     "foot_inset_x": 40.0,
@@ -116,9 +116,9 @@ def place_components():
     )
 
     # --- control deck -------------------------------------------------------
-    half_gap = CAB["player_spacing"] / 2
     for player in range(CAB["players"]):
-        cluster_x = -half_gap + player * CAB["player_spacing"]
+        cluster_x = (player - (CAB["players"] - 1) / 2) * CAB["player_spacing"] \
+            + CAB["cluster_offset_x"]
         color = LAYOUT["p1_color"] if player == 0 else LAYOUT["p2_color"]
 
         # joystick: origin at plate top. The plate is flat but the deck

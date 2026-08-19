@@ -1,7 +1,8 @@
 # Hardware BOM and sourcing — ArcadeBench bartop
 
-Bill of materials for the premium two-player build, organized by subsystem.
-Quantities assume the 2P unit. The Status columns turn this document into the
+Bill of materials for the premium single-player build (1P pivot, iteration
+16 — all first-party games are 1P, and 1P lets the screen fill the face).
+Quantities assume the 1P unit. The Status columns turn this document into the
 sourcing tracker: mark each line `listed → ordered → received` (with date).
 
 Legend: ☐ not ordered · ◐ ordered · ☑ received
@@ -29,32 +30,33 @@ Prices are USD, as listed at research time — re-check before ordering.
 
 | ☐ | Part | Spec / pick | Est. | Source |
 | --- | --- | --- | --- | --- |
-| ☐ | Panel | 12.1″ 4:3 1024×768 industrial (HV121/LQ121 class) + HDMI driver board, **~261×204×8 mm outline**, active 245.8×184.3 | $70–110 | AliExpress / eBay ("12.1 inch 4:3 HDMI LCD kit") |
-| ☐ | Panel (alt) | 9.7″ 4:3 IPS retina (LP097QX1 class), 210.6×166.3 outline — only if the cab shrinks back down | $40–60 | AliExpress |
+| ☐ | Panel | **13.5″ 3:2 3004×2000 hi-DPI IPS** (Surface-class replacement + HDMI driver kit), **~296×206×5 mm outline**, active 285×190 — ~267 PPI, no OLED burn-in risk on static HUDs | $100–150 | AliExpress / eBay ("13.5 inch 3:2 3004x2000 HDMI kit") |
+| ☐ | Panel (alt) | 12.1″ 4:3 1024×768 industrial (HV121/LQ121 class), ~261×204×8 outline — budget fallback | $70–110 | AliExpress |
 | ☐ | Cover glass | 2.5–3 mm polycarbonate sheet, cut to size, gasketed | $15 | McMaster, TAP Plastics, Amazon |
 | ☐ | Cable | Short right-angle micro/mini-HDMI → HDMI (match panel board) | $10 | Any |
 
-> Display history: 8″ → 9.7″ (iter 5) → **12.1″ 4:3 (iter 11, screen study
-> option B)**. CAD targets the ~261×204×8 mm outline class; confirm against
-> the actual unit before cutting. The visible glass is 400×205 mm with a
-> printed black mask; the 4:3 active area sits centered behind it.
+> Display history: 8″ → 9.7″ (iter 5) → 12.1″ 4:3 (iter 11) → **13.5″ 3:2
+> hi-DPI (iter 16, 1P pivot, screen study 3 option A)**. First-party games
+> render 3:2 native, edge to edge — no legacy-aspect constraint. CAD targets
+> the ~296×206×5 mm outline class; confirm against the actual unit before
+> cutting. The visible glass is 290×200 mm with a printed black mask (2.5 mm
+> side bars — panel centering tolerance ±1 mm, the retainer must locate it).
 
 ## 3. Controls
 
 | ☐ | Part | Spec / pick | Est. | Source |
 | --- | --- | --- | --- | --- |
-| ☐ | Primary buttons ×4 | Sanwa OBSF-30, red — 2 per player, front row, recessed-well indicator on the deck | $13 | [Paradise Arcade](https://paradisearcadeshop.com/collections/sanwa-obsf-series), [Focus Attack](https://focusattack.com/sanwa-obsf-30mm-pushbuttons-black/) |
-| ☐ | Secondary buttons ×8 | Sanwa OBSF-24, white — 4 per player, back row | $20 | Same |
+| ☐ | Primary buttons ×2 | Sanwa OBSF-30, red — front row, recessed-well indicator on the deck | $7 | [Paradise Arcade](https://paradisearcadeshop.com/collections/sanwa-obsf-series), [Focus Attack](https://focusattack.com/sanwa-obsf-30mm-pushbuttons-black/) |
+| ☐ | Secondary buttons ×4 | Sanwa OBSF-24, white — back row | $10 | Same |
 | ☐ | Start/select ×2 | Sanwa OBSF-24, black, ~$2.50 ea | $5 | Paradise Arcade |
-| ☐ | Joysticks ×2 | Sanwa JLF-TP-8YT, $24.75 ea — no shaft extension needed at a 3 mm deck (stock shaft is fine to ~4 mm) | $50 | [Focus Attack](https://focusattack.com/sanwa-jlf-tp-8yt-joystick-precursor-to-jlx-tp-8yt/) |
+| ☐ | Joystick | Sanwa JLF-TP-8YT — no shaft extension needed at a 3 mm deck (stock shaft is fine to ~4 mm) | $25 | [Focus Attack](https://focusattack.com/sanwa-jlf-tp-8yt-joystick-precursor-to-jlx-tp-8yt/) |
 | ☐ | Microswitches/boots | Spares for JLF + buttons | $10 | Same |
-| ☐ | Encoders ×2 | **Two Raspberry Pi Picos ($4 ea) running GP2040-CE** — one gamepad per board, zero firmware risk | $8 | [Raspberry Pi](https://www.raspberrypi.com/products/raspberry-pi-pico/), [GP2040-CE](https://gp2040-ce.info/) |
+| ☐ | Encoder | **Raspberry Pi Pico ($4) running GP2040-CE** — 1P needs one gamepad, zero firmware risk | $4 | [Raspberry Pi](https://www.raspberrypi.com/products/raspberry-pi-pico/), [GP2040-CE](https://gp2040-ce.info/) |
 | ☐ | Wiring | 22 AWG silicone wire, 4.8 mm quick disconnects, JST-XH harnesses | $25 | Any |
 
-> Encoder note: single-chip ESP32-S3 as a **dual** gamepad HID is technically
-> possible but not a proven off-the-shelf project (custom composite
-> descriptors). GP2040-CE officially enumerates one controller per board, so
-> the battle-tested 2P route is two Picos. ESP32-S3 remains the hacker option.
+> Encoder note: 1P made this easy — GP2040-CE enumerates one controller per
+> board, which is exactly what we need now. ESP32-S3 remains the hacker
+> option (native USB, keyboard mode for admin menus).
 
 > Snap-in caveat: OBSF buttons are designed for thin metal panels; at 3 mm
 > printed deck they're at the top of the grip range — test on a coupon first,
@@ -99,7 +101,8 @@ strip — **+$30**. Your future self at a bar install will thank you.
 
 ## Totals
 
-- Internals: **~$500–650** (compute pick is the swing).
+- Internals: **~$460–600** (compute pick is the swing; 1P saves one JLF,
+  8 buttons, one encoder vs the old 2P BOM).
 - Enclosure fab on top: ~$150–300.
 
 ## Sourcing order (de-risked)
@@ -132,7 +135,7 @@ These must exist as parameters or features in the enclosure model:
 - Feet: bosses on the base sized to the chosen foot hardware.
 - M3 insert bosses: **4.0–4.2 mm holes, ≥6 mm deep**, on 8–10 mm bosses,
   accessible from the underside.
-- Panel recess/retainer sized to the **~261×204×8 mm** display class
+- Panel recess/retainer sized to the **~296×206×5 mm** display class
   (confirm against the physical unit).
 - Board/heatsink standoff field sized to the mini-ITX or SBC hole pattern
   (finalize after the compute pick arrives and is measured).

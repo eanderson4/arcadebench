@@ -26,7 +26,7 @@ from render import render_parts
 PARTS_DIR = OUT_DIR / "parts"
 
 SPLIT = {
-    "split_vertical": True,        # x=0 split => fits 360 mm beds
+    "split_vertical": False,       # 340 mm parts fit a 360 bed whole
     "split_z_deck": 125.0,         # base | face-column seam (clear of the
                                    # R20 seam blend; 105 left a wall sliver)
     "split_z_hood": 300.0,         # face-column | hood seam (below the chin and
@@ -41,14 +41,16 @@ SPLIT = {
     # horizontal-seam joint positions (x, y) — on the wall ring at that z;
     # x/y chosen to embed blocks ~0.5 mm into the adjacent wall (coplanar
     # fuses produce invalid solids)
-    "deck_seam_joints": [(-240.5, 250), (240.5, 250), (-225, 330.5), (225, 330.5),
-                         (-225, 163), (225, 163)],
-    "hood_seam_joints": [(-240.5, 275), (240.5, 275), (-225, 332.5), (225, 332.5),
-                         (-225, 218), (225, 218)],
+    "deck_seam_joints": [(-160.5, 250), (160.5, 250), (-145, 330.5),
+                         (145, 330.5), (-145, 163), (145, 163)],
+    "hood_seam_joints": [(-160.5, 275), (160.5, 275), (-145, 332.5),
+                         (145, 332.5), (-145, 218), (145, 218)],
     # vertical-seam joint positions (y, z); blocks fused to floor/back wall
-    "base_seam_joints": [(120, 9.5), (190, 9.5), (260, 9.5)],   # into floor
-    "mid_seam_joints": [(330.5, 150), (330.5, 205), (330.5, 260)],
-    "hood_seam_joints": [(330.5, 340), (330.5, 370), (330.5, 395)],
+    # (used only when split_vertical is on; names must NOT collide with the
+    # horizontal-seam lists above)
+    "base_v_seam_joints": [(120, 9.5), (190, 9.5), (260, 9.5)],   # into floor
+    "mid_v_seam_joints": [(330.5, 150), (330.5, 205), (330.5, 260)],
+    "hood_v_seam_joints": [(330.5, 340), (330.5, 370), (330.5, 395)],
 }
 
 
@@ -108,9 +110,9 @@ def build_parts():
 
     layers = [("base", base), ("mid", mid), ("hood", hood)]
     v_joints = {
-        "base": p["base_seam_joints"],
-        "mid": p["mid_seam_joints"],
-        "hood": p["hood_seam_joints"],
+        "base": p["base_v_seam_joints"],
+        "mid": p["mid_v_seam_joints"],
+        "hood": p["hood_v_seam_joints"],
     }
 
     parts = {}
@@ -130,13 +132,14 @@ def check_collisions(parts):
     """Intersect every part pair that shares a seam; expect ~zero volume.
     (Consult #4 finding: exploded views can't prove assembly clearance.)"""
     names = list(parts)
+    order = {"base": 0, "mid": 1, "hood": 2}
     worst = 0.0
     for i, a in enumerate(names):
         for b in names[i + 1:]:
-            # only check pairs that actually share a split plane
-            same_layer = a.split("_")[0] == b.split("_")[0]
-            adjacent = abs(names.index(a) - names.index(b)) == 2 and not same_layer
-            if not (same_layer or adjacent):
+            la, lb = a.split("_")[0], b.split("_")[0]
+            share_h = abs(order[la] - order[lb]) == 1  # horizontal seam
+            share_v = la == lb                          # vertical seam halves
+            if not (share_h or share_v):
                 continue
             inter = parts[a] & parts[b]
             vol = (

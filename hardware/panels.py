@@ -47,7 +47,7 @@ PP = {
     "insert_hole_dia": 4.2,        # M3 heat-set insert pilot
     "insert_hole_depth": 7.0,
     "screw_hole_dia": 3.4,         # M3 clearance through panels/side plates
-    "screw_x": (80.0, 200.0),      # +/- x positions for panel screws
+    "screw_x": (60.0, 140.0),      # +/- x positions for panel screws
     "print_bed": 360.0,
     # --- stock options for the mass report ---------------------------------
     "alu_thickness": 2.0,          # mm 5052-H32 sheet (bend r ~= thickness)
@@ -120,9 +120,9 @@ def panel_features(name, panel, length):
     if name == "deck":
         # local y=0 is the segment midpoint; deck layout is measured from the
         # FRONT edge (vertex B), so local_y = layout_y - half
-        half_gap = p["player_spacing"] / 2
         for player in range(p["players"]):
-            cluster_x = -half_gap + player * p["player_spacing"]
+            cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
+                + p["cluster_offset_x"]
             jx = cluster_x + p["joystick_offset_x"]
             hole(jx, p["joystick_offset_y"] - half, p["joystick_shaft_hole_dia"])
             for sx in (-1, 1):

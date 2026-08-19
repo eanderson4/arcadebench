@@ -22,13 +22,25 @@ without restructuring the model.
 
 ## Envelope and layout
 
-- Two-player control deck: 2 × Sanwa JLF joysticks, 12 × 30 mm action buttons
-  (6 per player), 2 × 24 mm start/select.
-- 8″ 4:3 LCD behind a 2.5 mm polycarbonate window, display deck tilted back
-  ~18–20° from vertical.
+- **Single-player** control deck (1P pivot, iteration 16 — all first-party
+  games are 1P): 1 × Sanwa JLF joystick (stick-left standard), 2 × OBSF-30
+  primary buttons (recessed-well indicators) + 4 × OBSF-24 secondaries,
+  2 × OBSF-24 start/select.
+- **13.5″ 3:2 3004×2000 hi-DPI IPS** (~267 PPI) behind a 2.5 mm
+  polycarbonate window with printed black mask; display deck tilted back
+  15° from vertical. First-party games render 3:2 native, edge to edge.
+- Envelope **340 × 340 × 441 mm** — the 1P pivot let the screen fill ~84%
+  of the face (the 2P version capped at ~49% because the controls set the
+  width floor).
+- 90°-bend hood box (floor/top perpendicular to the display face) with
+  down-firing speaker slots in the hood floor and a magnetic swappable
+  nameplate inlay on the marquee face.
 - Wall thickness 3 mm, internal ribs, fastener bosses accessible from the
   underside, no upward-facing shell seams.
-- Shell splits into 2–3 printable parts joined by hidden M3 heat-set inserts.
+- Two build paths from the same parametric model: **3 printable parts**
+  (base / face-column / hood, hidden M3 heat-set-insert joints, all fit a
+  360 mm bed) or a **flat-pack of 8 wrap panels + 8 cleats + 2 side
+  plates** — the sheet-aluminum path (~3.2 kg in 2 mm 5052).
 
 ## Bill of materials
 
@@ -46,7 +58,7 @@ parameters.
 | JLF plate-to-panel mounting slots | 84 × 40 mm rectangle (slotted, ~Ø5 mm hardware) | [plate drawing](../hardware/references/jlf-p1-plate.jpg) |
 | JLF shaft panel hole | 24 mm | [arcadecontrols forum](http://forum.arcadecontrols.com/index.php?topic=144036.0) |
 | Sanwa OBSF-30 button hole | 30 mm (snap-in, panel 2–5 mm thick) | [Qanba](https://www.qanba.com/products/sanwa-obsf-30) |
-| 8″ 4:3 HDMI IPS kit (Pimoroni PIM372 class) | 174 × 136 × 3 mm outline, ~162 × 121.5 mm active, 1024×768, 350 nit | [PiShop](https://www.pishop.us/product/hdmi-8-ips-lcd-screen-kit-1024x768/) |
+| 13.5″ 3:2 panel (Surface-class kit) | ~296 × 206 × 5 mm outline, 285 × 190 mm active, 3004×2000 — **unverified until the unit arrives** | CAD target; measure before cutting |
 | M3 heat-set insert (ruthex class) | 4.6 mm OD × 5.7 mm long → 4.0–4.2 mm printed hole | [CNC Kitchen](https://www.cnckitchen.com/blog/tips-and-tricks-for-heat-set-inserts) |
 
 ## Development workflow
@@ -58,10 +70,13 @@ The enclosure is parametric code, not hand-drawn CAD:
   the top of [`hardware/cabinet.py`](../hardware/cabinet.py).
 - `hardware/.venv/bin/python hardware/cabinet.py` exports STEP + STL plus
   orthographic front/side/top/iso PNG previews to `hardware/out/` for review
-  without opening CAD.
-- Changes are made by editing parameters or structure and re-running.
+  without opening CAD. (`parts.py` = printable split, `panels.py` =
+  flat-pack path, `assembly.py` = full BOM fit-check render.)
+- Changes are made by editing parameters or structure and re-running; every
+  run archives renders + a parameter snapshot to `out/history/`, and the
+  full design log is in [`hardware/design-notes.md`](../hardware/design-notes.md).
 
-Status: **v0 builds clean** (valid solid, 560 × 340 × 347 mm, ~2.5 kg shell).
-Monocoque shell with display window + polycarb rabbet + inner doubler, all
-control cutouts, and two internal ribs. Not yet split into printable parts;
-fastener bosses, feet, vents, speaker cavity, and rear jacks are next.
+Status: **iteration 16** — 1P pivot with the 13.5″ 3:2 panel; shell valid,
+3 parts printable (0.000 mm³ seam overlap), 26 BOM components placed in the
+assembly fit check, 18 flat-pack panels valid. Next: display panel retainer
+brackets and the push-to-open keyboard door under consideration.

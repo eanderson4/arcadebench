@@ -34,18 +34,18 @@ CONE_GRAY = (0.25, 0.25, 0.27)
 
 
 def display_panel():
-    """12.1" 4:3 industrial panel (1024x768, HV121/LQ121 class) + HDMI driver.
+    """13.5" 3:2 hi-DPI IPS panel (3004x2000, Surface-class kit) + HDMI driver.
 
-    Frame: origin at glass center. X = width (261), Z = height (204),
+    Frame: origin at glass center. X = width (296), Z = height (206),
     Y = thickness. The viewable face looks toward -Y (viewer side);
     the driver board sits behind (+Y), low on the back.
     """
     dims = {
-        "glass_w": 261.0,
-        "glass_h": 204.0,
-        "glass_t": 8.0,           # industrial panels are thick # ESTIMATED
-        "active_w": 245.8,
-        "active_h": 184.3,
+        "glass_w": 296.0,
+        "glass_h": 206.0,
+        "glass_t": 5.0,           # slim laptop-class panel # ESTIMATED
+        "active_w": 285.0,
+        "active_h": 190.0,
         "active_t": 0.4,          # cosmetic face plate thickness # ESTIMATED
         "active_recess": 0.2,     # face recessed below glass surface # ESTIMATED
         "driver_w": 100.0,
