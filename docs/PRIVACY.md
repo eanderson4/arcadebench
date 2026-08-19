@@ -28,6 +28,13 @@ values. Accepted callsigns are stored with public scores. Rejected raw
 callsigns are not stored; the cache retains a hash of the normalized value and
 policy version.
 
+The operator runs a Twilio number for personal operational SMS alerts
+(experiment status, service health); the only recipient is the operator.
+Mobile phone numbers are never shared, sold, rented, or used for marketing.
+Message frequency varies with alert settings, up to roughly 50 messages per
+day. Message and data rates may apply. Reply STOP to opt out and HELP for
+help.
+
 The production promise is published at <https://arcadebench.org/privacy/>. The
 retention migration, cleanup job, public copy, and tests live in this repository
 so changes to policy and behavior can be reviewed together.
