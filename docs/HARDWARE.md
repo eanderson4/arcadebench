@@ -148,3 +148,19 @@ until that is decided.
 | Printable split (3 parts + retainer + bezel) | Flat-pack panel path (12 parts) |
 | --- | --- |
 | ![exploded parts](images/hardware/exploded_iso.png) | ![exploded panels](images/hardware/panels_exploded_iso.png) |
+
+## Dimensioned drawings (for the cardboard mockup)
+
+Blueprint-style drawings regenerate from the same PARAMS via
+`hardware/.venv/bin/python hardware/drawing.py` — the side view is the
+side-plate cut pattern (vertex table + radii included), the front view
+locates the window and every control hole.
+
+| Side cut pattern | Face + deck layout |
+| --- | --- |
+| ![side cut pattern](images/hardware/drawing_side.png) | ![face and deck layout](images/hardware/drawing_front.png) |
+
+Key numbers: **340 wide × ~347 deep × 413 mm tall**; deck surface 100 mm
+high at the seam sloping 8° to a 78 mm nose; display face 245 mm long at
+12° from vertical; mask window 253 × 190 (4:3); button rows 68/94 mm from
+the deck front edge, columns at x = 22/66, stick at (−58, 67).

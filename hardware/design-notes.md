@@ -612,3 +612,12 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   Note: the brief's Gauntlet concept assumed a 6-button layout — game
   design now targets 2 primaries + stick. Chain green: 31 components,
   max overlap 0.294 mm^3 (known JLF wedge), deck hole guard OK.
+- Dimensioned drawings (2026-08-20): new `hardware/drawing.py` renders
+  blueprint-style PNGs from the same PARAMS for the cardboard-mockup
+  workflow — `out/drawing_side.png` (side-plate cut pattern: per-segment
+  lengths, corner radii, angle callouts, and a vertex coordinate table
+  with origin at the blank's front-bottom) and `out/drawing_front.png`
+  (display-face layout: bezel/mask/shell opening/nameplate + screen
+  center height; control-deck layout: every hole with a spec block).
+  Overall: 340 wide x ~347 deep x 413 tall. Copied to
+  docs/images/hardware/ and posted to PR #6.
