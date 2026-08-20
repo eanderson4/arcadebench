@@ -24,8 +24,9 @@ without restructuring the model.
 
 - **Single-player** control deck (1P pivot, iteration 16 — all first-party
   games are 1P): 1 × Sanwa JLF joystick (stick-left standard), 2 × OBSF-30
-  primary buttons (recessed-well indicators) + 4 × OBSF-24 secondaries,
-  2 × OBSF-24 start/select.
+  primary buttons (recessed-well indicators) + 2 × OBSF-24 secondaries in
+  an aligned 2×2 grid (iteration 33 — the game roster is stick + 1–2
+  buttons), 2 × OBSF-24 start/select.
 - **13.5″ 3:2 3004×2000 hi-DPI IPS** (~267 PPI) behind a 2.5 mm
   polycarbonate window; display deck tilted back 12° from vertical. The
   screen sits in an 18 mm-deep **printed CRT bezel** (black PETG): a

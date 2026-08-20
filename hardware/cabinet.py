@@ -158,11 +158,13 @@ PARAMS = {
     "players": 1,
     "cluster_offset_x": -8.0,      # recenters the asymmetric cluster (stick-left)
     "primary_hole_dia": 30.0,      # 2 primaries/player: Sanwa OBSF-30
-    "secondary_hole_dia": 24.0,    # 4 secondaries/player: Sanwa OBSF-24
+    "secondary_hole_dia": 24.0,    # 2 secondaries/player: Sanwa OBSF-24
     "primary_count": 2,
-    "secondary_count": 4,
-    "primary_pitch": 40.0,         # mm between primaries (front row)
-    "secondary_pitch": 28.0,       # mm between secondaries (back row)
+    "secondary_count": 2,          # iter 33: 2+2 grid (was 4 secondaries) —
+                                   #   the game roster is stick + 1-2 buttons
+    "primary_pitch": 44.0,         # mm between primaries (front row); the
+                                   #   Ø40 wells keep 4 mm rim gaps at 44
+    "secondary_pitch": 44.0,       # aligned 2x2 grid: same pitch both rows
     "primary_row_y": 68.0,         # front row (closest to the player); wells
                                    #   (Ø40) keep 4 mm margin inside the plate
     "secondary_row_y": 94.0,
@@ -182,7 +184,9 @@ PARAMS = {
     "player_spacing": 230.0,       # mm between player cluster centers
     "joystick_offset_x": -50.0,    # stick left of button cluster
     "joystick_offset_y": 67.0,     # from deck front edge (40 mm wrist rest)
-    "button_grid_offset_x": 15.0,  # first secondary column rel. cluster ctr
+    "button_grid_offset_x": 30.0,  # first secondary column rel. cluster ctr
+                                   #   (iter 33: +15 keeps hand clearance
+                                   #   from the stick with the 2-wide grid)
     "option_offset_x": 25.0,       # start/select straddle cabinet center
     "option_offset_y": 120.0,
     # --- rear I/O + speaker grilles (BOM-driven) ---------------------------
@@ -737,7 +741,9 @@ def build_cabinet(p=None):
                 )
 
         # buttons: front row = 2 primaries (Ø30, recessed well), back row =
-        # 4 secondaries (Ø24); primaries centered under the middle secondaries
+        # 2 secondaries (Ø24); primaries centered under the secondary span
+        sec_center = p["button_grid_offset_x"] \
+            + p["secondary_pitch"] * (p["secondary_count"] - 1) / 2
         for i in range(p["secondary_count"]):
             bx = cluster_x + p["button_grid_offset_x"] + i * p["secondary_pitch"]
             by = p["secondary_row_y"]
@@ -746,9 +752,8 @@ def build_cabinet(p=None):
             )
             deck_holes.append((bx, by, p["secondary_hole_dia"] / 2))
         for i in range(p["primary_count"]):
-            # centered under the secondary span, at primary_pitch
-            bx = cluster_x + p["button_grid_offset_x"] + p["secondary_pitch"] * 1.5 \
-                + (i - 0.5) * p["primary_pitch"]
+            bx = cluster_x + sec_center \
+                + (i - (p["primary_count"] - 1) / 2) * p["primary_pitch"]
             by = p["primary_row_y"]
             solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Cylinder(
                 radius=p["primary_hole_dia"] / 2, height=cut_h

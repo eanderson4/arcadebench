@@ -198,7 +198,7 @@ def place_components():
             (jx, jy, jz),
         )
 
-        # buttons: 2 primaries (red, front row) + 4 secondaries (white);
+        # buttons: 2 primaries (red, front row) + 2 secondaries (white);
         # seated square to the sloped deck (holes are cut the same way)
         s_seat = CAB["control_deck_slope_deg"]
         for i in range(CAB["secondary_count"]):
@@ -211,9 +211,11 @@ def place_components():
                  for s, c in btn_parts],
                 (bx, by, deck_z(by)),
             )
+        sec_center = CAB["button_grid_offset_x"] \
+            + CAB["secondary_pitch"] * (CAB["secondary_count"] - 1) / 2
         for i in range(CAB["primary_count"]):
-            bx = cluster_x + CAB["button_grid_offset_x"] + CAB["secondary_pitch"] * 1.5 \
-                + (i - 0.5) * CAB["primary_pitch"]
+            bx = cluster_x + sec_center \
+                + (i - (CAB["primary_count"] - 1) / 2) * CAB["primary_pitch"]
             by = CAB["primary_row_y"]
             _, btn_parts, _ = comp.button_obsf30(color=comp.RED)
             add(

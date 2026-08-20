@@ -389,10 +389,12 @@ def control_plate():
         for i in range(CAB["secondary_count"]):
             hole(cx + CAB["button_grid_offset_x"] + i * CAB["secondary_pitch"],
                  CAB["secondary_row_y"], CAB["secondary_hole_dia"] + 1.0)
+        sec_center = CAB["button_grid_offset_x"] \
+            + CAB["secondary_pitch"] * (CAB["secondary_count"] - 1) / 2
         for i in range(CAB["primary_count"]):
             hole(
-                cx + CAB["button_grid_offset_x"] + CAB["secondary_pitch"] * 1.5
-                + (i - 0.5) * CAB["primary_pitch"],
+                cx + sec_center
+                + (i - (CAB["primary_count"] - 1) / 2) * CAB["primary_pitch"],
                 CAB["primary_row_y"],
                 CAB["primary_recess_dia"] + 0.4,  # reveal the tactile wells
             )

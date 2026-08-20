@@ -600,3 +600,15 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
     (v1 is a straight loft — reads fine at render scale; brief wants
     15 vs 25 mm recess validated by a printed prototype anyway); PC
     window magnet pockets; scanline texture (print/paint, not CAD).
+- Iteration 33 (2026-08-20, archived `iter-038`, assembly `asm-034`):
+  **2+2 button grid** (user: 6 buttons is overkill — 2 primary + 2
+  secondary; the first-party roster is stick + 1-2 buttons). Secondaries
+  4 -> 2, both rows now at 44 mm pitch in an aligned 2x2 grid (the Ø40
+  primary wells keep 4 mm rim gaps at 44); primaries center under the
+  secondary span via a generic sec_center formula in all four files
+  (cabinet cutouts, control_plate, panels deck, assembly placement).
+  `button_grid_offset_x` 15 -> 30 to keep hand clearance from the stick
+  with the 2-wide grid (stick center to nearest button center = 58 mm).
+  Note: the brief's Gauntlet concept assumed a 6-button layout — game
+  design now targets 2 primaries + stick. Chain green: 31 components,
+  max overlap 0.294 mm^3 (known JLF wedge), deck hole guard OK.
