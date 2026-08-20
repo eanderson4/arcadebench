@@ -14,7 +14,7 @@ import math
 import shutil
 from datetime import datetime
 
-from build123d import Box, Plane, Pos, Rot
+from build123d import Plane, Pos, Rot
 
 import components as comp
 from cabinet import HISTORY_DIR, OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
@@ -24,15 +24,22 @@ CREAM = (0.87, 0.85, 0.80)
 
 LAYOUT = {
     # --- display stack ---------------------------------------------------
-    "panel_gap": 0.5,            # mm between polycarb sheet and panel glass
-    "mask_thickness": 0.4,       # mm printed black mask behind the glass
-    "mask_overlap": 2.0,         # mm mask overlaps the panel active area
+    "panel_gap": 0.5,            # mm between the doubler ring and panel glass
     # --- interior boards (floor-mounted, z = wall) ------------------------
-    "sbc_pos": (0.0, 272.0),     # x, y of board center; 275+ embedded the
-                                 # rear edge in the rear-wall fillet (fit 31)
+    "sbc_pos": (0.0, 272.0),     # x, y of board center; rides the spine rails
     "encoder_pos": (0.0, 110.0),
     "amp_pos": (-100.0, 300.0),
-    "buck_pos": (-60.0, 315.0),
+    "buck_pos": (-100.0, 262.0),  # iter 32: cleared the spine-rail zone
+    # --- chassis (brief 4.1: minimal spine + top bracket; the side plates
+    #     carry the structure, the chassis only mounts equipment) -----------
+    "rail_spacing": 90.0,        # x between spine-rail vertical legs
+    "rail_len": 130.0,           # spans y 197..327: clears the rear floor
+                                 #   fillet (flat to y=330), supports the SBC
+    "rail_y": 262.0,
+    "rail_leg": 20.0,            # 20x20x1.5 angle; SBC rides the leg tops
+    "top_bracket_u": 120.0,      # mm from the marquee top along the hood cap
+    "top_bracket_len": 292.0,    # clears the side-flange zone (|x| > 147)
+    # --- speakers -----------------------------------------------------------
     "speaker_height": 22.0,      # 2" driver stack height (catalog bbox)
     "speaker_gasket": 2.0,       # foam seal under the flange; also clears the
                                  # hood corner fillets (speaker_scan.py)
@@ -85,38 +92,14 @@ def place_components():
 
     # --- display stack (on the tilted face frame) -------------------------
     face = display_face_plane()
-    pc_w = CAB["glass_opening_w"] + 2 * CAB["polycarb_overlap"]
-    pc_h = CAB["glass_opening_h"] + 2 * CAB["polycarb_overlap"]
-    rabbet_depth = CAB["polycarb_thickness"] + 0.2
-    pc_off = wall + CAB["doubler_thickness"] - rabbet_depth / 2
-    # mask + panel sit BEHIND the doubler's inner face (the panel bears on
-    # the doubler ring around the rabbet); the clamp frame meets the boss
-    # tips at wall + doubler + gap + panel_thickness (retainer_boss_depth).
-    mask_off = (
-        wall + CAB["doubler_thickness"] + 0.1 + LAYOUT["mask_thickness"] / 2
-    )
+    # iter 32 (chassis brief 4.4): the PC window + 4:3 mask moved OUT of the
+    # shell into the printed CRT bezel; the LCD clamps against the doubler
+    # ring by the retainer frame. Stack: PC window -> bezel -> shell window
+    # -> panel -> retainer.
     panel_off = (
         wall + CAB["doubler_thickness"] + LAYOUT["panel_gap"]
         + CAB["panel_thickness"] / 2
     )
-
-    _, sheet_parts, _ = comp.polycarb_sheet(pc_w, pc_h, CAB["polycarb_thickness"])
-    # the sheet is transparent in reality; the renderer has no alpha, so
-    # record it but don't render it (it would hide the mask + panel)
-    records.append({"name": "polycarb_sheet", "at": [0, round(pc_off, 1), 0]})
-    del sheet_parts
-
-    # printed black mask: full glass area minus the active-area window
-    from cabinet import _rounded_cutter
-
-    hole_w = CAB["panel_active_w"] - 2 * LAYOUT["mask_overlap"]
-    hole_h = CAB["panel_active_h"] - 2 * LAYOUT["mask_overlap"]
-    mask = _rounded_cutter(
-        face, mask_off,
-        CAB["glass_opening_w"], LAYOUT["mask_thickness"], CAB["glass_opening_h"],
-        CAB["window_corner_radius"],
-    ) - face * Pos(0, mask_off, 0) * Box(hole_w, LAYOUT["mask_thickness"] + 1, hole_h)
-    add("bezel_mask", [(mask, (0.05, 0.05, 0.06))], (0, mask_off, 0))
 
     _, panel_parts, _ = comp.display_panel()
     add(
@@ -125,9 +108,23 @@ def place_components():
         (0, panel_off, 0),
     )
 
-    # clamp frame pressing the panel against the rabbet (part from parts.py)
-    from parts import retainer_frame
+    from parts import BEZEL, crt_bezel, retainer_frame
 
+    # CRT bezel on the OUTER face: local +Z (toward the viewer) maps to the
+    # face frame's -Y (outward); rear face flush with the shell
+    add(
+        "crt_bezel",
+        [(face * Rot(90, 0, 0) * crt_bezel(), (0.05, 0.05, 0.06))],
+        (0, 0.0, 0),
+    )
+
+    # PC window friction-fit in the bezel's front pocket; the sheet is
+    # transparent in reality and the renderer has no alpha, so record it
+    # but don't render it (it would hide the panel)
+    pc_off = -(BEZEL["depth"] - (CAB["polycarb_thickness"] + 0.2) / 2)
+    records.append({"name": "polycarb_sheet", "at": [0, round(pc_off, 1), 0]})
+
+    # clamp frame pressing the panel against the doubler ring (parts.py)
     frame_off = (
         wall + CAB["doubler_thickness"] + LAYOUT["panel_gap"]
         + CAB["panel_thickness"]
@@ -246,8 +243,24 @@ def place_components():
         ("buck", comp.buck_converter),
     ):
         x, y = LAYOUT[f"{name}_pos"]
+        # the SBC rides the spine-rail leg tops (brief 4.2 bottom spine)
+        z0 = wall + LAYOUT["rail_leg"] if name == "sbc" else wall
         _, board_parts, _ = builder()
-        add(name, [(Pos(x, y, wall) * s, c) for s, c in board_parts], (x, y, wall))
+        add(name, [(Pos(x, y, z0) * s, c) for s, c in board_parts], (x, y, z0))
+
+    # --- chassis: bottom spine rails (brief 4.2) ----------------------------
+    for sx in (-1, 1):
+        _, rail_parts, _ = comp.angle_rail(
+            length=LAYOUT["rail_len"], leg=LAYOUT["rail_leg"]
+        )
+        place = Pos(sx * LAYOUT["rail_spacing"] / 2, LAYOUT["rail_y"], wall)
+        if sx > 0:
+            place = place * Rot(0, 0, 180)  # horizontal leg points outward
+        add(
+            f"spine_rail_{'l' if sx < 0 else 'r'}",
+            [(place * s, c) for s, c in rail_parts],
+            (sx * LAYOUT["rail_spacing"] / 2, LAYOUT["rail_y"], wall),
+        )
 
     # speakers: inside the hood, cone tilted with the floor, firing down at
     # the player through the hood-floor slots. The flipped speaker stack
@@ -278,6 +291,30 @@ def place_components():
             ],
             (x, spk_y, spk_z),
         )
+
+    # --- top bracket + display driver board (brief 4.3) -------------------
+    # U-channel across the hood, top face against the cap's inner surface;
+    # the driver board hangs flat against the bracket floor. Local frame:
+    # Rot(-tilt) maps +Z onto the cap normal and +Y along the cap.
+    u_dir = (cos_t, -sin_t)         # along the hood cap toward the back
+    n_cap = (sin_t, cos_t)          # cap outward normal
+    tb_u = LAYOUT["top_bracket_u"]
+    tb_y = sinfo["mrq_y"] + u_dir[0] * tb_u - n_cap[0] * wall
+    tb_z = sinfo["mrq_z"] + u_dir[1] * tb_u - n_cap[1] * wall
+    tb_frame = Pos(0, tb_y, tb_z) * Rot(-CAB["display_tilt_deg"], 0, 0)
+    _, tb_parts, tb_dims = comp.u_channel(length=LAYOUT["top_bracket_len"])
+    add(
+        "top_bracket",
+        [(tb_frame * s, c) for s, c in tb_parts],
+        (0, tb_y, tb_z),
+    )
+    _, db_parts, _ = comp.driver_board()
+    db_drop = tb_dims["h"] + 4.0    # bracket leg height + half the board
+    add(
+        "driver_board",
+        [(tb_frame * Pos(0, 0, -db_drop) * s, c) for s, c in db_parts],
+        (0, tb_y, tb_z),
+    )
 
     # --- rear panel (origin at outer surface, body into the cabinet) --------
     back_y = CAB["cabinet_depth_base"]

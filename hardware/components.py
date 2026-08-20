@@ -45,11 +45,12 @@ CONE_GRAY = (0.25, 0.25, 0.27)
 
 
 def display_panel():
-    """13.5" 3:2 hi-DPI IPS panel (3004x2000, Surface-class kit) + HDMI driver.
+    """13.5" 3:2 hi-DPI IPS panel (3004x2000, Surface-class kit), glass only.
 
     Frame: origin at glass center. X = width (296), Z = height (206),
-    Y = thickness. The viewable face looks toward -Y (viewer side);
-    the driver board sits behind (+Y), low on the back.
+    Y = thickness. The viewable face looks toward -Y (viewer side).
+    The HDMI driver board is a separate component (driver_board) — the
+    chassis brief mounts it on the top bracket, not on the panel.
     """
     dims = {
         "glass_w": 296.0,
@@ -59,22 +60,56 @@ def display_panel():
         "active_h": 190.0,
         "active_t": 0.4,          # cosmetic face plate thickness # ESTIMATED
         "active_recess": 0.2,     # face recessed below glass surface # ESTIMATED
-        "driver_w": 100.0,
-        "driver_d": 8.0,
-        "driver_h": 55.0,
-        "driver_z_offset": -40.0,  # low on the back # ESTIMATED
     }
     glass = Box(dims["glass_w"], dims["glass_t"], dims["glass_h"])
     active = Pos(
         0, -(dims["glass_t"] / 2 - dims["active_recess"] - dims["active_t"] / 2), 0
     ) * Box(dims["active_w"], dims["active_t"], dims["active_h"])
-    driver = Pos(
-        0,
-        dims["glass_t"] / 2 + dims["driver_d"] / 2,
-        dims["driver_z_offset"],
-    ) * Box(dims["driver_w"], dims["driver_d"], dims["driver_h"])
-    parts = [(glass, GLASS), (active, GLASS_ACTIVE), (driver, PCB)]
+    parts = [(glass, GLASS), (active, GLASS_ACTIVE)]
     return "display_panel", parts, dims
+
+
+def driver_board():
+    """HDMI/eDP driver board for the 13.5" panel kit.
+
+    Frame: origin at board center. X = 100 (across the cabinet when
+    mounted on the top bracket), Y = 55, Z = 8.
+    """
+    dims = {
+        "board_w": 100.0,
+        "board_d": 55.0,
+        "board_h": 8.0,           # tallest component on the board # ESTIMATED
+    }
+    board = Box(dims["board_w"], dims["board_d"], dims["board_h"])
+    return "driver_board", [(board, PCB)], dims
+
+
+def angle_rail(length=140.0, leg=20.0, t=1.5):
+    """Aluminum angle rail (chassis spine member), 20x20x1.5 L-section.
+
+    Frame: origin at the bottom face center, rail running along Y.
+    Vertical leg at x ~ 0, horizontal leg extending toward -X (mirror
+    with Rot(0, 0, 180) for the opposite side).
+    """
+    dims = {"length": length, "leg": leg, "t": t}
+    vert = Pos(0, 0, leg / 2) * Box(t, length, leg)
+    horiz = Pos(-(leg - t) / 2, 0, t / 2) * Box(leg, length, t)
+    rail = vert + horiz
+    return "angle_rail", [(rail, ALU)], dims
+
+
+def u_channel(length=292.0, w=25.0, h=20.0, t=1.5):
+    """Aluminum U-channel (top bracket), open side down.
+
+    Frame: origin at the center of the TOP outer face (the face that
+    bolts to the hood cap), channel running along X, body below (-Z).
+    """
+    dims = {"length": length, "w": w, "h": h, "t": t}
+    top = Pos(0, 0, -t / 2) * Box(length, w, t)
+    channel = top
+    for sy in (-1, 1):
+        channel += Pos(0, sy * (w - t) / 2, -h / 2) * Box(length, t, h)
+    return "u_channel", [(channel, ALU)], dims
 
 
 def polycarb_sheet(w=300.0, h=300.0, t=2.5):
@@ -473,7 +508,10 @@ def rubber_foot():
 # All builders, in catalog order.
 CATALOG = [
     display_panel,
+    driver_board,
     polycarb_sheet,
+    angle_rail,
+    u_channel,
     joystick_jlf,
     button_obsf30,
     button_obsf24,

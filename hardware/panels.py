@@ -1,28 +1,31 @@
-"""ArcadeBench panelized decomposition — the cabinet as flat panels + cleats.
+"""ArcadeBench panelized decomposition — the cabinet as flat panels + sides.
 
 Same outer profile as the monocoque (cabinet.side_profile), decomposed into:
-  - 2 side plates carrying the full rounded silhouette
-  - 8 flat wrap panels: bottom, back, top, marquee, lip (hood floor),
-    face (window), deck (controls), nose fascia
-  - 8 corner cleat gussets with M3 insert pilots on both panel faces
+  - 2 side plates carrying the full rounded silhouette, with 90 deg return
+    flanges bent in along every wrap segment — THE SIDES ARE THE STRUCTURE
+    (chassis brief 4.5: 5052 sides with return flanges carry all vertical
+    and torsional rigidity; the chassis only mounts equipment)
+  - 10 flat wrap panels: bottom, back, taper, neck, top, marquee, lip
+    (hood floor), face (window), deck (controls), nose fascia — each screws
+    into M3 inserts in the side-plate flanges (no corner cleats)
 
 This is both the flat-pack print path and the sheet-aluminum path (the wrap
-panels are the brake/flat patterns; the cleats become bent flanges/rivnuts).
+panels are the brake/flat patterns; the flanges take rivnuts in metal).
 
 Run:  hardware/.venv/bin/python hardware/panels.py
 Out:  hardware/out/panels/*.step|.stl + out/panels_exploded.png +
-      out/panels_flat.png + fit report vs the print bed
+      fit report vs the print bed + sheet-mass estimate
 """
 
 import math
 from pathlib import Path
 
 from build123d import (
-    Axis,
     Box,
     BuildLine,
     BuildSketch,
     Cylinder,
+    GeomType,
     Plane,
     Polyline,
     Pos,
@@ -44,13 +47,14 @@ PP = {
     "panel_thickness": 3.0,        # == wall; panels span between side plates
     "panel_inset": 1.0,            # mm panels step in from side-plate edges
                                    # (consistent dark reveal, not a flush seam)
-    "cleat_land": 25.0,            # mm cleat face length along each panel
-    "cleat_depth": 15.0,           # mm cleat wedge depth into the interior
-    "cleat_max_span": 60.0,        # clamp for very convex corners
-    "insert_hole_dia": 4.2,        # M3 heat-set insert pilot
+    # --- side-plate return flanges (the structure) --------------------------
+    "flange_width": 20.0,          # mm the flange returns inward (in X)
+    "flange_thickness": 3.0,       # == panel thickness (2 mm in 5052)
+    "flange_bend_r": 2.0,          # inside bend radius (~= stock thickness)
+    "screw_end_inset": 15.0,       # panel screw stations: ends + mid-span
+    "insert_hole_dia": 4.2,        # M3 heat-set insert pilot (rivnut in metal)
     "insert_hole_depth": 7.0,
-    "screw_hole_dia": 3.4,         # M3 clearance through panels/side plates
-    "screw_x": (60.0, 140.0),      # +/- x positions for panel screws
+    "screw_hole_dia": 3.4,         # M3 clearance through the wrap panels
     "print_bed": 360.0,
     # --- stock options for the mass report ---------------------------------
     "alu_thickness": 2.0,          # mm 5052-H32 sheet (bend r ~= thickness)
@@ -66,10 +70,6 @@ def panel_names(profile):
         names = names[:2] + ["taper", "neck"] + names[2:]
     assert len(names) == len(profile)
     return names
-
-
-def unit(v):
-    return (v[0] / math.hypot(*v), v[1] / math.hypot(*v))
 
 
 def seg_data(profile):
@@ -120,11 +120,12 @@ def panel_features(name, panel, length):
         nonlocal panel
         panel -= Pos(x, y_loc, 0) * Cylinder(radius=dia / 2, height=cut_h)
 
-    # screw clearances near both ends, matching the cleat pilots
+    # screw clearances into the side-plate flanges: 3 stations along the
+    # panel (ends + mid-span), on the flange centerline at both x extremes
+    fx = CAB["cabinet_width"] / 2 - t - PP["flange_width"] / 2
     for sx in (-1, 1):
-        for fx in PP["screw_x"]:
-            for ey in (-1, 1):
-                hole(sx * fx, ey * (half - PP["cleat_land"] / 2), PP["screw_hole_dia"])
+        for ey in (-half + PP["screw_end_inset"], 0.0, half - PP["screw_end_inset"]):
+            hole(sx * fx, ey, PP["screw_hole_dia"])
 
     if name == "deck":
         # local y=0 is the segment midpoint and local +Y maps onto the
@@ -252,87 +253,84 @@ def make_panel(name, a, b, length, e, n_in):
     return place_panel(panel, a, b, e, n_in, t)
 
 
-def line_intersect(p1, d1, p2, d2):
-    """Intersection of lines p1+t*d1, p2+s*d2 (2D, y/z tuples)."""
-    det = d1[0] * (-d2[1]) - (-d2[0]) * d1[1]
-    if abs(det) < 1e-9:
-        return None
-    rhs = (p2[0] - p1[0], p2[1] - p1[1])
-    t = (rhs[0] * (-d2[1]) - (-d2[0]) * rhs[1]) / det
-    return (p1[0] + t * d1[0], p1[1] + t * d1[1])
+def make_side_plate(profile, radii, side, segs):
+    """Full silhouette plate with 90 deg return flanges along every wrap
+    segment — the sides ARE the structure (brief 4.5). The wrap panels
+    rest on the flanges and screw into M3 inserts in the flange faces.
 
-
-def make_cleat(v, seg_in, seg_out):
-    """Corner gusset at vertex v. Cross-section (YZ): wedge between the two
-    panels' inner surfaces, reaching cleat_depth into the interior."""
-    t = PP["panel_thickness"]
-    land = PP["cleat_land"]
-    depth = PP["cleat_depth"]
-    _, _, _, e1, n1 = seg_in   # e1 points INTO v
-    _, _, _, e2, n2 = seg_out  # e2 points OUT of v
-
-    o1 = (v[0] + n1[0] * t, v[1] + n1[1] * t)  # inner line origins
-    o2 = (v[0] + n2[0] * t, v[1] + n2[1] * t)
-    a = (o1[0] - e1[0] * land, o1[1] - e1[1] * land)
-    b = (o2[0] + e2[0] * land, o2[1] + e2[1] * land)
-    x = line_intersect(o1, e1, o2, e2)
-    if x is None or math.hypot(x[0] - v[0], x[1] - v[1]) > PP["cleat_max_span"]:
-        bis = unit((n1[0] + n2[0], n1[1] + n2[1]))
-        x = (v[0] + bis[0] * (t + depth), v[1] + bis[1] * (t + depth))
-    g = (x[0] + unit((n1[0] + n2[0], n1[1] + n2[1]))[0] * depth,
-         x[1] + unit((n1[0] + n2[0], n1[1] + n2[1]))[1] * depth)
-
-    w_half = (CAB["cabinet_width"] - 2 * t) / 2
-    with BuildSketch(Plane.YZ) as sk:
-        with BuildLine():
-            Polyline([a, x, b, g], close=True)
-        make_face()
-    cleat = extrude(sk.sketch, amount=w_half, both=True)
-
-    # insert pilots on both panel faces, along the face normals
-    for e, n, sgn in ((e1, n1, -1), (e2, n2, 1)):
-        fc = (o1[0] - e1[0] * land / 2, o1[1] - e1[1] * land / 2) if sgn < 0 else (
-            o2[0] + e2[0] * land / 2, o2[1] + e2[1] * land / 2
-        )
-        # pilot center: half a depth into the cleat along the inward normal
-        pc = (fc[0] + n[0] * PP["insert_hole_depth"] / 2,
-              fc[1] + n[1] * PP["insert_hole_depth"] / 2)
-        ang = math.degrees(math.atan2(n[1], n[0])) - 90  # cylinder Z -> normal
-        for fx in PP["screw_x"]:
-            for sx in (-1, 1):
-                cleat -= Pos(sx * fx, pc[0], pc[1]) * Rot(ang, 0, 0) * Cylinder(
-                    radius=PP["insert_hole_dia"] / 2,
-                    height=PP["insert_hole_depth"] + 1,
-                )
-
-    # end-bolt pilots along X at the wedge centroid (into side plates)
-    cy = (a[0] + x[0] + b[0] + g[0]) / 4
-    cz = (a[1] + x[1] + b[1] + g[1]) / 4
-    for sx in (-1, 1):
-        cleat -= Pos(sx * (w_half - PP["insert_hole_depth"] / 2 + 0.5), cy, cz) * Rot(
-            0, 90, 0
-        ) * Cylinder(
-            radius=PP["insert_hole_dia"] / 2, height=PP["insert_hole_depth"] + 1
-        )
-    return cleat, (cy, cz)
-
-
-def make_side_plate(profile, radii, cleat_bolt_pts, side):
-    """Full silhouette plate, 3 mm, with clearance holes for the cleat
-    end bolts. Corners stay SHARP by construction: the wrap panels span
+    Flanges follow the BASE profile segments (the wrap-panel lines), not
+    the cheek outline: on the front matter the cheek stands proud of the
+    base profile, so there the flange bends off a line inside the plate
+    face. Plate corners stay SHARP by construction: the wrap panels span
     vertex to vertex, so rounding a plate corner would leave the panel
     ends overhanging. (Corner softness on a metal build is a fab-shop
     edge break, not modeled geometry.)"""
     t = PP["panel_thickness"]
+    ft = PP["flange_thickness"]
+    fw = PP["flange_width"]
     with BuildSketch(Plane.YZ) as sk:
         with BuildLine():
             Polyline(profile, close=True)
         make_face()
     plate = extrude(sk.sketch, amount=t / 2, both=True)
-    for cy, cz in cleat_bolt_pts:
-        plate -= Pos(0, cy, cz) * Rot(0, 90, 0) * Cylinder(
-            radius=PP["screw_hole_dia"] / 2, height=t + 2
+
+    # NOTE: the plate is built centered at X=0 and only moved to its world
+    # x at the return — so flanges/pilots use plate-local x throughout.
+    x_in = -side * t / 2                     # inner face (local)
+    fx = -side * (t / 2 + fw / 2)            # flange centerline (local)
+    bend_segs = []
+    for a, b, length, e, n_in in segs:
+        # flange band: just UNDER the wrap panel ([t, t+ft] along n_in)
+        p1 = (a[0] + n_in[0] * t, a[1] + n_in[1] * t)
+        p2 = (b[0] + n_in[0] * t, b[1] + n_in[1] * t)
+        p3 = (b[0] + n_in[0] * (t + ft), b[1] + n_in[1] * (t + ft))
+        p4 = (a[0] + n_in[0] * (t + ft), a[1] + n_in[1] * (t + ft))
+        with BuildSketch(Plane.YZ) as fsk:
+            with BuildLine():
+                Polyline([p1, p2, p3, p4], close=True)
+            make_face()
+        # spans from 0.5 mm inside the plate to fw inward of its face
+        plate += Pos(x_in - side * (fw / 2 - 0.25), 0, 0) * extrude(
+            fsk.sketch, amount=(fw + 0.5) / 2, both=True
         )
+        bend_segs.append((p1, p2))
+        # M3 insert pilots in the flange face, matching the panel screws
+        half = length / 2
+        ang = math.degrees(math.atan2(n_in[1], n_in[0])) - 90  # cyl Z -> normal
+        dc = t + PP["insert_hole_depth"] / 2
+        for off in (-half + PP["screw_end_inset"], 0.0, half - PP["screw_end_inset"]):
+            my = (a[0] + b[0]) / 2 + e[0] * off + n_in[0] * dc
+            mz = (a[1] + b[1]) / 2 + e[1] * off + n_in[1] * dc
+            plate -= Pos(fx, my, mz) * Rot(ang, 0, 0) * Cylinder(
+                radius=PP["insert_hole_dia"] / 2,
+                height=PP["insert_hole_depth"] + 1,
+            )
+
+    # round the bend lines (inside radius ~= stock thickness)
+    def near_bend(edge):
+        if edge.geom_type != GeomType.LINE:
+            return False
+        c = edge.center()
+        if abs(c.X - x_in) > 0.7:
+            return False
+        for p1, p2 in bend_segs:
+            d = (p2[0] - p1[0], p2[1] - p1[1])
+            ln = math.hypot(*d)
+            u = ((c.Y - p1[0]) * d[0] + (c.Z - p1[1]) * d[1]) / ln
+            if u < -1 or u > ln + 1:
+                continue
+            py = p1[0] + d[0] * u / ln
+            pz = p1[1] + d[1] * u / ln
+            if math.hypot(c.Y - py, c.Z - pz) < 1.2:
+                return True
+        return False
+
+    bends = plate.edges().filter_by(near_bend)
+    try:
+        plate = plate.fillet(PP["flange_bend_r"], bends)
+    except Exception as exc:
+        print(f"  ! side plate bend fillet skipped: {exc}")
+
     # side-vent gills (same raked hood-zone positions as the shell cheeks)
     p = CAB
     _, _, info = side_profile(p)
@@ -373,17 +371,8 @@ def main():
         parts[f"panel_{name}"] = panel
         panel_shapes[name] = (panel, n_in)
 
-    cleat_pts = []
-    n = len(profile)
-    for i in range(n):
-        cleat, ctr = make_cleat(profile[i], segs[i - 1], segs[i])
-        parts[f"cleat_{i}"] = cleat
-        cleat_pts.append(ctr)
-
     for side, sname in ((-1, "l"), (1, "r")):
-        parts[f"side_{sname}"] = make_side_plate(
-            side_pts, side_radii, cleat_pts, side
-        )
+        parts[f"side_{sname}"] = make_side_plate(side_pts, side_radii, side, segs)
 
     # --- deck hole-position guard (a y-mirror bug slipped through the
     # visuals once; verify holes land at layout positions, world coords) ---
@@ -430,11 +419,9 @@ def main():
         export_stl(part, str(PANELS_DIR / f"{name}.stl"))
 
     # --- mass report: sheet area x stock thickness x density ---------------
-    print("\nmass estimate (panels + sides only, no cleats/hardware):")
+    print("\nmass estimate (panels + sides incl. flanges, no hardware):")
     total_alu = total_petg = 0.0
     for name, part in parts.items():
-        if name.startswith("cleat"):
-            continue
         area_m2 = part.area / 1e6 / 2  # area counts both faces; use one side
         alu_g = (
             part.volume / PP["panel_thickness"]
@@ -445,18 +432,15 @@ def main():
         print(f"  {name:14s} area {area_m2 * 1e4:7.0f} cm^2  alu {alu_g:6.0f} g  petg {petg_g:6.0f} g")
     print(f"  {'TOTAL':14s} {'':19s} alu {total_alu:6.0f} g  petg {total_petg:6.0f} g")
 
-    # exploded: panels/cleats pushed along their normals, sides out in X
+    # exploded: panels pushed along their normals, sides out in X
     exploded = []
     for i, name in enumerate(names):
         a, b, length, e, n_in = segs[i]
         off = 45
         exploded.append((
-            Pos(-n_in[0] * off, -n_in[1] * off, 0) * parts[f"panel_{name}"]
-            if False else Pos(0, -n_in[0] * off, -n_in[1] * off) * parts[f"panel_{name}"],
+            Pos(0, -n_in[0] * off, -n_in[1] * off) * parts[f"panel_{name}"],
             (0.87, 0.85, 0.80),
         ))
-    for i in range(n):
-        exploded.append((parts[f"cleat_{i}"], (0.55, 0.53, 0.50)))
     exploded.append((Pos(-60, 0, 0) * parts["side_l"], (0.80, 0.77, 0.72)))
     exploded.append((Pos(60, 0, 0) * parts["side_r"], (0.80, 0.77, 0.72)))
     render_parts(

@@ -545,3 +545,58 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   all). Candidates: cream-classic (current), graphite-red,
   alu-orange, sage-amber, navy-brass, snow-coral. Awaiting user pick;
   the winner becomes the default colorway in assembly.py LAYOUT.
+- Iteration 32 (2026-08-20, archived `iter-037`, assembly `asm-033`):
+  **chassis brief pass: printed CRT bezel + minimal spine chassis +
+  structural flanged sides** (feedback doc:
+  `hardware/references/hardware-brief-2026-08-19.md` section 4; user
+  steer: lighter-weight chassis, side plates carry the structure).
+  - **CRT bezel** (brief 4.4): new printed part `crt_bezel()`
+    (parts.py, STEP+STL in out/parts/). 18 mm deep black-PETG bezel
+    standing proud of the face; the throat lofts from the 253x190 R12
+    4:3 mask opening at the front back to a 289x195 seat that hides the
+    shell window — the CRT funnel read, and the 4:3 mask cue moves from
+    the glass print into the bezel. PC window drops into a front pocket
+    (friction fit v1; magnet pockets deferred — brief open question 7).
+    Mounts: 4 mid-edge M3 screws driven from INSIDE the cabinet through
+    shell clearances (+/-148 x, +/-100.5 z, placed clear of the retainer
+    corner bosses) into heat-set inserts in the bezel rear face.
+    Shell changes: window cut enlarged 253x190 -> 287x192 (active + 2),
+    in-shell polycarb rabbet DELETED, printed mask DELETED, proud bezel
+    ring OFF (`bezel_width` 0), reveal ring OFF (`reveal_offset` 0) —
+    all superseded by the bezel; doubler margin 8 -> 12 to carry the
+    bezel mount holes. `screen_center_frac` 0.50 -> 0.508: centers the
+    bezel in the face's flat band between the seam and lip 3D blends
+    (fit_check confirms 0.000 mm^3 shell intersection).
+  - **Minimal spine chassis** (brief 4.1-4.3): 2 x 20x20x1.5 aluminum
+    angle rails (130 mm, y 197..327 — shortened from 140 after
+    fit_check caught the rear floor fillet) bolted to the base, SBC
+    rides the rail leg tops (z = wall+20); buck relocated (-60,315) ->
+    (-100,262) to clear the rails. U-channel top bracket (292 mm, spans
+    between the flange zones) hung under the hood cap at u=120; the
+    HDMI driver board is now a separate catalog component mounted flat
+    under the bracket (removed from the display_panel model).
+  - **Structural side plates** (brief 4.5): panels.py corner cleats
+    DELETED (10 parts gone). Side plates get 20 mm 90 deg return flanges
+    bent in along ALL 10 wrap segments (base-profile lines, incl. inside
+    the cheek overhang on the front matter), each flange face carrying
+    M3 insert pilots at 3 stations; wrap panels get 6 matching screw
+    clearances on the flange centerline (|x| = 157). Flat pack is now
+    12 parts (10 wraps + 2 flanged sides), 5052 mass 3326 g total.
+  - Chain green: fit_check 33 components, max overlap 0.294 mm^3 (known
+    JLF plate wedge, by design); shell valid 1 body, 2328 cm^3;
+    parts 3x + retainer + bezel all single-body valid; panels 12 valid.
+  - Known cosmetic skips: side-plate bend-radius fillet refused by OCC
+    at R2 (the bend line is still modeled sharp — a real brake bend has
+    the radius for free); bezel front rim R1 applied, throat knife-edge
+    unfilletable by construction (void both sides; the PC window covers
+    it). Side plates are 413 mm tall -> over the 360 print bed (metal
+    path only, or split for print — was already true pre-flange).
+  - FLAGGED, needs a user call (not changed): brief 5.1 recommends a
+    used x86 thin client (Lenovo M90n class ~179x183 mm) over the
+    ODROID H4+ — that footprint does NOT fit the current floor layout
+    between the rails; adopting it means re-laying out the base (or
+    wall-mounting it in the neck). H4+ model stays until decided.
+  - Deferred from the brief: CRT throat as a TRUE curved transition
+    (v1 is a straight loft — reads fine at render scale; brief wants
+    15 vs 25 mm recess validated by a printed prototype anyway); PC
+    window magnet pockets; scanline texture (print/paint, not CAD).

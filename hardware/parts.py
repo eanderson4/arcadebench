@@ -25,12 +25,14 @@ from build123d import (
     Cone,
     Cylinder,
     Mode,
+    Plane,
     Pos,
     RectangleRounded,
     Rot,
     export_step,
     export_stl,
     extrude,
+    loft,
 )
 
 from cabinet import OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
@@ -69,7 +71,87 @@ SPLIT = {
     "hood_v_seam_joints": [(None, 340), (None, 370), (None, 395)],
 }
 
-# --- display retainer clamp frame (printed part) --------------------------
+# --- CRT display bezel (printed part, black PETG) ---------------------------
+# Chassis brief 4.4: the bezel creates the CRT recess a flat LCD lacks.
+# Stack (front to back): PC window (friction fit in the front pocket) ->
+# this bezel -> shell window -> LCD (clamped by the retainer frame).
+BEZEL = {
+    "seat_w": 289.0,         # rear opening: hides the 287x192 shell window
+    "seat_h": 195.0,
+    "seat_corner_r": 14.0,
+    "mask_w": 253.0,         # front opening = the 4:3 CRT window (games
+    "mask_h": 190.0,         #   render 4:3 into it — S3 identity cue)
+    "mask_corner_r": 12.0,
+    "border": 9.0,           # border ring beyond the seat -> 307x213 outer
+    "outer_corner_r": 14.0,
+    "depth": 18.0,           # CRT recess (brief: 15-25 mm; validate by print)
+    "pocket_inset": 4.0,     # PC window pocket inset from the outer edge
+    "pocket_clearance": 0.3, # per side — light friction fit (magnets: v2)
+    "rim_fillet": 1.0,       # round on the visible front rims (outer + pocket)
+    "mount_pilot_dia": 4.2,  # M3 heat-set insert pilots in the rear face
+    "mount_pilot_depth": 7.0,
+}
+
+
+def crt_bezel():
+    """Recessed CRT-effect display bezel, printed black PETG.
+
+    The throat lofts from the small rounded 4:3 mask opening at the front
+    back to the panel seat — the CRT funnel read. The PC window drops into
+    the front pocket (friction fit; second-surface mask print hides the
+    LCD frame). Bolts on from inside the cabinet: M3 screws through the
+    shell's bezel-mount clearances into heat-set inserts in the rear face.
+
+    Frame: sketch in XY (X across, Y up-slope), extruded +Z toward the
+    viewer; the rear face (z=0) sits flush on the shell face. Mounted in
+    assembly with face * Rot(90, 0, 0).
+    """
+    p = CAB
+    b = BEZEL
+    ow = b["seat_w"] + 2 * b["border"]
+    oh = b["seat_h"] + 2 * b["border"]
+    depth = b["depth"]
+    assert b["seat_w"] > p["glass_opening_w"] and b["seat_h"] > p["glass_opening_h"], \
+        "bezel seat must hide the shell window"
+    with BuildPart() as bp:
+        with BuildSketch():
+            RectangleRounded(ow, oh, b["outer_corner_r"])
+        extrude(amount=depth)
+        with BuildSketch(Plane.XY):
+            RectangleRounded(b["seat_w"], b["seat_h"], b["seat_corner_r"])
+        with BuildSketch(Plane.XY.offset(depth)):
+            RectangleRounded(b["mask_w"], b["mask_h"], b["mask_corner_r"])
+        loft(mode=Mode.SUBTRACT)
+        # PC window pocket in the front face
+        pd = p["polycarb_thickness"] + 0.2
+        pw = ow - 2 * (b["pocket_inset"] - b["pocket_clearance"])
+        ph = oh - 2 * (b["pocket_inset"] - b["pocket_clearance"])
+        with BuildSketch(Plane.XY.offset(depth - pd)):
+            RectangleRounded(pw, ph, b["outer_corner_r"] - b["pocket_inset"])
+        extrude(amount=pd + 0.4, mode=Mode.SUBTRACT)
+    bezel = bp.part
+    # round the visible front rims (outer perimeter + window pocket). The
+    # mask-throat rim itself is a knife edge once the pocket is cut (void
+    # on both sides) — no material to fillet, and the PC window covers it.
+    rim = bezel.edges().filter_by(
+        lambda e: abs(e.center().Z - depth) < 0.6
+        and (abs(e.center().X) > 135.0 or abs(e.center().Y) > 100.0)
+    )
+    try:
+        bezel = bezel.fillet(b["rim_fillet"], rim)
+    except Exception as exc:
+        print(f"  ! bezel rim fillet skipped: {exc}")
+    # M3 insert pilots in the rear face, matching the shell clearances
+    md = b["mount_pilot_dia"]
+    for mx, my in ((-p["bezel_mount_x"], 0.0), (p["bezel_mount_x"], 0.0),
+                   (0.0, -p["bezel_mount_z"]), (0.0, p["bezel_mount_z"])):
+        bezel -= Pos(mx, my, b["mount_pilot_depth"] / 2) * Cylinder(
+            radius=md / 2, height=b["mount_pilot_depth"]
+        )
+    return bezel
+
+
+
 RET = {
     "frame_thickness": 3.0,
     "frame_bearing": 8.0,        # mm the frame presses on the panel border
@@ -302,6 +384,15 @@ def main():
         raise RuntimeError(f"retainer frame: valid={f_valid}, bodies={f_bodies}")
     export_step(frame, str(PARTS_DIR / "retainer_frame.step"))
     export_stl(frame, str(PARTS_DIR / "retainer_frame.stl"))
+
+    # CRT display bezel (independent printed part)
+    bezel = crt_bezel()
+    b_valid, b_bodies = bezel.is_valid, len(bezel.solids())
+    print(f"bezel valid={b_valid} bodies={b_bodies}")
+    if not b_valid or b_bodies != 1:
+        raise RuntimeError(f"CRT bezel: valid={b_valid}, bodies={b_bodies}")
+    export_step(bezel, str(PARTS_DIR / "crt_bezel.step"))
+    export_stl(bezel, str(PARTS_DIR / "crt_bezel.stl"))
 
     # exploded view: layers separated in Z, halves in X
     shades = [(0.87, 0.85, 0.80), (0.80, 0.77, 0.72), (0.72, 0.69, 0.64)]

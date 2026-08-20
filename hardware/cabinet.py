@@ -122,24 +122,29 @@ PARAMS = {
     "panel_thickness": 5.0,        # slim laptop-class panel (driver board separate)
     "panel_active_w": 285.0,       # mm active area
     "panel_active_h": 190.0,
-    "glass_opening_w": 253.0,      # mm visible glass/mask area — 4:3 mask
-    "glass_opening_h": 190.0,      #   inside the 3:2 panel (S3 CRT cue);
-                                   #   games render 4:3 into it
-    "window_corner_radius": 10.0,  # mm rounded corners on the glass opening
-    "polycarb_thickness": 2.5,
-    "polycarb_overlap": 6.0,       # mm sheet beyond window opening
-    "polycarb_clearance": 0.3,     # mm rabbet clearance per side
+    "glass_opening_w": 287.0,      # mm SHELL window cut = active + 2 (the 4:3
+    "glass_opening_h": 192.0,      #   mask moved into the printed CRT bezel,
+                                   #   parts.py crt_bezel, iter 32)
+    "window_corner_radius": 10.0,  # mm rounded corners on the shell opening
+    "polycarb_thickness": 2.5,     # PC window now sits in the bezel pocket
     "doubler_thickness": 4.0,      # mm inner reinforcement around window
-    "doubler_margin": 8.0,         # mm doubler beyond polycarb sheet
-    "screen_center_frac": 0.50,    # screen center along display face
-    "reveal_offset": 16.0,         # mm reveal ring offset beyond the window
-                                   #   (frames the bezel, not the glass)
-    "reveal_width": 2.5,           # mm reveal ring width (shadow-gap read)
-    "reveal_depth": 1.2,           # mm reveal groove depth
-    # --- proud bezel ring (CRT cue; 0 = off) ------------------------------
-    "bezel_width": 12.0,           # mm radial width of the frame around the
-                                   # window, standing proud of the face
-    "bezel_proud": 3.0,            # mm the bezel stands off the face
+    "doubler_margin": 12.0,        # mm doubler beyond the opening (covers the
+                                   #   bezel mount holes at +/-148/+/-100.5)
+    "screen_center_frac": 0.508,   # screen center along display face: centers
+                                   #   the CRT bezel in the face's flat band
+                                   #   (between the seam and lip 3D blends)
+    # --- CRT bezel mount (printed bezel bolts on from inside) ---------------
+    "bezel_mount_x": 148.0,        # +/- x mid-edge mounts (clear of the
+    "bezel_mount_z": 100.5,        #   retainer bosses); M3 clearance in the
+                                   #   shell, heat-set inserts in the bezel
+    "bezel_mount_hole_dia": 3.4,   # M3 clearance
+    # reveal ring + proud bezel ring: REMOVED iter 32 — the 18 mm printed
+    # CRT bezel (parts.py) covers both; its outer edge casts the shadow line
+    "reveal_offset": 0.0,          # 0 = off (guarded below)
+    "reveal_width": 2.5,
+    "reveal_depth": 1.2,
+    "bezel_width": 0.0,            # 0 = off; superseded by the printed bezel
+    "bezel_proud": 3.0,
     # --- display retainer (clamp frame bosses on the face interior) -------
     "retainer_boss_offset": 6.0,   # mm boss centers beyond the panel outline
     "retainer_boss_dia": 10.0,     # mm standoff diameter
@@ -496,14 +501,13 @@ def build_cabinet(p=None):
 
     open_w = p["glass_opening_w"]
     open_h = p["glass_opening_h"]
-    pc_w = open_w + 2 * p["polycarb_overlap"]
-    pc_h = open_h + 2 * p["polycarb_overlap"]
 
     # inner doubler plate, embedded 0.5 mm into the wall so it always fuses
+    # (stiffens the window ring; the panel + bezel both bear on it)
     solid += face * Pos(0, wall + p["doubler_thickness"] / 2 - 0.5, 0) * Box(
-        pc_w + 2 * p["doubler_margin"],
+        open_w + 2 * p["doubler_margin"],
         p["doubler_thickness"],
-        pc_h + 2 * p["doubler_margin"],
+        open_h + 2 * p["doubler_margin"],
     )
 
     # window through-cut (wall + doubler), corners rounded
@@ -513,31 +517,32 @@ def build_cabinet(p=None):
         p["window_corner_radius"],
     )
 
-    # polycarb rabbet from the inside face of the doubler
-    rabbet_depth = p["polycarb_thickness"] + 0.2
-    solid -= face * Pos(
-        0, wall + p["doubler_thickness"] - rabbet_depth / 2, 0
-    ) * Box(
-        pc_w + 2 * p["polycarb_clearance"],
-        rabbet_depth,
-        pc_h + 2 * p["polycarb_clearance"],
-    )
+    # CRT bezel mount holes: 4 mid-edge M3 clearances through wall+doubler;
+    # screws drive from inside into heat-set inserts in the bezel rear face
+    bmx, bmz = p["bezel_mount_x"], p["bezel_mount_z"]
+    for bx, bz in ((-bmx, 0.0), (bmx, 0.0), (0.0, -bmz), (0.0, bmz)):
+        solid -= face * Pos(bx, wall / 2 + p["doubler_thickness"] / 2, bz) * Cylinder(
+            radius=p["bezel_mount_hole_dia"] / 2,
+            height=wall + p["doubler_thickness"] + 2,
+            rotation=(90, 0, 0),
+        )
 
-    # shallow perimeter reveal ring around the window (visual frame),
-    # corners parallel to the rounded window
+    # shallow perimeter reveal ring around the window (visual frame);
+    # 0 = off (the printed CRT bezel's edge is the shadow line now)
     rev, rw, rd = p["reveal_offset"], p["reveal_width"], p["reveal_depth"]
-    ring_y_ctr = rd / 2 - 0.2  # groove spans y -0.2 .. rd+0.2
-    ring_outer = _rounded_cutter(
-        face, ring_y_ctr,
-        open_w + 2 * (rev + rw), rd + 0.4, open_h + 2 * (rev + rw),
-        p["window_corner_radius"] + rev + rw,
-    )
-    ring_inner = _rounded_cutter(
-        face, ring_y_ctr,
-        open_w + 2 * rev, rd + 2.4, open_h + 2 * rev,
-        p["window_corner_radius"] + rev,
-    )
-    solid -= ring_outer - ring_inner
+    if rev > 0:
+        ring_y_ctr = rd / 2 - 0.2  # groove spans y -0.2 .. rd+0.2
+        ring_outer = _rounded_cutter(
+            face, ring_y_ctr,
+            open_w + 2 * (rev + rw), rd + 0.4, open_h + 2 * (rev + rw),
+            p["window_corner_radius"] + rev + rw,
+        )
+        ring_inner = _rounded_cutter(
+            face, ring_y_ctr,
+            open_w + 2 * rev, rd + 2.4, open_h + 2 * rev,
+            p["window_corner_radius"] + rev,
+        )
+        solid -= ring_outer - ring_inner
 
     # proud bezel ring around the window (CRT cue); sits ON the face,
     # embedded 0.5 mm so it always fuses. For the sheet-metal path this

@@ -27,11 +27,15 @@ without restructuring the model.
   primary buttons (recessed-well indicators) + 4 × OBSF-24 secondaries,
   2 × OBSF-24 start/select.
 - **13.5″ 3:2 3004×2000 hi-DPI IPS** (~267 PPI) behind a 2.5 mm
-  polycarbonate window with printed black mask; display deck tilted back
-  12° from vertical. The mask frames a **4:3 window** (253 × 190 mm)
-  with a proud 12 mm bezel ring — the S3 "crt-slim" identity (style
-  study, iteration 27): CRT cues on a slim tapered-neck skeleton.
-  First-party games render 4:3 into the window.
+  polycarbonate window; display deck tilted back 12° from vertical. The
+  screen sits in an 18 mm-deep **printed CRT bezel** (black PETG): a
+  lofted throat flares from the rounded **4:3 mask window** (253 × 190
+  mm) you look through back to the panel — the CRT funnel read — with
+  the PC window friction-fit into a pocket on the bezel's front face
+  (second-surface mask print hides the LCD frame). The bezel bolts on
+  from inside the cabinet with 4 hidden M3 screws. First-party games
+  render 4:3 into the window. This is the S3 "crt-slim" identity (style
+  study, iteration 27; bezel from the chassis brief, iteration 32).
 - Envelope **340 × 346.5 × 411 mm** — the 1P pivot let the screen fill
   ~84% of the face (the 2P version capped at ~49% because the controls
   set the width floor). The back wall tapers above the deck
@@ -42,19 +46,54 @@ without restructuring the model.
   deck surface (the controls sit in a shallow tray) and proud of the
   recessed nose fascia — with corner radii grown by the offset so the
   gap stays constant around the corners (the sheet-metal side-plate
-  look; the flat-pack path shares the same overhang). Five **gill
-  vents** through each cheek at the neck zone vent the display-driver
-  cavity.
+  look; the flat-pack path shares the same overhang). Three raked
+  **gill vents** through each cheek in the hood zone (parallel to the
+  hood cap) vent the display-driver cavity.
 - 90°-bend hood box (floor/top perpendicular to the display face) with
   down-firing speaker slots in the hood floor and a magnetic swappable
-  nameplate inlay on the marquee face. Rear ventilation fins above the
-  I/O row.
+  nameplate inlay on the marquee face.
 - Wall thickness 3 mm, internal ribs, fastener bosses accessible from the
   underside, no upward-facing shell seams.
 - Two build paths from the same parametric model: **3 printable parts**
   (base / face-column / hood, hidden M3 heat-set-insert joints, all fit a
-  360 mm bed) or a **flat-pack of 10 wrap panels + 10 cleats + 2 side
-  plates** — the sheet-aluminum path (~3.1 kg in 2 mm 5052).
+  360 mm bed) or a **flat-pack of 10 wrap panels + 2 side plates** —
+  the sheet-aluminum path (~3.3 kg in 2 mm 5052).
+
+## Chassis architecture (minimal spine-and-sides)
+
+Adopted from the [hardware brief](../hardware/references/hardware-brief-2026-08-19.md)
+(iteration 32): the chassis is not a structural cage — **the side plates
+are the primary structure**, and the chassis only mounts equipment.
+
+- **Side plates** (flat-pack path): 90° return flanges bent 20 mm inward
+  along every wrap segment carry all vertical and torsional rigidity; the
+  wrap panels screw into M3 inserts (rivnuts in metal) in the flange
+  faces. No corner cleats, no extra vertical supports.
+- **Bottom spine**: two 20 × 20 × 1.5 mm aluminum angle rails running
+  front-to-back; the SBC rides the rail leg tops. PETG-printable for dev
+  units, aluminum for production.
+- **Top bracket**: a U-channel across the hood (bolted to the cap)
+  carries the display driver board.
+- **Joystick**: Sanwa JLF bolts directly to the 3 mm deck plate — no
+  sub-plate needed at that thickness.
+
+## Materials and finish
+
+Per the brief's material analysis (small-batch, furniture-grade):
+
+- **Body: 2 mm 5052-H32 sheet aluminum** — formable, weldable,
+  laser-friendly; but it does **not** take decorative anodizing (mottled
+  dye absorption), so color comes from **powder coat** (recommended,
+  $40–80/shell, unlimited colors, hides laser edge grain), **Cerakote**
+  (DIY garage option, thin ceramic film, fits the founder-build story),
+  or **brushed + 2K clear** (cheapest; raw Dieter Rams option).
+- **Control faceplate: 3 mm 6061-T6** — heat-treatable alloy that
+  anodizes uniformly; reserve Type II decorative dye (electric blue,
+  emerald, …) for this one part. Mask threaded holes before anodizing.
+- **Window: 2–3 mm polycarbonate** (not acrylic), anti-glare coating,
+  second-surface UV-cured mask print (first-surface print abrades).
+- **Fasteners**: rivnuts in sheet metal, M3 heat-set inserts in printed
+  parts; no self-tappers into 2 mm sheet under joystick load.
 
 ## Bill of materials
 
@@ -90,17 +129,21 @@ The enclosure is parametric code, not hand-drawn CAD:
   run archives renders + a parameter snapshot to `out/history/`, and the
   full design log is in [`hardware/design-notes.md`](../hardware/design-notes.md).
 
-Status: **iteration 16** — 1P pivot with the 13.5″ 3:2 panel; shell valid,
-3 parts printable (0.000 mm³ seam overlap), 26 BOM components placed in the
-assembly fit check, 18 flat-pack panels valid. Next: display panel retainer
-brackets and the push-to-open keyboard door under consideration.
+Status: **iteration 32** — printed CRT bezel, minimal spine chassis,
+structural flanged side plates; shell valid, 3 shell parts + retainer +
+bezel printable (0.000 mm³ seam overlap), 33 BOM components placed in
+the assembly fit check (max overlap 0.294 mm³, a known JLF plate wedge),
+12 flat-pack panels valid. Open call: compute — the brief recommends a
+used x86 thin client (Lenovo M90n class), whose 179 × 183 mm footprint
+does not fit the current base layout; ODROID H4+ stays in the model
+until that is decided.
 
-## Current design (iteration 16)
+## Current design (iteration 32)
 
 | Assembled | Front | Side | Rear |
 | --- | --- | --- | --- |
 | ![assembled iso](images/hardware/asm_iso.png) | ![front](images/hardware/asm_front.png) | ![side](images/hardware/asm_side.png) | ![rear](images/hardware/asm_rear.png) |
 
-| Printable split (3 parts) | Flat-pack panel path (18 parts) |
+| Printable split (3 parts + retainer + bezel) | Flat-pack panel path (12 parts) |
 | --- | --- |
 | ![exploded parts](images/hardware/exploded_iso.png) | ![exploded panels](images/hardware/panels_exploded_iso.png) |
