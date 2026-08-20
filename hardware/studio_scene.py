@@ -48,10 +48,8 @@ def _set(node, names, value):
             return
 
 
-def make_material(preset, color, overrides):
+def make_material(preset, color):
     params = dict(PRESETS.get(preset, PRESETS["plastic"]))
-    if preset in overrides:
-        color = overrides[preset]
     if "tint" in params:
         color = [c * params["tint"] for c in color]
     mat = bpy.data.materials.new(f"{preset}")
@@ -91,11 +89,12 @@ def import_meshes(manifest, studio_dir, overrides):
         before = set(bpy.data.objects)
         bpy.ops.wm.stl_import(filepath=str(path), global_scale=0.001)
         new = [o for o in bpy.data.objects if o not in before]
-        key = (entry["preset"], tuple(entry["color"]),
-               tuple(sorted(overrides.items())))
+        # overrides match component name first, then material preset
+        color = overrides.get(entry["name"],
+                              overrides.get(entry["preset"], entry["color"]))
+        key = (entry["preset"], tuple(color))
         if key not in mats:
-            mats[key] = make_material(entry["preset"], entry["color"],
-                                      overrides)
+            mats[key] = make_material(entry["preset"], color)
         for obj in new:
             obj.name = entry["name"]
             obj.data.materials.clear()

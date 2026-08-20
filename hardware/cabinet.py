@@ -122,22 +122,34 @@ PARAMS = {
     "panel_thickness": 5.0,        # slim laptop-class panel (driver board separate)
     "panel_active_w": 285.0,       # mm active area
     "panel_active_h": 190.0,
-    "glass_opening_w": 287.0,      # mm SHELL window cut = active + 2 (the 4:3
-    "glass_opening_h": 192.0,      #   mask moved into the printed CRT bezel,
-                                   #   parts.py crt_bezel, iter 32)
-    "window_corner_radius": 10.0,  # mm rounded corners on the shell opening
-    "polycarb_thickness": 2.5,     # PC window now sits in the bezel pocket
-    "doubler_thickness": 4.0,      # mm inner reinforcement around window
-    "doubler_margin": 12.0,        # mm doubler beyond the opening (covers the
-                                   #   bezel mount holes at +/-148/+/-100.5)
-    "screen_center_frac": 0.508,   # screen center along display face: centers
-                                   #   the CRT bezel in the face's flat band
-                                   #   (between the seam and lip 3D blends)
-    # --- CRT bezel mount (printed bezel bolts on from inside) ---------------
-    "bezel_mount_x": 148.0,        # +/- x mid-edge mounts (clear of the
-    "bezel_mount_z": 100.5,        #   retainer bosses); M3 clearance in the
-                                   #   shell, heat-set inserts in the bezel
+    # iter 34 CRT dish: the face gets a 12 mm recessed tray; the tray FLOOR
+    # carries the 4:3 aperture and the glass/panel clamp behind it, so the
+    # screen sits at the bottom of the recess like a real tube. The printed
+    # bezel is a thin trim ring + funnel insert (parts.py), ~2.5 mm proud.
+    "display_recess": 12.0,        # mm tray depth into the face
+    "recess_w": 300.0,             # tray opening (the printed funnel's
+    "recess_h": 200.0,             #   flange covers the raw rim)
+    "recess_corner_r": 14.0,
+    "glass_opening_w": 253.0,      # tray-floor aperture = the 4:3 mask
+    "glass_opening_h": 190.0,      #   (games render exactly into this)
+    "window_corner_radius": 10.0,  # mm rounded corners on the aperture
+    "polycarb_thickness": 2.5,     # PC window clamped behind the tray floor
+    "polycarb_w": 275.0,           # covers the aperture + 11 mm/side
+    "polycarb_h": 208.0,
+    "doubler_thickness": 4.0,      # mm inner reinforcement around aperture
+    "doubler_margin": 12.0,        # mm doubler beyond the aperture
+    "screen_center_frac": 0.515,   # screen center along display face: keeps
+                                   #   the dish + flange inside the flat band
+                                   #   (seam blend R20 .. chin blend R10)
+    # --- CRT trim ring mount (black M3 CSK from the FRONT, into insert
+    #     pads on the inner wall — visible screws, honest trim detail) ------
+    "bezel_mount_x": 154.0,        # 4 mounts at (+-x, +-z), squeezed between
+    "bezel_mount_z": 55.0,         #   the dish edge and the flange edge
     "bezel_mount_hole_dia": 3.4,   # M3 clearance
+    "bezel_mount_pad": 12.0,       # mm dia insert pad on the inner wall
+    "bezel_mount_pad_depth": 5.0,  # wall 3 + pad 5 = 8 >= insert pilot 7 + 1
+    "bezel_pilot_dia": 4.2,        # M3 heat-set insert pilot
+    "bezel_pilot_depth": 7.0,
     # reveal ring + proud bezel ring: REMOVED iter 32 — the 18 mm printed
     # CRT bezel (parts.py) covers both; its outer edge casts the shadow line
     "reveal_offset": 0.0,          # 0 = off (guarded below)
@@ -145,10 +157,10 @@ PARAMS = {
     "reveal_depth": 1.2,
     "bezel_width": 0.0,            # 0 = off; superseded by the printed bezel
     "bezel_proud": 3.0,
-    # --- display retainer (clamp frame bosses on the face interior) -------
+    # --- display retainer (clamp frame bosses standing off the tray floor) -
     "retainer_boss_offset": 6.0,   # mm boss centers beyond the panel outline
     "retainer_boss_dia": 10.0,     # mm standoff diameter
-    "retainer_boss_depth": 10.0,   # mm standoff from the face wall
+    "retainer_boss_depth": 12.0,   # tray doubler (18.5) to panel rear (26.5)
     "retainer_pilot_dia": 4.2,     # M3 heat-set insert pilot (parts.py spec)
     "retainer_pilot_depth": 7.0,
     # --- fascia -----------------------------------------------------------
@@ -505,31 +517,65 @@ def build_cabinet(p=None):
 
     open_w = p["glass_opening_w"]
     open_h = p["glass_opening_h"]
+    recess = p["display_recess"]
+    floor_in = recess + wall          # inner face of the tray floor
 
-    # inner doubler plate, embedded 0.5 mm into the wall so it always fuses
-    # (stiffens the window ring; the panel + bezel both bear on it)
-    solid += face * Pos(0, wall + p["doubler_thickness"] / 2 - 0.5, 0) * Box(
+    # CRT dish: the shell is a hollow 3 mm wall, so the tray is BUILT, not
+    # carved — cut the dish opening through the face wall, then fuse a tub
+    # whose outer flange overlaps the wall's inner face (0.5 mm embed) and
+    # whose floor sits `recess` mm deep. Tub exterior is left square (hidden
+    # behind the trim ring); the interior void keeps rounded corners.
+    solid -= _rounded_cutter(
+        face, wall / 2, p["recess_w"], wall + 2, p["recess_h"],
+        p["recess_corner_r"],
+    )
+    tub = face * Pos(0, (wall - 0.5 + floor_in) / 2, 0) * Box(
+        p["recess_w"] + 14.0, floor_in - wall + 0.5, p["recess_h"] + 14.0,
+    )
+    tub -= _rounded_cutter(
+        face, (wall - 0.5 + recess) / 2,
+        p["recess_w"], recess - wall + 0.5, p["recess_h"], 8.0,
+    )
+    solid += tub
+
+    # inner doubler plate behind the tray floor, embedded 0.5 mm
+    solid += face * Pos(0, floor_in + p["doubler_thickness"] / 2 - 0.5, 0) * Box(
         open_w + 2 * p["doubler_margin"],
         p["doubler_thickness"],
         open_h + 2 * p["doubler_margin"],
     )
 
-    # window through-cut (wall + doubler), corners rounded
+    # aperture through-cut (tray floor + doubler), corners rounded
     solid -= _rounded_cutter(
-        face, wall / 2 + p["doubler_thickness"] / 2,
+        face, recess + wall / 2 + p["doubler_thickness"] / 2,
         open_w, wall + p["doubler_thickness"] + 2, open_h,
         p["window_corner_radius"],
     )
 
-    # CRT bezel mount holes: 4 mid-edge M3 clearances through wall+doubler;
-    # screws drive from inside into heat-set inserts in the bezel rear face
+    # trim-ring mounts: 4 M3 clearances at (+-bmx, +-bmz) through the face
+    # wall OUTSIDE the dish; insert pads on the inner wall (they land in
+    # the tub wall, which adds depth) take heat-set inserts; black M3 CSK
+    # screws from the front — visible trim detail
     bmx, bmz = p["bezel_mount_x"], p["bezel_mount_z"]
-    for bx, bz in ((-bmx, 0.0), (bmx, 0.0), (0.0, -bmz), (0.0, bmz)):
-        solid -= face * Pos(bx, wall / 2 + p["doubler_thickness"] / 2, bz) * Cylinder(
-            radius=p["bezel_mount_hole_dia"] / 2,
-            height=wall + p["doubler_thickness"] + 2,
-            rotation=(90, 0, 0),
-        )
+    pad_r, pad_d = p["bezel_mount_pad"] / 2, p["bezel_mount_pad_depth"]
+    for sx6 in (-1, 1):
+        for sz6 in (-1, 1):
+            bx, bz = sx6 * bmx, sz6 * bmz
+            solid -= face * Pos(bx, wall / 2, bz) * Cylinder(
+                radius=p["bezel_mount_hole_dia"] / 2,
+                height=wall + 2,
+                rotation=(90, 0, 0),
+            )
+            solid += face * Pos(bx, wall + pad_d / 2, bz) * Cylinder(
+                radius=pad_r, height=pad_d, rotation=(90, 0, 0)
+            )
+            solid -= face * Pos(
+                bx, wall + pad_d - p["bezel_pilot_depth"] / 2, bz
+            ) * Cylinder(
+                radius=p["bezel_pilot_dia"] / 2,
+                height=p["bezel_pilot_depth"] + 1,
+                rotation=(90, 0, 0),
+            )
 
     # shallow perimeter reveal ring around the window (visual frame);
     # 0 = off (the printed CRT bezel's edge is the shadow line now)
@@ -566,13 +612,14 @@ def build_cabinet(p=None):
         )
         solid += bezel_outer - bezel_inner
 
-    # display retainer bosses: 4 standoffs just outside the panel outline on
-    # the face interior; M3 heat-set-insert pilots take the clamp-frame
-    # screws (the frame part lives in parts.py). Pilots open at the boss tip.
+    # display retainer bosses: 4 standoffs just outside the panel outline,
+    # standing off the tray floor; M3 heat-set-insert pilots take the
+    # clamp-frame screws (the frame part lives in parts.py). Pilots open at
+    # the boss tip.
     rb_off = p["retainer_boss_offset"]
     rb_d, rb_r = p["retainer_boss_depth"], p["retainer_boss_dia"] / 2
-    rb_y = wall + rb_d / 2 - 0.5  # embeds 0.5 into the wall/doubler
-    pilot_y = wall + rb_d - 0.5 - p["retainer_pilot_depth"] / 2
+    rb_y = floor_in + rb_d / 2 - 0.5  # embeds 0.5 into the floor plate
+    pilot_y = floor_in + rb_d - 0.5 - p["retainer_pilot_depth"] / 2
     for sx5 in (-1, 1):
         for sz5 in (-1, 1):
             bx = sx5 * (p["panel_outline_w"] / 2 + rb_off)

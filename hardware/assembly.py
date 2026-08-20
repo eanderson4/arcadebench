@@ -92,12 +92,15 @@ def place_components():
 
     # --- display stack (on the tilted face frame) -------------------------
     face = display_face_plane()
-    # iter 32 (chassis brief 4.4): the PC window + 4:3 mask moved OUT of the
-    # shell into the printed CRT bezel; the LCD clamps against the doubler
-    # ring by the retainer frame. Stack: PC window -> bezel -> shell window
-    # -> panel -> retainer.
+    # iter 34 (CRT dish): the face is dished 12 mm; the tray floor carries
+    # the 4:3 aperture, the PC window clamps between floor and panel, and
+    # the retainer stands off the floor. Stack (outside -> in): trim ring /
+    # funnel insert -> dish -> floor aperture -> PC window -> panel ->
+    # retainer.
+    floor_in = CAB["display_recess"] + wall
+    stack0 = floor_in + CAB["doubler_thickness"] - 0.5  # doubler outer face
     panel_off = (
-        wall + CAB["doubler_thickness"] + LAYOUT["panel_gap"]
+        stack0 + CAB["polycarb_thickness"] + LAYOUT["panel_gap"]
         + CAB["panel_thickness"] / 2
     )
 
@@ -108,25 +111,26 @@ def place_components():
         (0, panel_off, 0),
     )
 
-    from parts import BEZEL, crt_bezel, retainer_frame
+    from parts import crt_bezel, retainer_frame
 
-    # CRT bezel on the OUTER face: local +Z (toward the viewer) maps to the
-    # face frame's -Y (outward); rear face flush with the shell
+    # funnel insert on the OUTER face: local +Z (toward the viewer) maps to
+    # the face frame's -Y (outward); flange rear flush with the shell face,
+    # funnel extending into the dish
     add(
         "crt_bezel",
         [(face * Rot(90, 0, 0) * crt_bezel(), (0.05, 0.05, 0.06))],
         (0, 0.0, 0),
     )
 
-    # PC window friction-fit in the bezel's front pocket; the sheet is
+    # PC window clamped behind the tray floor doubler; the sheet is
     # transparent in reality and the renderer has no alpha, so record it
     # but don't render it (it would hide the panel)
-    pc_off = -(BEZEL["depth"] - (CAB["polycarb_thickness"] + 0.2) / 2)
+    pc_off = stack0 + CAB["polycarb_thickness"] / 2
     records.append({"name": "polycarb_sheet", "at": [0, round(pc_off, 1), 0]})
 
-    # clamp frame pressing the panel against the doubler ring (parts.py)
+    # clamp frame pressing the panel against the boss tips (parts.py)
     frame_off = (
-        wall + CAB["doubler_thickness"] + LAYOUT["panel_gap"]
+        stack0 + CAB["polycarb_thickness"] + LAYOUT["panel_gap"]
         + CAB["panel_thickness"]
     )
     add(

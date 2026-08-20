@@ -58,11 +58,13 @@ SPLIT = {
     # height (the neck taper moves the rear wall, the tilt moves the face;
     # static y values end up floating in the cavity). Side entries stay
     # static; blocks embed ~0.5 mm into the wall (coplanar fuses produce
-    # invalid solids).
+    # invalid solids). Front entries sit at |x|=162: the CRT dish (iter 34)
+    # removes the face wall for |x|<154 around the screen, and the funnel
+    # insert's walls reach |x|~145 at the seam heights.
     "deck_seam_joints": [(-160.5, 250), (160.5, 250), (-145, "rear"),
-                         (145, "rear"), (-145, "front"), (145, "front")],
+                         (145, "rear"), (-162, "front"), (162, "front")],
     "hood_seam_joints": [(-160.5, 275), (160.5, 275), (-145, "rear"),
-                         (145, "rear"), (-145, "front"), (145, "front")],
+                         (145, "rear"), (-162, "front"), (162, "front")],
     # vertical-seam joint positions (y, z); y=None = auto (rear wall at z)
     # (used only when split_vertical is on; names must NOT collide with the
     # horizontal-seam lists above)
@@ -71,82 +73,101 @@ SPLIT = {
     "hood_v_seam_joints": [(None, 340), (None, 370), (None, 395)],
 }
 
-# --- CRT display bezel (printed part, black PETG) ---------------------------
-# Chassis brief 4.4: the bezel creates the CRT recess a flat LCD lacks.
-# Stack (front to back): PC window (friction fit in the front pocket) ->
-# this bezel -> shell window -> LCD (clamped by the retainer frame).
+# --- CRT funnel insert + trim ring (printed part, black PETG) --------------
+# Iter 34: the old proud 18 mm bezel read inverted vs real CRTs (their frame
+# protrudes a few mm and the funnel NARROWS inward to the glass). Now the
+# shell face carries a 12 mm dished tray (cabinet.py) and this part is a
+# thin trim ring whose funnel wall drops into the dish toward the 4:3
+# aperture in the tray floor. Black M3 CSK screws through the flange into
+# heat-set inserts in the shell's inner-wall pads.
 BEZEL = {
-    "seat_w": 289.0,         # rear opening: hides the 287x192 shell window
-    "seat_h": 195.0,
-    "seat_corner_r": 14.0,
-    "mask_w": 253.0,         # front opening = the 4:3 CRT window (games
-    "mask_h": 190.0,         #   render 4:3 into it — S3 identity cue)
-    "mask_corner_r": 12.0,
-    "border": 9.0,           # border ring beyond the seat -> 307x213 outer
-    "outer_corner_r": 14.0,
-    "depth": 18.0,           # CRT recess (brief: 15-25 mm; validate by print)
-    "pocket_inset": 4.0,     # PC window pocket inset from the outer edge
-    "pocket_clearance": 0.3, # per side — light friction fit (magnets: v2)
-    "rim_fillet": 1.0,       # round on the visible front rims (outer + pocket)
-    "mount_pilot_dia": 4.2,  # M3 heat-set insert pilots in the rear face
-    "mount_pilot_depth": 7.0,
+    "flange_w": 316.0,         # trim ring: covers the 300x200 dish rim and
+    "flange_h": 210.0,         #   stays inside the face's flat band
+    "flange_r": 16.0,
+    "flange_t": 2.5,           # proud on the face (the "small protrusion")
+    "throat_top_w": 298.0,     # funnel opening at the flange (1 mm/side
+    "throat_top_h": 198.0,     #   clearance to the dish walls)
+    "throat_top_r": 12.0,
+    "throat_bot_w": 257.0,     # funnel bottom — just over the 253x190 floor
+    "throat_bot_h": 194.0,     #   aperture so the floor edge stays hidden
+    "throat_bot_r": 10.0,
+    "throat_depth": 11.0,      # into the 12 mm dish (1 mm floor clearance)
+    "throat_wall": 2.0,
+    "rim_fillet": 0.8,         # round on the visible flange rims
+    "mount_hole_dia": 3.4,     # M3 clearance through the flange
+    "countersink_dia": 6.4,    # M3 flat-head, 90 deg, on the FRONT face
+    "countersink_depth": 1.8,
 }
 
 
 def crt_bezel():
-    """Recessed CRT-effect display bezel, printed black PETG.
+    """CRT funnel insert: trim ring + inward-narrowing funnel, black PETG.
 
-    The throat lofts from the small rounded 4:3 mask opening at the front
-    back to the panel seat — the CRT funnel read. The PC window drops into
-    the front pocket (friction fit; second-surface mask print hides the
-    LCD frame). Bolts on from inside the cabinet: M3 screws through the
-    shell's bezel-mount clearances into heat-set inserts in the rear face.
-
-    Frame: sketch in XY (X across, Y up-slope), extruded +Z toward the
-    viewer; the rear face (z=0) sits flush on the shell face. Mounted in
-    assembly with face * Rot(90, 0, 0).
+    Drops into the shell's dished tray from the front; the flange stands
+    ~2.5 mm proud on the face and the funnel narrows toward the tray-floor
+    aperture, so the screen reads sunk behind a CRT frame. Frame: sketch in
+    XY (X across, Y up-slope), +Z toward the viewer; the flange rear (z=0)
+    sits flush on the shell face and the funnel extends to z=-throat_depth.
+    Mounted in assembly with face * Rot(90, 0, 0).
     """
     p = CAB
     b = BEZEL
-    ow = b["seat_w"] + 2 * b["border"]
-    oh = b["seat_h"] + 2 * b["border"]
-    depth = b["depth"]
-    assert b["seat_w"] > p["glass_opening_w"] and b["seat_h"] > p["glass_opening_h"], \
-        "bezel seat must hide the shell window"
     with BuildPart() as bp:
+        # trim ring: flange plate minus the funnel opening
         with BuildSketch():
-            RectangleRounded(ow, oh, b["outer_corner_r"])
-        extrude(amount=depth)
-        with BuildSketch(Plane.XY):
-            RectangleRounded(b["seat_w"], b["seat_h"], b["seat_corner_r"])
-        with BuildSketch(Plane.XY.offset(depth)):
-            RectangleRounded(b["mask_w"], b["mask_h"], b["mask_corner_r"])
+            RectangleRounded(b["flange_w"], b["flange_h"], b["flange_r"])
+            RectangleRounded(
+                b["throat_top_w"], b["throat_top_h"], b["throat_top_r"],
+                mode=Mode.SUBTRACT,
+            )
+        extrude(amount=b["flange_t"])
+        # funnel wall: outer loft minus inner loft, going into the dish.
+        # Top sketches sit 0.5 mm INSIDE the flange plate and the outer top
+        # is 1 mm oversize, so the funnel fuses to the flange (coplanar
+        # contact would split the part into two bodies).
+        with BuildSketch(Plane.XY.offset(0.5)):
+            RectangleRounded(b["throat_top_w"] + 1.0, b["throat_top_h"] + 1.0,
+                             b["throat_top_r"] + 0.5)
+        with BuildSketch(Plane.XY.offset(-b["throat_depth"])):
+            RectangleRounded(
+                b["throat_bot_w"] + 2 * b["throat_wall"],
+                b["throat_bot_h"] + 2 * b["throat_wall"],
+                b["throat_bot_r"] + b["throat_wall"],
+            )
+        loft()
+        with BuildSketch(Plane.XY.offset(0.5)):
+            RectangleRounded(
+                b["throat_top_w"] - 2 * b["throat_wall"],
+                b["throat_top_h"] - 2 * b["throat_wall"],
+                b["throat_top_r"],
+            )
+        with BuildSketch(Plane.XY.offset(-b["throat_depth"])):
+            RectangleRounded(b["throat_bot_w"], b["throat_bot_h"],
+                             b["throat_bot_r"])
         loft(mode=Mode.SUBTRACT)
-        # PC window pocket in the front face
-        pd = p["polycarb_thickness"] + 0.2
-        pw = ow - 2 * (b["pocket_inset"] - b["pocket_clearance"])
-        ph = oh - 2 * (b["pocket_inset"] - b["pocket_clearance"])
-        with BuildSketch(Plane.XY.offset(depth - pd)):
-            RectangleRounded(pw, ph, b["outer_corner_r"] - b["pocket_inset"])
-        extrude(amount=pd + 0.4, mode=Mode.SUBTRACT)
     bezel = bp.part
-    # round the visible front rims (outer perimeter + window pocket). The
-    # mask-throat rim itself is a knife edge once the pocket is cut (void
-    # on both sides) — no material to fillet, and the PC window covers it.
+    # round the visible front rims (outer flange edge + opening edge)
+    ft = b["flange_t"]
     rim = bezel.edges().filter_by(
-        lambda e: abs(e.center().Z - depth) < 0.6
-        and (abs(e.center().X) > 135.0 or abs(e.center().Y) > 100.0)
+        lambda e: abs(e.center().Z - ft) < 0.6
+        and (abs(e.center().X) > 140.0 or abs(e.center().Y) > 95.0)
     )
     try:
         bezel = bezel.fillet(b["rim_fillet"], rim)
     except Exception as exc:
         print(f"  ! bezel rim fillet skipped: {exc}")
-    # M3 insert pilots in the rear face, matching the shell clearances
-    md = b["mount_pilot_dia"]
-    for mx, my in ((-p["bezel_mount_x"], 0.0), (p["bezel_mount_x"], 0.0),
-                   (0.0, -p["bezel_mount_z"]), (0.0, p["bezel_mount_z"])):
-        bezel -= Pos(mx, my, b["mount_pilot_depth"] / 2) * Cylinder(
-            radius=md / 2, height=b["mount_pilot_depth"]
+    # M3 clearance + countersink through the flange (front face), 4 corners
+    for mx, my in ((-p["bezel_mount_x"], -p["bezel_mount_z"]),
+                   (-p["bezel_mount_x"], p["bezel_mount_z"]),
+                   (p["bezel_mount_x"], -p["bezel_mount_z"]),
+                   (p["bezel_mount_x"], p["bezel_mount_z"])):
+        bezel -= Pos(mx, my, ft / 2) * Cylinder(
+            radius=b["mount_hole_dia"] / 2, height=ft + 2
+        )
+        bezel -= Pos(mx, my, ft - b["countersink_depth"] / 2 + 0.1) * Cone(
+            bottom_radius=b["mount_hole_dia"] / 2,
+            top_radius=b["countersink_dia"] / 2,
+            height=b["countersink_depth"] + 0.2,
         )
     return bezel
 

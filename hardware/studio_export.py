@@ -15,7 +15,6 @@ from build123d import Box, Pos, export_stl
 
 import assembly
 from cabinet import OUT_DIR, PARAMS as CAB
-from parts import BEZEL
 
 STUDIO_DIR = OUT_DIR / "studio"
 
@@ -67,11 +66,12 @@ def main():
     items, records, groups = assembly.place_components()
     color_of = {id(s): c for s, c in items}
 
-    # the PC window the z-buffer previews skip (display stack formulas)
+    # the PC window the z-buffer previews skip: clamped behind the tray
+    # floor, covering the 4:3 aperture (iter 34 CRT dish)
     pc_t = CAB["polycarb_thickness"]
-    pc_w = (BEZEL["seat_w"] + 2 * BEZEL["border"]) - 2 * BEZEL["pocket_inset"]
-    pc_h = (BEZEL["seat_h"] + 2 * BEZEL["border"]) - 2 * BEZEL["pocket_inset"]
-    pc_off = -(BEZEL["depth"] - (pc_t + 0.2) / 2)
+    pc_w, pc_h = CAB["polycarb_w"], CAB["polycarb_h"]
+    pc_off = (CAB["display_recess"] + CAB["wall"] + CAB["doubler_thickness"]
+              - 0.5 + pc_t / 2)
     face = assembly.display_face_plane()
     pc = face * Pos(0, pc_off, 0) * Box(pc_w, pc_t, pc_h)
 

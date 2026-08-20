@@ -648,3 +648,39 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   per SHAPE but records per COMPONENT — zip() misassigns materials; use
   the groups return (per-component shapes) + an id() color lookup.
   First renders: out/studio_hero.png / studio_display.png / studio_side.png.
+- Iteration 34 (2026-08-20, archived `iter-039`, assembly `asm-035`): **CRT
+  dish** — the user flagged (with CRT photo refs) that real tubes have a
+  small proud frame and the glass INSET at the bottom of a funnel that
+  narrows inward; our iter-32 bezel was inverted (18 mm proud funnel, glass
+  at the front). Reworked: the face gets a built 12 mm dished tray (the
+  shell is hollow, so the tray is a fused tub: 300x200 opening cut through
+  the wall, tub flange embedded 0.5 mm on the inner face, 3 mm floor at
+  depth 12); the tray floor carries the 4:3 aperture (253x190 — the shell
+  window cut IS the mask now); PC window (275x208) + panel clamp behind it
+  (screen 21.5 mm behind the face); the printed bezel becomes a trim ring
+  (316x210, 2.5 proud) with a funnel wall narrowing 298x198 -> 257x194
+  into the dish. Collision forensics worth remembering: (1) the doubler's
+  0.5 mm embed pokes past the tray floor — the stack must start at the
+  doubler OUTER face (18.5), not the floor; (2) the flange must stay inside
+  the face's ~215 mm flat band between the seam/chin 3D blends (dish
+  300x200 + frac 0.515, flange 316x210, after a 322x228 pass bit both
+  blends); (3) retainer bosses stop at the panel rear (12.0) so they never
+  pierce the clamp frame; (4) mounts moved to 4 corner points (+/-154,
+  +/-55) squeezed between the dish edge and the flange edge, black M3 CSK
+  from the front into shell-side insert pads. Chain green: fit OK (max
+  0.294 known JLF wedge), shell valid, 3 parts + retainer + bezel (1 body),
+  12 panels. NOTE: the flat-pack sheet path (panels.py) now has a flat face
+  panel with the small aperture but no dish — the sheet-metal version needs
+  a formed tray part or a spacer stack; not modeled yet.
+- Finish studies (2026-08-20): studio_scene.py `--set` now matches
+  component names as well as presets, so whole directions are command-line
+  only. Four concurrent design-specialist agents each iterated a direction
+  with Eevee and delivered Cycles finals + PALETTE.md (docs/finishes/):
+  A heritage-pop (vermilion shell, amber primaries), B bone-&-brass
+  (premium minimal), C midnight-modern (graphite, one orange accent),
+  D playful-spectrum (off-white, mint anodized accents, red/azure/amber
+  buttons). Contact sheet: out/finish_study_sheet.png, copied to
+  docs/images/hardware/. Learnings from the agents: metallic presets darken
+  base colors ~1 stop under gray studio light (over-brighten mints/brasses);
+  dark controls vanish on a dark plate — invert for legibility; creams wash
+  to white unless pushed deeper than first guess.

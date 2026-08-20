@@ -152,17 +152,20 @@ def draw_front():
     face_w = P["cabinet_width"] - 2 * P["cheek_thickness"]
     rrect(axf, face_w, P["display_face_length"], 0, cy=P["display_face_length"] / 2,
           edgecolor=REF, lw=0.9, linestyle=(0, (4, 3)))
-    ow = BEZEL["seat_w"] + 2 * BEZEL["border"]
-    oh = BEZEL["seat_h"] + 2 * BEZEL["border"]
-    rrect(axf, ow, oh, BEZEL["outer_corner_r"], cy=u_ctr,
+    ow, oh = BEZEL["flange_w"], BEZEL["flange_h"]
+    rrect(axf, ow, oh, BEZEL["flange_r"], cy=u_ctr,
           edgecolor=CUT, lw=1.8)
-    rrect(axf, BEZEL["mask_w"], BEZEL["mask_h"], BEZEL["mask_corner_r"],
-          cy=u_ctr, edgecolor=CUT, lw=1.4)
+    rrect(axf, BEZEL["throat_top_w"], BEZEL["throat_top_h"],
+          BEZEL["throat_top_r"], cy=u_ctr, edgecolor=CUT, lw=1.4)
+    rrect(axf, P["recess_w"], P["recess_h"], P["recess_corner_r"], cy=u_ctr,
+          edgecolor=DIM, lw=0.9, linestyle=(0, (2, 2)))
     rrect(axf, P["glass_opening_w"], P["glass_opening_h"],
           P["window_corner_radius"], cy=u_ctr, edgecolor=REF, lw=0.9,
           linestyle=(0, (4, 3)))
-    for mx, mz in ((-P["bezel_mount_x"], 0), (P["bezel_mount_x"], 0),
-                   (0, -P["bezel_mount_z"]), (0, P["bezel_mount_z"])):
+    for mx, mz in ((-P["bezel_mount_x"], -P["bezel_mount_z"]),
+                   (-P["bezel_mount_x"], P["bezel_mount_z"]),
+                   (P["bezel_mount_x"], -P["bezel_mount_z"]),
+                   (P["bezel_mount_x"], P["bezel_mount_z"])):
         axf.add_patch(Circle((mx, u_ctr + mz), 1.7, fill=False,
                              edgecolor=REF, lw=0.8))
     # nameplate on the marquee face (above the face top)
@@ -174,15 +177,15 @@ def draw_front():
              ha="center")
 
     dim(axf, (-ow / 2, u_ctr - oh / 2), (ow / 2, u_ctr - oh / 2), -16,
-        f"bezel {ow:.0f}")
+        f"trim ring {ow:.0f}")
     dim(axf, (-ow / 2, u_ctr - oh / 2), (-ow / 2, u_ctr + oh / 2), -16,
         f"{oh:.0f}")
-    dim(axf, (-BEZEL["mask_w"] / 2, u_ctr + oh / 2),
-        (BEZEL["mask_w"] / 2, u_ctr + oh / 2), 14,
-        f"mask window {BEZEL['mask_w']:.0f} (4:3)")
-    dim(axf, (BEZEL["mask_w"] / 2, u_ctr - BEZEL["mask_h"] / 2),
-        (BEZEL["mask_w"] / 2, u_ctr + BEZEL["mask_h"] / 2), 12,
-        f"{BEZEL['mask_h']:.0f}")
+    dim(axf, (-P["glass_opening_w"] / 2, u_ctr + oh / 2),
+        (P["glass_opening_w"] / 2, u_ctr + oh / 2), 14,
+        f"aperture {P['glass_opening_w']:.0f} (4:3, at tray floor)")
+    dim(axf, (P["glass_opening_w"] / 2, u_ctr - P["glass_opening_h"] / 2),
+        (P["glass_opening_w"] / 2, u_ctr + P["glass_opening_h"] / 2), 12,
+        f"{P['glass_opening_h']:.0f}")
     dim(axf, (0, 0), (0, u_ctr), 190,
         f"screen center {u_ctr:.0f} up the face")
     dim(axf, (-face_w / 2, -18), (face_w / 2, -18), 0,
