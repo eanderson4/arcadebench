@@ -621,3 +621,30 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   center height; control-deck layout: every hole with a spec block).
   Overall: 340 wide x ~347 deep x 413 tall. Copied to
   docs/images/hardware/ and posted to PR #6.
+- Display-stack detail renders (2026-08-20): new `hardware/display_detail.py`
+  renders the CRT bezel solo (`out/bezel_*.png` — front/low/rear/side), the
+  5-layer display stack exploded along the face normal
+  (`display_stack_exploded_*.png`: PC window -> bezel -> shell patch sliced
+  from the REAL cabinet solid -> panel -> retainer), assembled sections
+  (`display_stack_section_*.png`), and an annotated blueprint cross-section
+  (`display_stack_drawing.png`): throat 253x190 -> 289x195 over 18 mm, PC
+  pocket 299x205x2.7, wall 3 + doubler 4, panel 5, retainer 3, stack depth
+  33.5 mm total. Learning: explode along Y reads best from near +-X cameras;
+  the z-buffer renderer cannot sell the black-on-black throat relief.
+- Blender studio pipeline (2026-08-20): `hardware/studio_export.py` exports
+  every placed component (incl. the PC window the previews skip) as
+  world-coordinate STLs + a material-preset manifest (out/studio/);
+  `hardware/studio_scene.py` runs headless in the system Blender 5.2
+  (`blender -b --python ... -- --manifest ... --views hero,display,side`)
+  with PBR presets (powdercoat w/ orange-peel bump, anodized, petg,
+  pc_clear transmission, lcd, pcb, rubber, metal), 3-point softboxes,
+  ortho cameras incl. display/deck close-ups, Cycles or Eevee. Finish
+  studies are `--set powdercoat=r,g,b` overrides. Calibration learnings:
+  area lights for a 0.4 m product scene are 25-120 W (the first pass at
+  450-900 W clipped 3 stops); a Nishita sky world is HDR (sun disc ~1e3)
+  and Fresnel/coated reflections of it blow out even 0.05-albedo PETG —
+  flat neutral world (0.5 gray, strength 0.4) + area lights is the clean
+  baseline. Export bug worth remembering: place_components() returns items
+  per SHAPE but records per COMPONENT — zip() misassigns materials; use
+  the groups return (per-component shapes) + an id() color lookup.
+  First renders: out/studio_hero.png / studio_display.png / studio_side.png.

@@ -125,7 +125,15 @@ The enclosure is parametric code, not hand-drawn CAD:
 - `hardware/.venv/bin/python hardware/cabinet.py` exports STEP + STL plus
   orthographic front/side/top/iso PNG previews to `hardware/out/` for review
   without opening CAD. (`parts.py` = printable split, `panels.py` =
-  flat-pack path, `assembly.py` = full BOM fit-check render.)
+  flat-pack path, `assembly.py` = full BOM fit-check render,
+  `display_detail.py` = display-stack close-ups + stack cross-section.)
+- Photoreal studio renders: `studio_export.py` writes world-coordinate
+  meshes + a material manifest, then `studio_scene.py` runs headless in
+  Blender (`blender -b --python hardware/studio_scene.py -- --manifest
+  hardware/out/studio/manifest.json --outdir hardware/out --views
+  hero,display,side --engine CYCLES`) with PBR materials — powder coat
+  (orange-peel bump), anodized aluminum, PETG, clear polycarb. Finish
+  candidates are re-rendered via `--set powdercoat=r,g,b` overrides.
 - Changes are made by editing parameters or structure and re-running; every
   run archives renders + a parameter snapshot to `out/history/`, and the
   full design log is in [`hardware/design-notes.md`](../hardware/design-notes.md).
@@ -148,6 +156,24 @@ until that is decided.
 | Printable split (3 parts + retainer + bezel) | Flat-pack panel path (12 parts) |
 | --- | --- |
 | ![exploded parts](images/hardware/exploded_iso.png) | ![exploded panels](images/hardware/panels_exploded_iso.png) |
+
+## Studio renders (Blender, photoreal)
+
+Cycles renders from the same model via `studio_export.py` + `studio_scene.py`
+— powder-coated shell, PETG CRT bezel, clear PC window, anodized inserts:
+
+| Hero | Display close-up | Side |
+| --- | --- | --- |
+| ![studio hero](images/hardware/studio_hero.png) | ![studio display](images/hardware/studio_display.png) | ![studio side](images/hardware/studio_side.png) |
+
+## Display stack detail
+
+The CRT bezel and the full 5-layer display sandwich (PC window → bezel →
+shell wall+doubler → panel → retainer), via `hardware/display_detail.py`:
+
+| Exploded stack | Cross-section drawing |
+| --- | --- |
+| ![display stack exploded](images/hardware/display_stack_exploded_iso.png) | ![display stack section](images/hardware/display_stack_drawing.png) |
 
 ## Dimensioned drawings (for the cardboard mockup)
 
