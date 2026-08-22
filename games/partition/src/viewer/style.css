@@ -772,7 +772,7 @@ body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
 
 .message {
   position: absolute;
-  z-index: 5;
+  z-index: 10;
   inset: 0;
   display: grid;
   place-content: center;
@@ -799,7 +799,7 @@ body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
 .score-entry-stats b { color: #dff8fa; font: 500 13px 'DM Mono', monospace; }
 .score-entry > label { margin-bottom: 7px; color: var(--yellow); font: 600 7px 'DM Mono', monospace; letter-spacing: 0.13em; }
 .score-entry-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-.score-entry-control input { min-width: 0; height: 42px; padding: 0 13px; border: 1px solid rgba(110, 233, 245, 0.32); border-right: 0; border-radius: 0; outline: 0; background: rgba(3, 9, 14, 0.88); color: #ecfdff; font: 600 12px 'DM Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; }
+.score-entry-control input { min-width: 0; height: 42px; padding: 0 13px; border: 1px solid rgba(110, 233, 245, 0.32); border-right: 0; border-radius: 0; outline: 0; background: rgba(3, 9, 14, 0.88); color: #ecfdff; font: 600 12px 'DM Mono', monospace; letter-spacing: 0.08em; text-transform: uppercase; cursor: text; }
 .score-entry-control input:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(110, 233, 245, 0.08); }
 .score-entry-control input::placeholder { color: #344b52; }
 .score-entry-control .primary-button { min-width: 145px; }

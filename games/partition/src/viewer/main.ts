@@ -797,10 +797,13 @@ function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubm
     : draft.won ? 'STABLE' : `${Math.floor(draft.capturedFraction * 100)}%`;
   scoreTime.textContent = formatLeaderboardTime(draft.elapsedMs);
   scorePartitions.textContent = String(draft.partitions).padStart(2, '0');
-  submitScoreButton.innerHTML = 'ENTER SCORE <b>→</b>';
   const unrankedPublicRun = leaderboardService.mode === 'public' && !rankedRunId;
+  submitScoreButton.innerHTML = unrankedPublicRun ? 'UNRANKED RUN' : 'ENTER SCORE <b>→</b>';
   submitScoreButton.disabled = unrankedPublicRun;
-  playerNameInput.disabled = unrankedPublicRun;
+  // Keep the callsign field usable even when a public challenge could not be
+  // established. A disabled text box looks like a pointer/focus bug and keeps
+  // players from preparing their callsign for the next ranked attempt.
+  playerNameInput.disabled = false;
   scoreEntryStatus.dataset.tone = 'normal';
   scoreEntryStatus.textContent = unrankedPublicRun
     ? 'UNRANKED RUN · START A NEW ATTEMPT TO ENTER THE PUBLIC BOARD'
@@ -809,6 +812,9 @@ function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubm
     : 'LOCAL PREVIEW · PUBLIC BOARD CONNECTS AT DEPLOYMENT';
   clearHumanControls();
   canvas.blur();
+  if (window.matchMedia('(pointer: fine)').matches) {
+    requestAnimationFrame(() => playerNameInput.focus({ preventScroll: true }));
+  }
 }
 
 function recordStageResult(state: PartitionState): void {
@@ -1617,6 +1623,12 @@ scoreEntry.addEventListener('submit', async (event) => {
   event.preventDefault();
   const submission = pendingLeaderboardSubmission;
   if (!submission) return;
+  if (leaderboardService.mode === 'public' && !rankedRunId) {
+    scoreEntryStatus.dataset.tone = 'error';
+    scoreEntryStatus.textContent = 'UNRANKED RUN · START A NEW ATTEMPT TO ENTER THE PUBLIC BOARD';
+    playerNameInput.focus();
+    return;
+  }
   const review = reviewPlayerName(playerNameInput.value);
   if (!review.allowed || !review.normalizedName) {
     scoreEntryStatus.dataset.tone = 'error';
