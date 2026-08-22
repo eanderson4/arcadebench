@@ -128,7 +128,11 @@ export class ArcadeBenchClient {
     this.gameId = requiredIdentifier(options.gameId, 'gameId');
     this.gameVersion = requiredIdentifier(options.gameVersion, 'gameVersion');
     this.baseUrl = (options.baseUrl ?? '/api/v1').replace(/\/+$/, '');
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    // Browser fetch is a Web API method, not an arbitrary callback. Preserve
+    // its global receiver when the SDK stores it for later use; otherwise the
+    // `this.fetchImpl(...)` call below binds it to ArcadeBenchClient and Chrome
+    // rejects the request with "Illegal invocation".
+    this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
 
     this.runs = {
       begin: async (request: BeginRunRequest) =>

@@ -9,6 +9,30 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('ArcadeBenchClient', () => {
+  it('calls the default browser fetch with its global receiver', async () => {
+    const originalFetch = globalThis.fetch;
+    let receiver: unknown;
+    globalThis.fetch = function (this: unknown) {
+      receiver = this;
+      return Promise.resolve(jsonResponse({
+        id: 'run-browser',
+        seed: 17,
+        gameVersion: 'dev-0',
+        expiresAt: '2026-08-22T18:00:00Z',
+      }));
+    } as typeof fetch;
+
+    try {
+      const client = createArcadeBenchClient({ gameId: 'partition', gameVersion: 'dev-0' });
+      const run = await client.runs.begin({ boardId: 'arcade' });
+
+      expect(run.id).toBe('run-browser');
+      expect(receiver).toBe(globalThis);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it('lists a game leaderboard with stable generic filters', async () => {
     const requests: Array<{ url: string; init?: RequestInit }> = [];
     const client = createArcadeBenchClient({
