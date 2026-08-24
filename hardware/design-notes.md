@@ -684,3 +684,23 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   base colors ~1 stop under gray studio light (over-brighten mints/brasses);
   dark controls vanish on a dark plate — invert for legibility; creams wash
   to white unless pushed deeper than first guess.
+- Iteration 35 (2026-08-24, archived `iter-040`, assembly `asm-036`):
+  **prototype-print split** — the goal was parts any 256 mm bed (Bambu/Prusa
+  class) can print, so the enclosure can come from a local printer or any
+  cheap service instead of a large-format machine. parts.py now:
+  split_vertical=True (x=0 seam, all 3 layers) + new split_base_y=True
+  (base quarters at y=190, clear of the deck ribs). Result: 8 shell parts —
+  base_f/b_l/r 170x197/150x125, mid_l/r 170x161x175, hood_l/r 170x161x111 —
+  + retainer frame + CRT bezel; all valid, 1 body, zero seam overlap
+  (21 pairs checked). Joints: same hidden boss-block scheme everywhere
+  (M3 heat-set pilot one side, M3 clearance the other); the base F/B seam
+  screws drive from the rear hatch into the front quarters (4 blocks/side:
+  2 floor-fused at z=9.5, 2 side-wall-fused at x=+/-160.5, z=60/110).
+  Bug worth remembering: enabling split_vertical exposed floating mid/hood
+  joint blocks — _wall_y() reads the theoretical polyline, but the
+  neck-corner blend pulls the real rear wall ~2 mm inside it, so
+  profile-minus-wall placement missed the material entirely. Fix:
+  _wall_face_y() probes the actual solid (0.5 mm y-scan around the profile
+  estimate) and seats blocks on the probed inner face. BOM gained a
+  "Prototype print order" section: part list, PETG guidance, ~50 M3
+  inserts + screws fastener count. Sheet-metal path (panels.py) unchanged.

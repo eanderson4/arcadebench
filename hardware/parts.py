@@ -5,6 +5,9 @@ Split scheme (all parametric):
     HOOD (split_z_hood..top)
   - optional vertical split at x=0 => 6 parts that fit a 360 mm bed
     (full-width parts need a >=530 mm machine or the sheet-metal path)
+  - optional front/back split of the base at y=split_y_base => 8 parts that
+    fit a 256 mm bed (Bambu/Prusa class): base quarters ~170x180x125,
+    mid/hood halves ~170x185x175. Prototype path: PETG anywhere.
 
 Joints: recessed boss block pairs at every seam — M3 heat-set-insert pilot
 (4.2 mm x 7 mm, verified dims) in one half, M3 clearance through-hole in the
@@ -29,6 +32,7 @@ from build123d import (
     Pos,
     RectangleRounded,
     Rot,
+    Sphere,
     export_step,
     export_stl,
     extrude,
@@ -41,12 +45,16 @@ from render import render_parts
 PARTS_DIR = OUT_DIR / "parts"
 
 SPLIT = {
-    "split_vertical": False,       # 340 mm parts fit a 360 bed whole
+    "split_vertical": True,        # x=0 split: halves fit modest beds
+    "split_base_y": True,          # front/back split of the base layer =>
+                                   # 8 parts, all fit a 256 mm bed
+    "split_y_base": 190.0,         # base front|rear seam (clear of the ribs,
+                                   # which end ~25 mm behind the control deck)
     "split_z_deck": 125.0,         # base | face-column seam (clear of the
                                    # R20 seam blend; 105 left a wall sliver)
     "split_z_hood": 300.0,         # face-column | hood seam (below the chin and
                                    # the hood floor / back-wall junction ~304)
-    "print_bed": 360.0,            # mm, for the fit check
+    "print_bed": 256.0,            # mm, for the fit check (Bambu/Prusa class)
     # --- joints -----------------------------------------------------------
     "joint_block": 14.0,           # mm boss cross-section (Y/Z or X faces)
     "joint_depth": 12.0,           # mm boss depth from the seam face
@@ -67,10 +75,16 @@ SPLIT = {
                          (145, "rear"), (-162, "front"), (162, "front")],
     # vertical-seam joint positions (y, z); y=None = auto (rear wall at z)
     # (used only when split_vertical is on; names must NOT collide with the
-    # horizontal-seam lists above)
-    "base_v_seam_joints": [(120, 9.5), (190, 9.5), (260, 9.5)],   # into floor
+    # horizontal-seam lists above). Base entries must stay clear of
+    # split_y_base so the F/B seam never slices a block.
+    "base_v_seam_joints": [(90, 9.5), (150, 9.5), (240, 9.5), (300, 9.5)],
     "mid_v_seam_joints": [(None, 150), (None, 205), (None, 260)],
     "hood_v_seam_joints": [(None, 340), (None, 370), (None, 395)],
+    # base front/back seam at y=split_y_base: (|x|, z) positions, mirrored
+    # per L/R half. z=9.5 blocks fuse into the floor, x=160.5 blocks embed
+    # 0.5 mm into the side walls. Screws drive from the rear (hatch access)
+    # into inserts in the front quarters.
+    "base_y_seam_joints": [(30, 9.5), (90, 9.5), (160.5, 60), (160.5, 110)],
 }
 
 # --- CRT funnel insert + trim ring (printed part, black PETG) --------------
@@ -205,30 +219,50 @@ def _wall_y(z, pick):
     return best
 
 
-def rear_joint_y(z):
-    """Y for a seam-joint block fusing into the rear wall at height z:
-    in past the wall and half a block, embedding ~0.5 mm (the neck taper
-    moves the rear wall; static y values end up in air)."""
-    return _wall_y(z, max) - CAB["wall"] - SPLIT["joint_block"] / 2 + 0.5
+def _probe_mat(solid, x, y, z):
+    inter = solid & Pos(x, y, z) * Sphere(0.05)
+    return bool(inter) and sum(s.volume for s in inter.solids()) > 0
 
 
-def front_joint_y(z):
-    """Same against the front (display-face) wall — the face y at a given
-    z moves with display_tilt_deg."""
-    return _wall_y(z, min) + CAB["wall"] + SPLIT["joint_block"] / 2 - 0.5
+def _wall_face_y(solid, x, z, pick):
+    """Inner-face y of the rear (pick=max) or front (pick=min) wall at
+    (x, z): profile estimate refined by probing the real solid. Slanted-corner
+    blends (neck, chin) pull the actual wall in a couple mm from the polyline
+    offset, which floated joint blocks when split_vertical was enabled."""
+    est = _wall_y(z, pick) + (-CAB["wall"] if pick is max else CAB["wall"])
+    rng = [est - 4.0 + i * 0.5 for i in range(17)]
+    if pick is min:  # front wall: scan from the cavity (higher y) downward
+        rng = rng[::-1]
+    prev = False
+    for y in rng:
+        hit = _probe_mat(solid, x, y, z)
+        if hit and not prev:
+            return y
+        prev = hit
+    return est  # fallback; the bodies==1 check catches a floating block
 
 
-def _resolve(positions, z=None):
-    """Fill in auto entries: "rear"/"front" derive y from the wall at the
-    seam z (horizontal seams) or the joint's own z (vertical seams)."""
+def rear_joint_y(solid, x, z):
+    """Seam-joint block center y fusing 0.5 mm into the rear wall at (x, z)."""
+    return _wall_face_y(solid, x, z, max) + 0.5 - SPLIT["joint_block"] / 2
+
+
+def front_joint_y(solid, x, z):
+    """Same against the front (display-face) wall."""
+    return _wall_face_y(solid, x, z, min) - 0.5 + SPLIT["joint_block"] / 2
+
+
+def _resolve(positions, solid, z=None):
+    """Fill in auto entries: "rear"/"front" (horizontal seams) or None
+    (vertical seams) derive y from the probed wall face."""
     out = []
     for a, b in positions:
         if z is not None:  # horizontal seam, (x, y)
-            y = (rear_joint_y(z) if b == "rear"
-                 else front_joint_y(z) if b == "front" else b)
+            y = (rear_joint_y(solid, a, z) if b == "rear"
+                 else front_joint_y(solid, a, z) if b == "front" else b)
             out.append((a, y))
         else:              # vertical seam, (y, z)
-            y = rear_joint_y(b) if a is None else a
+            y = rear_joint_y(solid, 0, b) if a is None else a
             out.append((y, b))
     return out
 
@@ -274,6 +308,32 @@ def v_seam_joints(left, right, positions):
     return left, right
 
 
+def y_seam_joints(front, back, y_split, positions):
+    """Boss-block joints across the y=y_split seam of the base, screws
+    horizontal along Y: front part gets the heat-set-insert pilot, back part
+    the clearance hole (screws driven from the rear hatch opening).
+    positions are (x, z) with signed x (call once per L/R half)."""
+    p = SPLIT
+    b, d = p["joint_block"], p["joint_depth"]
+    for x, z in positions:
+        front += Pos(x, y_split - d / 2, z) * Box(b, d, b)
+        back += Pos(x, y_split + d / 2, z) * Box(b, d, b)
+        front -= Pos(x, y_split - p["insert_hole_depth"] / 2, z) * Rot(
+            90, 0, 0
+        ) * Cylinder(radius=p["insert_hole_dia"] / 2,
+                     height=p["insert_hole_depth"])
+        back -= Pos(x, y_split + d / 2, z) * Rot(90, 0, 0) * Cylinder(
+            radius=p["screw_hole_dia"] / 2, height=d + 2
+        )
+    return front, back
+
+
+def y_slice_box(y0, y1):
+    return Pos(0, (y0 + y1) / 2, 200) * Box(
+        CAB["cabinet_width"] + 100, y1 - y0, 600
+    )
+
+
 def build_parts():
     p = SPLIT
     solid = build_cabinet()
@@ -284,8 +344,10 @@ def build_parts():
     mid = solid & slice_box(zd, zh, -w - 50, w + 50)
     hood = solid & slice_box(zh, CAB["cabinet_depth_base"] + 500, -w - 50, w + 50)
 
-    base, mid = h_seam_joints(base, mid, zd, _resolve(p["deck_seam_joints"], zd))
-    mid, hood = h_seam_joints(mid, hood, zh, _resolve(p["hood_seam_joints"], zh))
+    base, mid = h_seam_joints(
+        base, mid, zd, _resolve(p["deck_seam_joints"], solid, zd))
+    mid, hood = h_seam_joints(
+        mid, hood, zh, _resolve(p["hood_seam_joints"], solid, zh))
 
     layers = [("base", base), ("mid", mid), ("hood", hood)]
     v_joints = {
@@ -295,15 +357,29 @@ def build_parts():
     }
 
     parts = {}
+    yb = p["split_y_base"]
+    depth = CAB["cabinet_depth_base"]
     for name, layer in layers:
         if p["split_vertical"]:
             left = layer & slice_box(-50, 500, -w - 50, 0)
             right = layer & slice_box(-50, 500, 0, w + 50)
-            left, right = v_seam_joints(left, right, _resolve(v_joints[name]))
-            parts[f"{name}_l"] = left
-            parts[f"{name}_r"] = right
+            left, right = v_seam_joints(left, right, _resolve(v_joints[name], solid))
+            halves = [("l", -1, left), ("r", 1, right)]
         else:
-            parts[name] = layer
+            halves = [("", 0, layer)]
+        for tag, sx, half in halves:
+            suffix = f"_{tag}" if tag else ""
+            if name == "base" and p["split_base_y"]:
+                front = half & y_slice_box(-50, yb)
+                back = half & y_slice_box(yb, depth + 50)
+                front, back = y_seam_joints(
+                    front, back, yb,
+                    [(sx * ax, z) for ax, z in p["base_y_seam_joints"]],
+                )
+                parts[f"base_f{suffix}"] = front
+                parts[f"base_b{suffix}"] = back
+            else:
+                parts[f"{name}{suffix}"] = half
     return parts
 
 
@@ -415,14 +491,16 @@ def main():
     export_step(bezel, str(PARTS_DIR / "crt_bezel.step"))
     export_stl(bezel, str(PARTS_DIR / "crt_bezel.stl"))
 
-    # exploded view: layers separated in Z, halves in X
+    # exploded view: layers separated in Z, halves in X, base quarters in Y
     shades = [(0.87, 0.85, 0.80), (0.80, 0.77, 0.72), (0.72, 0.69, 0.64)]
+    order = {"base": 0, "mid": 1, "hood": 2}
     exploded = []
-    for i, (name, part) in enumerate(parts.items()):
-        layer_i = i // 2 if SPLIT["split_vertical"] else i
+    for name, part in parts.items():
+        layer_i = order[name.split("_")[0]]
         dx = -60 if name.endswith("_l") else (60 if name.endswith("_r") else 0)
+        dy = -70 if "_f_" in name else (70 if "_b_" in name else 0)
         dz = 70 * layer_i
-        exploded.append((Pos(dx, 0, dz) * part, shades[layer_i]))
+        exploded.append((Pos(dx, dy, dz) * part, shades[layer_i]))
     render_parts(
         exploded, OUT_DIR, prefix="exploded", size=1200,
         views={"iso": (25, -60, None), "front": (0, -90, None)},
