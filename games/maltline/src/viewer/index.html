@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0c2f25" />
+    <meta name="description" content="Maltline — a shake-counter arcade game prototype for humans and machines. Slide shakes, catch jars, keep the line moving." />
+    <title>Maltline — ArcadeBench</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topline">
+        <span class="brand">ARCADEBENCH <i>/</i> MALTLINE <em>prototype</em></span>
+        <span class="tagline">slide shakes · catch jars · keep the line moving</span>
+      </header>
+      <div class="stage-wrap">
+        <canvas id="game" width="960" height="540" aria-label="Maltline play field"></canvas>
+        <div id="overlay" class="overlay">
+          <div id="overlay-card" class="overlay-card">
+            <h1 id="overlay-title">MALTLINE</h1>
+            <p id="overlay-body">You run the shake counter.</p>
+            <p id="overlay-hint">Press Enter to open the shop</p>
+          </div>
+        </div>
+      </div>
+      <footer class="controls">
+        <span><b>← →</b> station</span>
+        <span><b>↑ ↓</b> window</span>
+        <span><b>SPACE hold</b> blend</span>
+        <span><b>F / ENTER</b> slide shake</span>
+        <span><b>R</b> restart</span>
+      </footer>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
