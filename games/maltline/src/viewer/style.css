@@ -68,6 +68,7 @@ canvas {
   width: 100%;
   height: auto;
   background: var(--bg);
+  image-rendering: pixelated;
 }
 
 .overlay {
@@ -76,8 +77,8 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(7, 26, 20, 0.78);
-  backdrop-filter: blur(3px);
+  background: rgba(7, 26, 20, 0.58);
+  backdrop-filter: blur(2px);
   transition: opacity 160ms ease;
 }
 
