@@ -11,6 +11,12 @@ Concrete picks below were verified against vendor pages on 2026-08-18; full
 detail and alternates in [`hardware/bom-research.md`](../hardware/bom-research.md).
 Prices are USD, as listed at research time — re-check before ordering.
 
+**Consolidated ordering plan (2026-08-25):** the whole BOM fits in 4 carts —
+Mouser + Focus Attack cover ~70% of line items. See
+[`hardware/part-suppliers.md`](../hardware/part-suppliers.md); print bureaus
+for the PETG shell in [`hardware/print-suppliers.md`](../hardware/print-suppliers.md)
+(fact-checked, 6/6 sources PASS).
+
 ## 1. Compute
 
 | ☐ | Part | Spec / pick | Est. | Source |
