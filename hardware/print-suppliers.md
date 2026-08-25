@@ -1,7 +1,9 @@
 # Print-and-Ship Suppliers — PETG Prototype Shell
 
-Researched 2026-08-25 for the 8-part PETG prototype print
-(`hardware/exports/print-parts/*.step`). Largest parts: `mid` 340×161×175 mm,
+Researched 2026-08-25 for the 8-part PETG prototype print (files: the
+`print-parts-*.zip` assets on the
+[hardware-v1 release](https://github.com/eanderson4/arcadebench/releases/tag/hardware-v1)
+— STL zip is print-oriented and ready to upload). Largest parts: `mid` 340×161×175 mm,
 `hood` 340×161×111 mm → **hard requirement: FDM bed ≥ ~345 mm in one axis.**
 All listed services accept online file upload with instant quoting and ship to
 the USA. Sources archived in `hardware/out/research/suppliers-{1,2}/`.
@@ -40,8 +42,8 @@ Estimated total for the 8-part set: **~$150–400** depending on bureau
 
 ## Quoting checklist per supplier
 
-- Upload `hardware/exports/print-parts/*.step` (assembly coordinates — bureaus
-  print one part per file, orientation is ours to specify).
+- Upload the STLs from `print-parts-stl.zip` (print-oriented, one part per
+  file) or the STEPs from `print-parts-step.zip` (assembly coordinates).
 - Material: PETG (or PETG-CF for the base if price is close — stiffer deck).
 - Layer height 0.2 mm, ≥3 walls, ≥15% infill if configurable.
 - Note the heat-set-insert holes are sized for after-print installation;

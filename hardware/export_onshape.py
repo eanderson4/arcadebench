@@ -1,4 +1,4 @@
-"""Onshape review export — committed STEP set in hardware/exports/.
+"""Onshape review export — STEP set for hardware/exports/ (gitignored).
 
 Regenerates the reviewable geometry as STEP AP214 files Onshape imports
 directly (Documents -> Import, or drag into a Part Studio):
@@ -10,8 +10,9 @@ directly (Documents -> Import, or drag into a Part Studio):
                              align at the origin)
   exports/flat-panels/       the sheet-metal flat-pack path (from panels.py)
 
-Committed to the PR so reviewers can import without running the chain.
-Re-run after any geometry change:
+The output is published as GitHub release assets (release `hardware-v1`)
+rather than committed, to keep the repo light. Re-run after any geometry
+change:
 
   hardware/.venv/bin/python hardware/export_onshape.py
 """

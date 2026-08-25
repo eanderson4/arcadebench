@@ -21,6 +21,7 @@ artifacts/
 # Hardware CAD: Python env and generated outputs
 hardware/.venv/
 hardware/out/
+hardware/exports/
 __pycache__/
 
 # research-bot local artifacts

@@ -799,3 +799,12 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   hardcoded list; studio_export maps deck* prefix; assembly places
   deck ("full") by mode. Chain green: fit OK (0.294 known JLF wedge),
   30 components, deck 0.000 vs shell, all 8 parts valid/fit-350.
+
+- Repo slimming + sourcing docs (2026-08-25): STEP exports are no longer
+  committed — `hardware/exports/` is gitignored and the generated CAD
+  (assembly/cabinet STEP, print-parts + flat-panels STEP/STL zips) ships
+  as release assets instead (`export_onshape.py` regenerates locally).
+  Added `print-suppliers.md` (10 print bureaus compared for the 340 mm
+  PETG parts; research-bot verified 6/6 sources) and `part-suppliers.md`
+  (BOM consolidated to 4 carts: Mouser + Focus Attack ~70% of items,
+  DFRobot compute, Amazon display/sundries; optional Parts Express).
