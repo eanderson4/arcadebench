@@ -139,6 +139,12 @@ The enclosure is parametric code, not hand-drawn CAD:
 - Changes are made by editing parameters or structure and re-running; every
   run archives renders + a parameter snapshot to `out/history/`, and the
   full design log is in [`hardware/design-notes.md`](../hardware/design-notes.md).
+- **CAD review (Onshape/Fusion/FreeCAD):** committed STEP exports live in
+  [`hardware/exports/`](../hardware/exports/) — `assembly.step` (shell +
+  every placed BOM component), `cabinet.step` (monocoque shell),
+  `print-parts/` (the fb split, shares the assembly's coordinates so
+  imports align at the origin), `flat-panels/` (sheet-metal path).
+  Regenerate with `hardware/.venv/bin/python hardware/export_onshape.py`.
 
 Status: **iteration 38** — seamless-front "fb" print split: mid + hood
 print whole, base splits front/rear (needs a 340+ mm bed; `split_mode:
