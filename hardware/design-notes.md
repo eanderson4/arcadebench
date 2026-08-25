@@ -742,3 +742,18 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   wedge), shell valid, 15 parts valid/1-body/fits-256, deck panels 0.000
   clearance vs shell, 32 components. Sheet-metal path (panels.py)
   untouched; it keeps the old control_plate inlay params.
+
+2026-08-25 — print-plate capacity study (plate_layout.py). Imports the
+  print-oriented STEP exports from out/parts/ and packs them onto Bambu
+  H2D plates (350x320 mm single-nozzle area, 8 mm edge margin, 10 mm
+  part gap) with a maximal-rectangles packer (shelf packing gave 7
+  plates; maxrects gives 6, sanity-checked no overlaps). Renders
+  plateN_top/iso.png (3D, shared z-buffer renderer) + plates_map.png
+  (labeled 2D packing map). Key findings: the L/R halves of the 170 mm
+  shell split can never share a row on a 350 plate (170+10+170 > 334
+  usable) — that is what drives the count. Answer for Eric: 6 plates,
+  ~2.75 liters solid volume (~1.2-1.7 kg PETG at real walls/infill),
+  biggest single part footprint retainer_l/r 159x229 (trivial height),
+  biggest solid base_f_r 392 cm3, tallest mid_l/r 175 mm. Everything
+  fits an H2D with huge margin; a 256 bed (P1S/X1C/A1) also fits every
+  part per parts.py, just more plates.
