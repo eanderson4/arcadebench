@@ -18,7 +18,7 @@ from build123d import Plane, Pos, Rot
 
 import components as comp
 from cabinet import HISTORY_DIR, OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
-from parts import deck_panel
+from parts import SPLIT, deck_panel
 from render import render_parts
 
 CREAM = (0.87, 0.85, 0.80)
@@ -162,7 +162,8 @@ def place_components():
     )
 
     # swappable deck panels (iter 36): placed on the deck plane, skin top
-    # flush with the deck surface
+    # flush with the deck surface. One full-width panel in fb split mode,
+    # two halves in lr mode.
     s_slope0 = math.radians(CAB["control_deck_slope_deg"])
     cos_s0 = math.cos(s_slope0)
     y00, y10 = CAB["deck_panel_y0"], CAB["deck_panel_y1"]
@@ -172,9 +173,11 @@ def place_components():
         x_dir=(1, 0, 0),
         z_dir=(0.0, -math.sin(s_slope0), math.cos(s_slope0)),
     )
-    for side in ("l", "r"):
+    sides = ("l", "r") if SPLIT["split_vertical"] else ("full",)
+    for side in sides:
         panel = deck_panel(side)
-        add(f"deck_{side}", [(dplane * panel, comp.DARK)],
+        name = f"deck_{side}" if side != "full" else "deck"
+        add(name, [(dplane * panel, comp.DARK)],
             (0, cy0, deck_z(cy0)))
 
     # --- control deck -------------------------------------------------------

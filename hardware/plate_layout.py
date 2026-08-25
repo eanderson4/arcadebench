@@ -29,7 +29,8 @@ OUT_DIR = HERE / "out"
 PLATE_W = 350.0     # H2D single-nozzle build width (X), mm
 PLATE_D = 320.0     # H2D build depth (Y), mm
 PLATE_H = 325.0     # H2D build height (Z), mm
-EDGE_MARGIN = 8.0   # keep parts this far from the plate rim
+EDGE_MARGIN = 4.0   # keep parts this far from the plate rim (340 mm parts
+                    # on a 350 plate leave just 5 mm/side — full-bed print)
 GAP = 10.0          # part-to-part clearance
 
 # per-part colors (extended tab20-ish palette, 0..1)
@@ -41,17 +42,16 @@ PALETTE = [
     (0.66, 0.78, 0.55), (0.75, 0.55, 0.35), (0.50, 0.68, 0.78),
 ]
 
-PART_NAMES = [
-    "base_f_l", "base_f_r", "base_b_l", "base_b_r",
-    "mid_l", "mid_r", "hood_l", "hood_r",
-    "deck_l", "deck_r", "bezel_l", "bezel_r",
-    "retainer_l", "retainer_r", "hatch_cover",
-]
+PART_NAMES = None  # resolved from the exported STEPs in load_parts()
 
 
 def load_parts():
     parts = {}
-    for name in PART_NAMES:
+    names = sorted(p.stem for p in PARTS_DIR.glob("*.step"))
+    assert names, f"no exported parts in {PARTS_DIR} — run parts.py first"
+    global PART_NAMES
+    PART_NAMES = names
+    for name in names:
         shape = import_step(str(PARTS_DIR / f"{name}.step"))
         bb = shape.bounding_box()
         parts[name] = {

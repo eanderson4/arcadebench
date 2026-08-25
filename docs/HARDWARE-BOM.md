@@ -109,37 +109,44 @@ strip — **+$30**. Your future self at a bar install will thank you.
   8 buttons, one encoder vs the old 2P BOM).
 - Enclosure fab on top: ~$150–300.
 
-## Prototype print order (PETG, iteration 36 split)
+## Prototype print order (PETG, iteration 38 "fb" split)
 
-The shell splits into **8 parts that each fit a 256 mm bed** (Bambu/Prusa
-class) plus 7 small parts — no large-format machine needed. Upload the
-STEP files from `hardware/out/parts/` to any print service (Craftcloud,
-JLC3DP, PCBWay) or a local printer; no drawings needed at this stage.
-Exports are **already print-oriented** (rotated, dropped to the bed) —
-verify orientation in the slicer matches the table, and run
-`hardware/printability.py` for the overhang audit.
+The shell splits into **4 parts with a completely seamless front** — mid
+and hood print whole, the base splits front/rear at mid-depth, so no seam
+ever crosses the nose, deck, display surround, or marquee. Seams live on
+the sides/back and at natural geometry creases. This needs a **340+ mm
+bed** (Bambu H2D class or a print service). Upload the STEP files from
+`hardware/out/parts/` to any print service (Craftcloud, JLC3DP, PCBWay)
+or a local H2D; no drawings needed at this stage. Exports are **already
+print-oriented** (rotated, dropped to the bed) — verify orientation in
+the slicer matches the table, and run `hardware/printability.py` for the
+overhang audit.
 
 | Part | Dims (mm) | Print orientation | Notes |
 | --- | --- | --- | --- |
-| `base_f_l` / `base_f_r` | 170×197×125 | as modeled (floor down) | open-top buckets; deck ledges are short cantilever shelves |
-| `base_b_l` / `base_b_r` | 170×150×125 | as modeled (floor down) | hatch + rear I/O |
-| `mid_l` / `mid_r` | 170×161×175 | as modeled (upright) | CRT dish; dish walls ≤15° overhang, brim optional |
-| `hood_l` / `hood_r` | 170×109×156 | back wall down | one hidden attic ceiling sags harmlessly |
-| `deck_l` / `deck_r` | 159×87×11 | **show face down** | the swappable control panel — waffle ribs up; alt layouts = reprint this |
-| `bezel_l` / `bezel_r` | 158×210×14 | flange face down | butt seam at x=0, visible funnel prints up-facing |
-| `retainer_l` / `retainer_r` | 159×229×3 | flat | panel clamp halves |
+| `base_f` | 340×197×125 | as modeled (floor down) | entire nose + deck front, seamless; open-top bucket |
+| `base_b` | 340×150×125 | as modeled (floor down) | hatch + rear I/O |
+| `mid` | 340×161×175 | as modeled (upright) | whole display surround, seamless; CRT dish walls ≤15° overhang, brim optional |
+| `hood` | 340×161×111 | back wall down | whole marquee + hood, seamless; one hidden attic ceiling sags harmlessly |
+| `deck` | 319×87×11 | **show face down** | the swappable control panel — waffle ribs up; alt layouts = reprint this one flat part |
+| `bezel` | 316×210×14 | flange face down | one-piece CRT trim ring; visible funnel prints up-facing |
+| `retainer` | 319×229×3 | flat | display panel clamp (hidden behind the face) |
 | `hatch_cover` | 198×118×3 | flat | rear service door |
 
+- **Small-bed fallback:** `split_mode: "lr"` in `hardware/parts.py`
+  restores the old 8-part L/R split (all parts fit a 256 mm bed) at the
+  cost of a vertical seam down every front surface.
 - Material: **PETG**, 4+ walls / ~25% infill for the shell parts (insert
-  bosses need meat). Black for the bezel and deck panels (or the show
+  bosses need meat). Black for the bezel and deck panel (or the show
   colorway); body color = prototype's choice.
-- Print-service quotes for this volume: expect roughly **$150–400** FDM.
-- Fasteners: **~60× M3 heat-set inserts** (ruthex RX-M3x5.7 class,
-  4.0–4.2 mm printed holes are in the parts) and **~60× M3×8–10 screws**
+- Print-service quotes for this volume (~2.75 L): expect roughly
+  **$150–400** FDM.
+- Fasteners: **~45× M3 heat-set inserts** (ruthex RX-M3x5.7 class,
+  4.0–4.2 mm printed holes are in the parts) and **~45× M3×8–10 screws**
   (12 of them CSK flat-head for the deck panel + hatch cover). Plus
   ~12× M2.5×6 self-tappers (or foam tape) for the board pads.
 - Service access: the rear hatch (4 screws) reaches the SBC/USB area;
-  the deck panels (12 screws) lift out for control swaps and reach the
+  the deck panel (12 screws) lifts out for control swaps and reaches the
   encoder/wiring underneath.
 
 ## Sourcing order (de-risked)

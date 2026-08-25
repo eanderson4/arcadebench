@@ -58,6 +58,8 @@ def preset_for(name):
     for prefix in ("primary", "secondary", "option"):
         if name.startswith(prefix):
             return "plastic"
+    if name.startswith("deck"):
+        return "anodized_dark"
     return "plastic"
 
 

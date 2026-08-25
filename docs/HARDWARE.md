@@ -55,10 +55,12 @@ without restructuring the model.
   nameplate inlay on the marquee face.
 - Wall thickness 3 mm, internal ribs, fastener bosses accessible from the
   underside, no upward-facing shell seams.
-- Two build paths from the same parametric model: **3 printable parts**
-  (base / face-column / hood, hidden M3 heat-set-insert joints, all fit a
-  360 mm bed) or a **flat-pack of 10 wrap panels + 2 side plates** —
-  the sheet-aluminum path (~3.3 kg in 2 mm 5052).
+- Two build paths from the same parametric model: **4 printable shell
+  parts + 4 small parts with a seamless front** (mid + hood print whole,
+  base splits front/rear — no seam crosses a front-facing surface; needs
+  a 340+ mm bed; a `split_mode: "lr"` 8-part 256 mm-bed fallback keeps
+  the old vertical center seams) or a **flat-pack of 10 wrap panels + 2
+  side plates** — the sheet-aluminum path (~3.3 kg in 2 mm 5052).
 
 ## Chassis architecture (minimal spine-and-sides)
 
@@ -138,24 +140,30 @@ The enclosure is parametric code, not hand-drawn CAD:
   run archives renders + a parameter snapshot to `out/history/`, and the
   full design log is in [`hardware/design-notes.md`](../hardware/design-notes.md).
 
-Status: **iteration 32** — printed CRT bezel, minimal spine chassis,
-structural flanged side plates; shell valid, 3 shell parts + retainer +
-bezel printable (0.000 mm³ seam overlap), 33 BOM components placed in
-the assembly fit check (max overlap 0.294 mm³, a known JLF plate wedge),
-12 flat-pack panels valid. Open call: compute — the brief recommends a
-used x86 thin client (Lenovo M90n class), whose 179 × 183 mm footprint
-does not fit the current base layout; ODROID H4+ stays in the model
-until that is decided.
+Status: **iteration 38** — seamless-front "fb" print split: mid + hood
+print whole, base splits front/rear (needs a 340+ mm bed; `split_mode:
+"lr"` keeps the 8-part 256 mm-bed fallback). Swappable one-piece deck
+panel (default layout: stick + 2 OBSF-30 + start/select), printed CRT
+bezel, minimal spine chassis, structural flanged side plates; shell
+valid, 0.000 mm³ seam overlap, deck panel 0.000 mm³ vs shell, 30 BOM
+components placed in the assembly fit check (max overlap 0.294 mm³, a
+known JLF plate wedge), 12 flat-pack panels valid. Open call: compute —
+ODROID H4+ class stays in the model until the board is picked (H4 Ultra
+stock gap; LattePanda Mu N100 is the in-stock path).
 
-## Current design (iteration 32)
+## Current design (iteration 38)
 
 | Assembled | Front | Side | Rear |
 | --- | --- | --- | --- |
 | ![assembled iso](images/hardware/asm_iso.png) | ![front](images/hardware/asm_front.png) | ![side](images/hardware/asm_side.png) | ![rear](images/hardware/asm_rear.png) |
 
-| Printable split (3 parts + retainer + bezel) | Flat-pack panel path (12 parts) |
+| Printable split (4 shell parts + 4 extras, seamless front) | Flat-pack panel path (12 parts) |
 | --- | --- |
 | ![exploded parts](images/hardware/exploded_iso.png) | ![exploded panels](images/hardware/panels_exploded_iso.png) |
+
+| Assembled parts — seam check (front) | Side |
+| --- | --- |
+| ![assembled parts front](images/hardware/parts_assembled_front.png) | ![assembled parts side](images/hardware/parts_assembled_side.png) |
 
 ## Studio renders (Blender, photoreal)
 

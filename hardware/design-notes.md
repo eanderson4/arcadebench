@@ -771,3 +771,31 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   Chain green: fit OK (0.294 known JLF wedge), 30 components (was 32),
   deck panels 0.000 vs shell. BOM: secondary-button row removed, layout
   note added (2x2 = +2 OBSF-24 alt panel).
+
+2026-08-25 — iter 38: seamless-front "fb" split (Eric: no seam in the
+  most visible part of the front; back seams fine). The L/R split put a
+  vertical seam down the nose, deck, display surround, and marquee — the
+  exact show surfaces. Realization: on a 340+ mm bed (H2D 350 / print
+  services) the L/R split is unnecessary — mid (340x161x175) and hood
+  (340x161x111) print WHOLE, and the base already had the F/B machinery
+  (split_y_base=190). New SPLIT["split_mode"]: "fb" (default) vs "lr"
+  (256 mm beds, keeps the old 8-part split + center seams). fb parts:
+  base_f, base_b, mid, hood + retainer, bezel, deck (all one-piece now),
+  hatch_cover = 8 prints total. Front is 100% seamless: nose/deck =
+  base_f, display surround = mid, marquee = hood; remaining seams are
+  the base F/B line on the sides/bottom and the horizontal layer seams
+  at natural creases (deck/face R20, chin). Details: (1) base y-seam
+  joint x-positions had to mirror +/- when sx=0 (unsplit) — the old code
+  collapsed them all to x=0; (2) full-width deck panel's waffle grid
+  phased a rib onto the shell's internal fore-aft ribs (rib_offset_x
+  +/-145): the shell rib's FLAT top (deck_z(25)-3 = z78.7) crosses the
+  waffle's sloped bottoms (down to deck_z(y)-10.4) for y<78 — the lr
+  halves had escaped by 0.1 mm of grid luck. Fix: universal rib slots in
+  the deck panel at +/-rib_offset_x (rib_thickness+4 wide) — the shell
+  ribs now key into the slots = free shear interlock. Also added
+  universal rib keep-outs at deck screw-boss points (same latent class
+  of bug). (3) New parts_assembled_front/side/iso renders = the seam
+  proof. plate_layout.py now globs out/parts/*.step instead of a
+  hardcoded list; studio_export maps deck* prefix; assembly places
+  deck ("full") by mode. Chain green: fit OK (0.294 known JLF wedge),
+  30 components, deck 0.000 vs shell, all 8 parts valid/fit-350.

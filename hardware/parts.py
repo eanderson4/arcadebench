@@ -52,16 +52,22 @@ from render import render_parts
 PARTS_DIR = OUT_DIR / "parts"
 
 SPLIT = {
-    "split_vertical": True,        # x=0 split: halves fit modest beds
-    "split_base_y": True,          # front/back split of the base layer =>
-                                   # 8 parts, all fit a 256 mm bed
+    # "fb" (default): front/back only — mid + hood print WHOLE and the base
+    #   splits front/rear, so no seam ever crosses a front-facing surface
+    #   (nose, deck, display surround, marquee). Needs a 340+ mm bed
+    #   (Bambu H2D class or a print service).
+    # "lr": adds the x=0 split — 8 shell parts, all fit a 256 mm bed, but a
+    #   vertical seam runs down the middle of every front surface.
+    "split_mode": "fb",
+    "split_vertical": False,       # derived from split_mode below
+    "split_base_y": True,          # front/back split of the base layer
     "split_y_base": 190.0,         # base front|rear seam (clear of the ribs,
                                    # which end ~25 mm behind the control deck)
     "split_z_deck": 125.0,         # base | face-column seam (clear of the
                                    # R20 seam blend; 105 left a wall sliver)
     "split_z_hood": 300.0,         # face-column | hood seam (below the chin and
                                    # the hood floor / back-wall junction ~304)
-    "print_bed": 256.0,            # mm, for the fit check (Bambu/Prusa class)
+    "print_bed": 350.0,            # derived below: 350 (fb) or 256 (lr)
     # --- joints -----------------------------------------------------------
     "joint_block": 14.0,           # mm boss cross-section (Y/Z or X faces)
     "joint_depth": 12.0,           # mm boss depth from the seam face
@@ -93,6 +99,10 @@ SPLIT = {
     # into inserts in the front quarters.
     "base_y_seam_joints": [(30, 9.5), (90, 9.5), (160.5, 60), (160.5, 110)],
 }
+
+# derive the mode-dependent flags
+SPLIT["split_vertical"] = SPLIT["split_mode"] == "lr"
+SPLIT["print_bed"] = 256.0 if SPLIT["split_vertical"] else 350.0
 
 # --- CRT funnel insert + trim ring (printed part, black PETG) --------------
 # Iter 34: the old proud 18 mm bezel read inverted vs real CRTs (their frame
@@ -379,9 +389,13 @@ def build_parts():
             if name == "base" and p["split_base_y"]:
                 front = half & y_slice_box(-50, yb)
                 back = half & y_slice_box(yb, depth + 50)
+                # unsplit base (sx=0): mirror the joint x positions so both
+                # sides of the full-width seam get blocks
+                signs = (sx,) if sx else (-1, 1)
                 front, back = y_seam_joints(
                     front, back, yb,
-                    [(sx * ax, z) for ax, z in p["base_y_seam_joints"]],
+                    [(s2 * ax, z) for ax, z in p["base_y_seam_joints"]
+                     for s2 in signs],
                 )
                 parts[f"base_f{suffix}"] = front
                 parts[f"base_b{suffix}"] = back
@@ -397,12 +411,17 @@ def build_parts():
 ORIENT = {
     # base/mid parts print upright as modeled: the dish floor faces up,
     # its walls are <=15 deg overhangs, the tub exterior is hidden.
+    "hood": (Rot(-78, 0, 0), "back wall down (wall leans 12 deg; one "
+                             "hidden attic ceiling sags harmlessly)"),
     "hood_l": (Rot(-78, 0, 0), "back wall down (wall leans 12 deg; one "
                                "hidden attic ceiling sags harmlessly)"),
     "hood_r": (Rot(-78, 0, 0), "back wall down (wall leans 12 deg; one "
                                "hidden attic ceiling sags harmlessly)"),
+    "deck": (Rot(180, 0, 0), "show face down"),
     "deck_l": (Rot(180, 0, 0), "show face down"),
     "deck_r": (Rot(180, 0, 0), "show face down"),
+    "bezel": (Rot(180, 0, 0), "flange face down (visible funnel prints "
+                              "up-facing; outer cone 25 deg overhang)"),
     "bezel_l": (Rot(180, 0, 0), "flange face down (visible funnel prints "
                                 "up-facing; outer cone 25 deg overhang)"),
     "bezel_r": (Rot(180, 0, 0), "flange face down (visible funnel prints "
@@ -493,16 +512,22 @@ def _control_holes():
 
 
 def deck_panel(side):
-    """One deck half ('l'/'r'): skin + waffle ribs, skin top at local z=0.
+    """Deck skin panel ('l'/'r' halves for the 256 bed, 'full' for the
+    seamless-front split): skin + waffle ribs, skin top at local z=0.
 
-    All controls of the 1P cluster live on deck_r / deck_l per the param
-    layout; the seam at x=0 splits the panel so each half prints flat."""
+    All controls of the 1P cluster live on the panel per the param layout;
+    in 'lr' mode the seam at x=0 splits the panel so each half prints flat.
+    """
     p = CAB
     d = DP
     clr, t = d["clearance"], d["thickness"]
     cos_s, cy, u_half, x0 = _deck_frame()
-    xa = clr if side == "r" else -x0 + clr
-    xb = x0 - clr if side == "r" else -clr
+    if side == "full":
+        xa, xb = -x0 + clr, x0 - clr
+    elif side == "r":
+        xa, xb = clr, x0 - clr
+    else:
+        xa, xb = -x0 + clr, -clr
     xc, xw = (xa + xb) / 2, xb - xa
     uh = u_half - clr
 
@@ -538,7 +563,9 @@ def deck_panel(side):
     for uv2 in us:
         _add_rib(Pos(xc, uv2, rib_z) * Box(xw - 2 * re_, rt, rh))
 
-    # rib keep-outs: control holes + the JLF plate/nut zone
+    # rib keep-outs: control holes + the JLF plate/nut zone + screw bosses
+    # (the full-width panel's rib grid phases differently than the halves'
+    # and can land a rib on a side-column boss — keep out universally)
     holes = _control_holes()
     for hx, hu, hr, kind in holes:
         if not (xa - 1 < hx < xb + 1):
@@ -546,6 +573,22 @@ def deck_panel(side):
         ribs -= Pos(hx, hu, rib_z) * Cylinder(
             radius=hr + d["hole_keepout"], height=rh + 3
         )
+    for sx2, sy2 in deck_screw_points(p):
+        if not (xa - 1 < sx2 < xb + 1):
+            continue
+        ribs -= Pos(sx2, (sy2 - cy) / cos_s, rib_z) * Cylinder(
+            radius=8.0, height=rh + 3
+        )
+    # slots for the shell's internal fore-aft ribs (cabinet.py rib_offset_x):
+    # their flat tops cross the waffle's sloped bottoms under the opening —
+    # the lr halves cleared them by 0.1 mm of grid-phase luck; slot them
+    # universally (the shell ribs key into the slots = shear interlock)
+    for sxr in (-1, 1):
+        xr = sxr * p["rib_offset_x"]
+        if xa - 1 < xr < xb + 1:
+            ribs -= Pos(xr, 0, rib_z) * Box(
+                p["rib_thickness"] + 4.0, 2 * uh, rh + 3
+            )
     jx = p["cluster_offset_x"] + p["joystick_offset_x"]
     ju = (p["joystick_offset_y"] - cy) / cos_s
     ribs -= Pos(jx, ju, rib_z) * Box(2 * d["jlf_keepout"], 80.0, rh + 3)
@@ -708,19 +751,29 @@ def main():
 
     check_collisions(parts)
 
-    # independent printed parts: retainer + bezel (both split L/R for the
-    # bed — butt seam, 2 corner screws per half), deck panels, hatch cover
-    ret_l, ret_r = _split_lr(retainer_frame())
-    bez_l, bez_r = _split_lr(crt_bezel())
-    extras = {
-        "retainer_l": ret_l,
-        "retainer_r": ret_r,
-        "bezel_l": bez_l,
-        "bezel_r": bez_r,
-        "deck_l": deck_panel("l"),
-        "deck_r": deck_panel("r"),
-        "hatch_cover": hatch_cover(),
-    }
+    # independent printed parts: retainer + bezel + deck panel(s) + hatch
+    # cover. lr mode splits the wide flat parts at x=0 for the 256 bed
+    # (butt seam, 2 corner screws per half); fb mode keeps them whole.
+    if SPLIT["split_vertical"]:
+        ret_l, ret_r = _split_lr(retainer_frame())
+        bez_l, bez_r = _split_lr(crt_bezel())
+        extras = {
+            "retainer_l": ret_l,
+            "retainer_r": ret_r,
+            "bezel_l": bez_l,
+            "bezel_r": bez_r,
+            "deck_l": deck_panel("l"),
+            "deck_r": deck_panel("r"),
+            "hatch_cover": hatch_cover(),
+        }
+    else:
+        extras = {
+            "retainer": retainer_frame(),
+            "bezel": crt_bezel(),
+            "deck": deck_panel("full"),
+            "hatch_cover": hatch_cover(),
+        }
+    decks = {n: s for n, s in extras.items() if n.startswith("deck")}
     for name, part in extras.items():
         valid, bodies = part.is_valid, len(part.solids())
         bb = part.bounding_box()
@@ -736,32 +789,6 @@ def main():
         export_stl(oriented, str(PARTS_DIR / f"{name}.stl"))
 
     # deck panels must clear the shell opening (0.3 mm/side by design)
-    for side in ("l", "r"):
-        panel = extras[f"deck_{side}"]
-        _, _, info = side_profile(CAB)
-        cos_s, cy, _, _ = _deck_frame()
-        s_slope = math.radians(CAB["control_deck_slope_deg"])
-        deck_plane = Plane(
-            origin=(0, cy, info["deck_z"](cy)),
-            x_dir=(1, 0, 0),
-            z_dir=(0, -math.sin(s_slope), math.cos(s_slope)),
-        )
-        inter = solid & (deck_plane * panel)
-        vol = sum(s.volume for s in inter.solids()) if inter else 0.0
-        flag = "  <-- COLLISION" if vol > 1.0 else ""
-        print(f"deck_{side} x shell: {vol:.3f} mm^3{flag}")
-
-    # exploded view: layers separated in Z, halves in X, base quarters in Y
-    shades = [(0.87, 0.85, 0.80), (0.80, 0.77, 0.72), (0.72, 0.69, 0.64)]
-    order = {"base": 0, "mid": 1, "hood": 2}
-    exploded = []
-    for name, part in parts.items():
-        layer_i = order[name.split("_")[0]]
-        dx = -60 if name.endswith("_l") else (60 if name.endswith("_r") else 0)
-        dy = -70 if "_f_" in name else (70 if "_b_" in name else 0)
-        dz = 70 * layer_i
-        exploded.append((Pos(dx, dy, dz) * part, shades[layer_i]))
-    # deck panels hover over their opening
     _, _, info = side_profile(CAB)
     cos_s, cy, _, _ = _deck_frame()
     s_slope = math.radians(CAB["control_deck_slope_deg"])
@@ -770,14 +797,42 @@ def main():
         x_dir=(1, 0, 0),
         z_dir=(0, -math.sin(s_slope), math.cos(s_slope)),
     )
-    for side, panel in (("l", extras["deck_l"]), ("r", extras["deck_r"])):
-        dx = -60 if side == "l" else 60
+    for dname, panel in decks.items():
+        inter = solid & (deck_plane * panel)
+        vol = sum(s.volume for s in inter.solids()) if inter else 0.0
+        flag = "  <-- COLLISION" if vol > 1.0 else ""
+        print(f"{dname} x shell: {vol:.3f} mm^3{flag}")
+
+    # exploded view: layers separated in Z, halves in X, base quarters in Y
+    shades = [(0.87, 0.85, 0.80), (0.80, 0.77, 0.72), (0.72, 0.69, 0.64)]
+    order = {"base": 0, "mid": 1, "hood": 2}
+    exploded = []
+    assembled = []
+    for name, part in parts.items():
+        layer_i = order[name.split("_")[0]]
+        tail = name.split("_")[-1]
+        dx = -60 if tail == "l" else (60 if tail == "r" else 0)
+        dy = -70 if tail == "f" else (70 if tail == "b" else 0)
+        dz = 70 * layer_i
+        exploded.append((Pos(dx, dy, dz) * part, shades[layer_i]))
+        assembled.append((part, shades[layer_i]))
+    # deck panels hover over their opening
+    for dname, panel in decks.items():
+        dx = -60 if dname.endswith("_l") else (
+            60 if dname.endswith("_r") else 0)
         exploded.append(
             (Pos(dx, 0, 50) * deck_plane * panel, (0.30, 0.30, 0.33))
         )
+        assembled.append((deck_plane * panel, (0.30, 0.30, 0.33)))
     render_parts(
         exploded, OUT_DIR, prefix="exploded", size=1200,
         views={"iso": (25, -60, None), "front": (0, -90, None)},
+    )
+    # seam check: the parts assembled — front must read seamless in fb mode
+    render_parts(
+        assembled, OUT_DIR, prefix="parts_assembled", size=1200,
+        views={"iso": (25, -60, None), "front": (0, -90, None),
+               "side": (0, 180, None)},
     )
     print(f"exported {len(parts)} shell parts + {len(extras)} extras"
           f" + exploded to {PARTS_DIR}")
