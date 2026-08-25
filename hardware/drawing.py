@@ -127,7 +127,7 @@ def draw_side():
             fontsize=9, family="monospace", va="top",
             bbox={"facecolor": "0.97", "edgecolor": "0.8"})
 
-    ax.set_title("ArcadeBench bartop — side cut pattern (iter 33) — mm, "
+    ax.set_title("ArcadeBench bartop — side cut pattern (iter 37) — mm, "
                  "solid = side plate, dashed = inner wrap line", fontsize=11)
     ax.set_xlabel("y: front -> back (mm)")
     ax.set_ylabel("z: height (mm)")
@@ -218,9 +218,7 @@ def draw_front():
                  jy + sy * P["jlf_mount_spacing_y"] / 2),
                 P["jlf_mount_hole_dia"] / 2, fill=False, edgecolor=CUT,
                 lw=0.9))
-    sec_center = P["button_grid_offset_x"] \
-        + P["secondary_pitch"] * (P["secondary_count"] - 1) / 2
-    cols = [cx + sec_center + (i - (P["primary_count"] - 1) / 2)
+    cols = [cx + P["primary_center_x"] + (i - (P["primary_count"] - 1) / 2)
             * P["primary_pitch"] for i in range(P["primary_count"])]
     for bx in cols:
         axd.add_patch(Circle((bx, P["primary_row_y"]),
@@ -229,6 +227,8 @@ def draw_front():
         axd.add_patch(Circle((bx, P["primary_row_y"]),
                              P["primary_recess_dia"] / 2, fill=False,
                              edgecolor=REF, lw=0.8, linestyle=(0, (3, 2))))
+    for i in range(P["secondary_count"]):
+        bx = cx + P["button_grid_offset_x"] + i * P["secondary_pitch"]
         axd.add_patch(Circle((bx, P["secondary_row_y"]),
                              P["secondary_hole_dia"] / 2, fill=False,
                              edgecolor=CUT, lw=1.2))
@@ -239,7 +239,7 @@ def draw_front():
 
     # dims: pitch above the grid + cabinet width; everything else in a
     # spec block below the deck (inline dims crowded the cluster)
-    dim(axd, (cols[0], P["secondary_row_y"]), (cols[1], P["secondary_row_y"]),
+    dim(axd, (cols[0], P["primary_row_y"]), (cols[1], P["primary_row_y"]),
         20, f"pitch {P['primary_pitch']:.0f}")
     axd.annotate(
         f"start/select \u00d824 at (\u00b1{P['option_offset_x']:.0f}, "
@@ -248,10 +248,12 @@ def draw_front():
         fontsize=8, color=DIM,
         arrowprops={"arrowstyle": "->", "color": DIM, "lw": 0.7})
     dim(axd, (-170, deck_d + 8), (170, deck_d + 8), 0, "cabinet width 340")
+    sec_note = (f"   secondaries y={P['secondary_row_y']:.0f}"
+                if P["secondary_count"] else "   (2nd button row = alt deck)")
     spec = "\n".join([
         "deck spec (mm, y from the front edge along the 8\u00b0 slope):",
-        f"  rows:  primaries y={P['primary_row_y']:.0f}   secondaries "
-        f"y={P['secondary_row_y']:.0f}   start/select y={P['option_offset_y']:.0f}"
+        f"  rows:  primaries y={P['primary_row_y']:.0f}{sec_note}"
+        f"   start/select y={P['option_offset_y']:.0f}"
         f"   stick y={P['joystick_offset_y']:.0f}",
         f"  cols:  {cols[0]:.0f} / {cols[1]:.0f} (pitch "
         f"{P['primary_pitch']:.0f})   stick x={jx:.0f}   "
@@ -260,7 +262,7 @@ def draw_front():
         f"slots \u00d8{P['jlf_mount_hole_dia']} on "
         f"{P['jlf_mount_spacing_x']:.0f}\u00d7{P['jlf_mount_spacing_y']:.0f}"
         f"   primaries \u00d830 in \u00d8{P['primary_recess_dia']:.0f} wells"
-        f"   secondaries/options \u00d824",
+        f"   options \u00d824",
         f"  plate: {pw:.0f}\u00d7{pd:.0f} centered ({P['cluster_offset_x']:.0f}"
         f", {P['control_plate_center_y']:.0f})",
     ])
@@ -272,7 +274,7 @@ def draw_front():
     axd.grid(True, lw=0.3, color="0.9")
     axd.axvline(0, color=REF, lw=0.6)
 
-    fig.suptitle("ArcadeBench bartop — face + deck layout (iter 33) — mm",
+    fig.suptitle("ArcadeBench bartop — face + deck layout (iter 37) — mm",
                  fontsize=11)
     fig.tight_layout()
     fig.savefig(OUT_DIR / "drawing_front.png", dpi=150)

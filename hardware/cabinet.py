@@ -172,8 +172,12 @@ PARAMS = {
     "primary_hole_dia": 30.0,      # 2 primaries/player: Sanwa OBSF-30
     "secondary_hole_dia": 24.0,    # 2 secondaries/player: Sanwa OBSF-24
     "primary_count": 2,
-    "secondary_count": 2,          # iter 33: 2+2 grid (was 4 secondaries) —
-                                   #   the game roster is stick + 1-2 buttons
+    "secondary_count": 0,          # iter 37: basic assembly is stick + 2
+                                   #   primaries + start/select — no game needs
+                                   #   >2 buttons; 2nd row = alt deck reprint
+    "primary_center_x": 52.0,      # primary pair center rel. cluster center
+                                   #   (decoupled from the secondary grid so a
+                                   #   0-secondary layout keeps its position)
     "primary_pitch": 44.0,         # mm between primaries (front row); the
                                    #   Ø40 wells keep 4 mm rim gaps at 44
     "secondary_pitch": 44.0,       # aligned 2x2 grid: same pitch both rows

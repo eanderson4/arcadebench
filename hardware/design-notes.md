@@ -757,3 +757,17 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   biggest solid base_f_r 392 cm3, tallest mid_l/r 175 mm. Everything
   fits an H2D with huge margin; a 256 bed (P1S/X1C/A1) also fits every
   part per parts.py, just more plates.
+
+2026-08-25 — iter 37: basic control assembly = stick + 2 + start/select.
+  secondary_count 2 -> 0: no game in the roster needs more than two
+  player buttons, so the default deck panel drops the OBSF-24 back row
+  (a 2x2 grid or any other layout stays a swappable deck-panel reprint,
+  ~40 cm3 flat print, no shell change). Trap found: the primary pair's x
+  was derived from the secondary grid (sec_center = grid_offset + pitch*
+  (count-1)/2) — at count=0 that formula silently drags the primaries
+  36 mm toward the stick into the JLF ball's sweep. Fix: new PARAMS
+  "primary_center_x" (52 rel cluster, keeps the pair at world x 22/66)
+  used by all five consumers (parts/assembly/components/panels/drawing).
+  Chain green: fit OK (0.294 known JLF wedge), 30 components (was 32),
+  deck panels 0.000 vs shell. BOM: secondary-button row removed, layout
+  note added (2x2 = +2 OBSF-24 alt panel).

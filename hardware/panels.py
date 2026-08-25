@@ -151,11 +151,9 @@ def panel_features(name, panel, length):
                     half - p["secondary_row_y"],
                     p["secondary_hole_dia"],
                 )
-            sec_center = p["button_grid_offset_x"] \
-                + p["secondary_pitch"] * (p["secondary_count"] - 1) / 2
             for i in range(p["primary_count"]):
                 hole(
-                    cluster_x + sec_center
+                    cluster_x + p["primary_center_x"]
                     + (i - (p["primary_count"] - 1) / 2) * p["primary_pitch"],
                     half - p["primary_row_y"],
                     p["primary_hole_dia"],

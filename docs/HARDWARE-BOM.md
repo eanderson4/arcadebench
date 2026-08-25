@@ -47,7 +47,6 @@ Prices are USD, as listed at research time — re-check before ordering.
 | ☐ | Part | Spec / pick | Est. | Source |
 | --- | --- | --- | --- | --- |
 | ☐ | Primary buttons ×2 | Sanwa OBSF-30, red — front row, recessed-well indicator on the deck | $7 | [Paradise Arcade](https://paradisearcadeshop.com/collections/sanwa-obsf-series), [Focus Attack](https://focusattack.com/sanwa-obsf-30mm-pushbuttons-black/) |
-| ☐ | Secondary buttons ×4 | Sanwa OBSF-24, white — back row | $10 | Same |
 | ☐ | Start/select ×2 | Sanwa OBSF-24, black, ~$2.50 ea | $5 | Paradise Arcade |
 | ☐ | Joystick | Sanwa JLF-TP-8YT — no shaft extension needed at a 3 mm deck (stock shaft is fine to ~4 mm) | $25 | [Focus Attack](https://focusattack.com/sanwa-jlf-tp-8yt-joystick-precursor-to-jlx-tp-8yt/) |
 | ☐ | Microswitches/boots | Spares for JLF + buttons | $10 | Same |
@@ -61,6 +60,11 @@ Prices are USD, as listed at research time — re-check before ordering.
 > Snap-in caveat: OBSF buttons are designed for thin metal panels; at 3 mm
 > printed deck they're at the top of the grip range — test on a coupon first,
 > or switch to screw-in OBSN-30.
+
+> Layout note (iter 37): the default control assembly is **stick + 2 OBSF-30
+> + start/select** — no game in the roster needs more than two buttons. A
+> 2×2 grid (add 2 OBSF-24, white, ~$5) or any other layout is a swappable
+> deck-panel reprint, not a shell change.
 
 ## 4. Audio
 

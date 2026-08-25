@@ -477,14 +477,12 @@ def _control_holes():
                 my = jy + sy * p["jlf_mount_spacing_y"] / 2
                 holes.append((jx + sx * p["jlf_mount_spacing_x"] / 2,
                               u(my), p["jlf_mount_hole_dia"] / 2, "plain"))
-        sec_center = p["button_grid_offset_x"] \
-            + p["secondary_pitch"] * (p["secondary_count"] - 1) / 2
         for i in range(p["secondary_count"]):
             bx = cluster_x + p["button_grid_offset_x"] + i * p["secondary_pitch"]
             holes.append((bx, u(p["secondary_row_y"]),
                           p["secondary_hole_dia"] / 2, "plain"))
         for i in range(p["primary_count"]):
-            bx = cluster_x + sec_center \
+            bx = cluster_x + p["primary_center_x"] \
                 + (i - (p["primary_count"] - 1) / 2) * p["primary_pitch"]
             holes.append((bx, u(p["primary_row_y"]),
                           p["primary_hole_dia"] / 2, "well"))
