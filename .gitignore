@@ -22,3 +22,7 @@ artifacts/
 hardware/.venv/
 hardware/out/
 __pycache__/
+
+# research-bot local artifacts
+.research/
+.token-usage.jsonl
