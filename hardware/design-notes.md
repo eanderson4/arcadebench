@@ -704,3 +704,41 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   estimate) and seats blocks on the probed inner face. BOM gained a
   "Prototype print order" section: part list, PETG guidance, ~50 M3
   inserts + screws fastener count. Sheet-metal path (panels.py) unchanged.
+- Iteration 36 (2026-08-24, archived `iter-046`, assembly `asm-037`):
+  **printability pass + swappable deck panel.** Driver: FDM DFM before the
+  prototype order — the old base had a 170 mm deck-span bridge (unprintable
+  without supports). Fix = the user's swappable-control-panel idea, taken
+  further: the ENTIRE deck skin is now 2 separate printed parts
+  (deck_l/deck_r, 159x87x11, waffle-ribbed undersides, show-face-down on
+  the bed) dropped into a through opening in an open-top base; ledge ring
+  + 12 M3 insert bosses support them (CSK screws from above, classic
+  arcade look). Control interface is now a flat $5 reprint (alt layouts,
+  keyboard tray, trackball...). Shell side: opening x +/-160, y 45..132
+  (flat band between nose roll and the seam R20 tangent ~135). Layout
+  moves forced by the ledges: stick y 67->71 (JLF bolts cleared the rim),
+  start/select (25,120)->(100,116) wide of the cluster (bonus: kids
+  fat-finger less). Ledge construction worth remembering: coplanar fuse of
+  the strips SHATTERED the shell boolean (19 solids, 85 cm3) — fix is a
+  two-box strip: FUSE box embedded 0.5 into intact skin outside the
+  opening + SEAT box under the rim (top 0.15 below the seat plane),
+  overlapping volumetrically; strips segmented around the JLF plate
+  (front) and option-button bodies (rear); tilted OBSF-30 bodies sweep
+  ~12 mm forward under the deck — keep ledges out of the sweep. New parts:
+  hatch_cover (rear service door was missing — 170x90 hatch had bosses
+  but no door), electronics floor pads for encoder/amp/buck (M2.5 pilots,
+  positions moved into cabinet PARAMS as the single source of truth;
+  assembly reads them). Print orientation per part is baked into the
+  exports (ORIENT in parts.py, rotated + dropped to z=0): base/mid
+  upright, hood back-wall-down (-78 deg, wall leans 12), deck/bezel
+  show-face-down. printability.py audits every export (mesh triangle
+  normals): bed contact + overhang area at >45/>60 deg. Audit lessons:
+  (1) a bottom face is bed contact, not an overhang — filter z<2 mm;
+  (2) overhang = asin(|nz|), NOT acos — two orientation choices
+  (mid face-down, hood floor-down) looked necessary under the wrong
+  formula and are actually worse; (3) remaining >60 deg flags are all
+  <=14 mm cantilever ledges or hidden attic ceilings — read flags with
+  cantilever length in mind. Retainer + bezel split L/R (butt seam, 2
+  screws/half) — both were >256 mm. Chain green: fit OK (0.294 known JLF
+  wedge), shell valid, 15 parts valid/1-body/fits-256, deck panels 0.000
+  clearance vs shell, 32 components. Sheet-metal path (panels.py)
+  untouched; it keeps the old control_plate inlay params.

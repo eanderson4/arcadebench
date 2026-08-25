@@ -195,12 +195,45 @@ PARAMS = {
     "jlf_mount_hole_dia": 5.5,     # M5 clearance for plate slots
     "player_spacing": 230.0,       # mm between player cluster centers
     "joystick_offset_x": -50.0,    # stick left of button cluster
-    "joystick_offset_y": 67.0,     # from deck front edge (40 mm wrist rest)
+    "joystick_offset_y": 71.0,     # from deck front edge (iter 36: +4 keeps
+                                   #   the JLF mount bolts off the panel rim)
     "button_grid_offset_x": 30.0,  # first secondary column rel. cluster ctr
                                    #   (iter 33: +15 keeps hand clearance
                                    #   from the stick with the 2-wide grid)
-    "option_offset_x": 25.0,       # start/select straddle cabinet center
-    "option_offset_y": 120.0,
+    "option_offset_x": 100.0,      # start/select wide of the cluster (iter 36:
+                                   #   clears the ledges; kids fat-finger less)
+    "option_offset_y": 116.0,
+    # --- swappable deck panel (iter 36) ------------------------------------
+    # The deck skin over the control zone is a SEPARATE printed part (see
+    # parts.py:deck_panel) — kills the 170 mm deck bridge when printing the
+    # base, and makes the control interface swappable (alt layouts = flat
+    # reprints). Shell gets a through opening + ledge ring + M3 insert
+    # bosses underneath.
+    "deck_panel_x": 160.0,         # opening half-width (ledges reach walls)
+    "deck_panel_y0": 45.0,         # opening front edge (clear of nose roll)
+    "deck_panel_y1": 132.0,        # opening rear edge (flat deck ends ~135:
+                                   #   the seam R20 blend starts there)
+    "deck_panel_ledge": 10.0,      # ledge strip width under the panel rim
+    "deck_panel_ledge_t": 3.0,     # ledge strip thickness
+    "deck_panel_boss_size": 10.0,
+    "deck_panel_boss_depth": 8.0,  # below the ledge strip
+    "deck_panel_pilot_dia": 4.2,   # M3 heat-set insert pilot
+    "deck_panel_pilot_depth": 9.0, # from the panel seat (ledge top)
+    "deck_panel_radius": 4.0,
+    "deck_panel_screw_x1": 60.0,   # rear screw row: +/- x1, +/- x2
+    "deck_panel_screw_x2": 120.0,  # front row: +/- x2 (center is JLF zone)
+    "deck_panel_screw_side_x": 155.0,  # side-ledge screw column
+    # --- electronics mounting pads (boards no longer floor-rest) ----------
+    # Positions are the single source of truth; assembly.py reads these.
+    "encoder_xy": (0.0, 110.0),
+    "amp_xy": (-100.0, 300.0),
+    "buck_xy": (-100.0, 262.0),
+    "board_pad_h": 5.0,
+    "board_pad_dia": 9.0,
+    "board_pad_pilot_dia": 2.5,    # M2.5 self-tap / locate for foam tape
+    "board_pad_pilot_depth": 5.0,
+    "board_pad_spans": {"encoder": (46.0, 18.0), "amp": (33.0, 23.0),
+                        "buck": (38.0, 15.0)},   # ESTIMATED hole patterns
     # --- rear I/O + speaker grilles (BOM-driven) ---------------------------
     "power_switch_hole_dia": 19.0,  # Bulgin MPI002 class
     "power_switch_xz": (130.0, 40.0),  # single rear I/O row at z=40
@@ -414,6 +447,22 @@ def _rounded_cutter(plane, y_ctr, w, d, h, r):
     cutter = plane * Pos(0, y_ctr, 0) * Box(w, d, h)
     short_edges = cutter.edges().filter_by(lambda e: e.length < d + 1)
     return cutter.fillet(r, short_edges)
+
+
+def deck_screw_points(p):
+    """(x, y_world) of the deck-panel screw bosses: front row (2), rear row
+    (4), and a 3-screw column on each side ledge. Shared by the shell bosses
+    (cabinet.py) and the panel's clearance holes (parts.py). Positions are
+    chosen to clear every control zone on the crowded deck."""
+    y0, y1 = p["deck_panel_y0"], p["deck_panel_y1"]
+    x1, x2 = p["deck_panel_screw_x1"], p["deck_panel_screw_x2"]
+    sx = p["deck_panel_screw_side_x"]
+    pts = [(-x2, y0 + 2.0), (x2, y0 + 2.0)]
+    pts += [(xx, y1 - 1.0) for xx in (-x2, -x1, x1, x2)]
+    for yy in (y0 + (y1 - y0) * 0.28, (y0 + y1) / 2,
+               y1 - (y1 - y0) * 0.28):
+        pts += [(-sx, yy), (sx, yy)]
+    return pts
 
 
 def build_cabinet(p=None):
@@ -741,103 +790,75 @@ def build_cabinet(p=None):
                 radius=p["magnet_dia"] / 2, height=p["magnet_depth"] + 0.4
             )
 
-    # --- control deck cutouts (vertical holes through the sloped deck) ---
-    cut_h = wall + 4
-
-    # control plate inlay: shallow slope-aligned recess under the whole
-    # cluster (future swappable plate seat). Sketch+extrude because a box
-    # corner fillet can't exceed the thin cutter's depth.
+    # --- swappable deck panel opening (iter 36) ---------------------------
+    # The deck skin over the control zone is a separate printed part
+    # (parts.py:deck_panel): the shell gets a through opening, a ledge ring
+    # underneath, and M3 insert bosses. The base prints bridge-free and the
+    # control interface is swappable (alt layouts = flat panel reprints).
     s_slope = math.radians(p["control_deck_slope_deg"])
     nrm = (0.0, -math.sin(s_slope), math.cos(s_slope))  # deck outward normal
-    cy_plate = p["control_plate_center_y"]
-    lift = 0.2
-    plate_plane = Plane(
-        origin=(0, cy_plate + lift * nrm[1], deck_z(cy_plate) + lift * nrm[2]),
-        x_dir=(1, 0, 0),
-        z_dir=nrm,
+    cos_s = math.cos(s_slope)
+    y0, y1 = p["deck_panel_y0"], p["deck_panel_y1"]
+    x0 = p["deck_panel_x"]
+    cy_plate = (y0 + y1) / 2
+    deck_plane = Plane(
+        origin=(0, cy_plate, deck_z(cy_plate)),
+        x_dir=(1, 0, 0), z_dir=nrm,
     )
-    with BuildSketch(plate_plane) as plate_sk:
-        Rectangle(p["control_plate_w"], p["control_plate_d"])
-        fillet(plate_sk.vertices(), radius=p["control_plate_radius"])
-    solid -= extrude(
-        plate_sk.sketch, amount=-(lift + p["control_plate_recess"] + 0.2)
-    )
+    u_half = (y1 - y0) / (2 * cos_s)          # in-plane half-length
 
-    deck_holes = []  # (x, y, dia) of visible control holes, for rim chamfers
-    s_deg = p["control_deck_slope_deg"]  # holes cut square to the sloped deck
-    for player in range(p["players"]):
-        cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
-            + p["cluster_offset_x"]
+    def _u(y_world):  # world y -> in-plane u along the deck
+        return (y_world - cy_plate) / cos_s
 
-        # joystick: shaft hole + 4x plate mounting holes
-        jx = cluster_x + p["joystick_offset_x"]
-        jy = p["joystick_offset_y"]
-        solid -= Pos(jx, jy, deck_z(jy)) * Rot(s_deg, 0, 0) * Cylinder(
-            radius=p["joystick_shaft_hole_dia"] / 2, height=cut_h
-        )
-        deck_holes.append((jx, jy, p["joystick_shaft_hole_dia"] / 2))
-        for sx in (-1, 1):
-            for sy in (-1, 1):
-                my = jy + sy * p["jlf_mount_spacing_y"] / 2
-                solid -= Pos(
-                    jx + sx * p["jlf_mount_spacing_x"] / 2,
-                    my,
-                    deck_z(my),
-                ) * Rot(s_deg, 0, 0) * Cylinder(
-                    radius=p["jlf_mount_hole_dia"] / 2, height=cut_h
-                )
+    with BuildSketch(deck_plane) as dp_sk:
+        Rectangle(2 * x0, 2 * u_half)
+        fillet(dp_sk.vertices(), radius=p["deck_panel_radius"])
+    solid -= extrude(dp_sk.sketch, amount=-(wall + 1))
 
-        # buttons: front row = 2 primaries (Ø30, recessed well), back row =
-        # 2 secondaries (Ø24); primaries centered under the secondary span
-        sec_center = p["button_grid_offset_x"] \
-            + p["secondary_pitch"] * (p["secondary_count"] - 1) / 2
-        for i in range(p["secondary_count"]):
-            bx = cluster_x + p["button_grid_offset_x"] + i * p["secondary_pitch"]
-            by = p["secondary_row_y"]
-            solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Cylinder(
-                radius=p["secondary_hole_dia"] / 2, height=cut_h
-            )
-            deck_holes.append((bx, by, p["secondary_hole_dia"] / 2))
-        for i in range(p["primary_count"]):
-            bx = cluster_x + sec_center \
-                + (i - (p["primary_count"] - 1) / 2) * p["primary_pitch"]
-            by = p["primary_row_y"]
-            solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Cylinder(
-                radius=p["primary_hole_dia"] / 2, height=cut_h
-            )
-            deck_holes.append((bx, by, p["primary_recess_dia"] / 2))
-            # tactile recess well around each primary (below the plate floor)
-            rd = p["primary_recess_depth"] + p["control_plate_recess"]
-            solid -= Pos(bx, by, deck_z(by)) * Rot(s_deg, 0, 0) * Pos(
-                0, 0, -rd / 2 + 0.1
-            ) * Cylinder(
-                radius=p["primary_recess_dia"] / 2, height=rd + 0.2
-            )
+    # ledge ring under the panel rim. Two boxes per strip (coplanar fuses
+    # shatter OCC booleans): a FUSE box embedded 0.5 into the intact skin
+    # outside the opening, and a SEAT box under the panel rim (top 0.15
+    # below the seat plane), overlapping the fuse box volumetrically.
+    # Strips are segmented to clear the JLF mount plate (front) and the
+    # option-button bodies (rear).
+    led, lt = p["deck_panel_ledge"], p["deck_panel_ledge_t"]
+    z_fuse = -2.5 - lt / 2  # top at -2.5: embeds 0.5 into the skin
+    z_seat = -3.05 - lt / 2  # top at -3.05: 0.15 below the panel seat
+    for sx in (-1, 1):  # side strips: fuse box in skin/wall, seat box at rim
+        solid += deck_plane * Pos(sx * (x0 + 5.1), 0, z_fuse) * Box(
+            9.8, 2 * (u_half + led), lt)
+        solid += deck_plane * Pos(sx * (x0 - led / 2 - 0.75), 0, z_seat) * Box(
+            led + 2.5, 2 * (u_half + led), lt)
+    jlf_x = p["cluster_offset_x"] + p["joystick_offset_x"]
+    jf0, jf1 = jlf_x - 55.0, jlf_x + 55.0   # JLF plate + nut keep-out
+    for xa, xb in ((-x0 - wall - 2, jf0), (jf1, x0 + wall + 2)):
+        xc2 = (xa + xb) / 2
+        solid += deck_plane * Pos(xc2, -u_half - 2.85, z_fuse) * Box(
+            xb - xa, 5.3, lt)
+        solid += deck_plane * Pos(xc2, -u_half + 1.5, z_seat) * Box(
+            xb - xa, 9.0, lt)
+    opt_x = p["option_offset_x"]
+    for xa, xb in ((-x0 - wall - 2, -opt_x - 20), (-opt_x + 20, opt_x - 20),
+                   (opt_x + 20, x0 + wall + 2)):
+        if xb - xa < 8:
+            continue
+        xc2 = (xa + xb) / 2
+        solid += deck_plane * Pos(xc2, u_half + 2.85, z_fuse) * Box(
+            xb - xa, 5.3, lt)
+        solid += deck_plane * Pos(xc2, u_half - 4.0, z_seat) * Box(
+            xb - xa, 14.0, lt)
 
-    # start / select
-    for sx in (-1, 1):
-        oy = p["option_offset_y"]
-        solid -= Pos(
-            sx * p["option_offset_x"], oy, deck_z(oy)
-        ) * Rot(s_deg, 0, 0) * Cylinder(
-            radius=p["option_hole_dia"] / 2, height=cut_h
-        )
-        deck_holes.append(
-            (sx * p["option_offset_x"], oy, p["option_hole_dia"] / 2)
-        )
-
-    # --- hole rim chamfers: 45 deg break on every visible control hole ---
-    # Done with cone cutters aligned to the deck normal (edge selection on
-    # the sloped-deck rims is unreliable — OCC splits them into arcs).
-    # Primaries chamfer the visible Ø40 well rim, not the Ø30 through-hole.
-    cham = p["hole_chamfer"]
-    rec = p["control_plate_recess"]
-    for hx, hy, hr in deck_holes:
-        floor_pt = (hx, hy + rec * math.sin(s_slope),
-                    deck_z(hy) - rec * math.cos(s_slope))
-        frame = Plane(origin=floor_pt, x_dir=(1, 0, 0), z_dir=nrm)
-        solid -= frame * Pos(0, 0, 0.2 - cham / 2) * Cone(
-            bottom_radius=hr, top_radius=hr + cham + 0.4, height=cham + 0.4
+    # screw bosses under the ledges, M3 heat-set pilots from the seat
+    bs, bd = p["deck_panel_boss_size"], p["deck_panel_boss_depth"]
+    for sx2, sy2 in deck_screw_points(p):
+        solid += deck_plane * Pos(
+            sx2, _u(sy2), -wall - lt - bd / 2 + 1.0
+        ) * Box(bs, bs, bd + 1)
+        solid -= deck_plane * Pos(
+            sx2, _u(sy2), -wall - p["deck_panel_pilot_depth"] / 2 + 0.1
+        ) * Cylinder(
+            radius=p["deck_panel_pilot_dia"] / 2,
+            height=p["deck_panel_pilot_depth"],
         )
 
     # --- ribs -------------------------------------------------------------
@@ -850,6 +871,25 @@ def build_cabinet(p=None):
             p["rib_front_margin"] + rib_depth / 2,
             wall + rib_h / 2,
         ) * Box(p["rib_thickness"], rib_depth, rib_h)
+
+    # --- electronics mounting pads (boards no longer floor-rest) ----------
+    # 4 pads per small board (corner spans are ESTIMATED vendor patterns);
+    # M2.5 self-tap pilots, or just foam-tape the board onto the pad tops.
+    for key in ("encoder", "amp", "buck"):
+        cx, cy = p[f"{key}_xy"]
+        spx, spy = p["board_pad_spans"][key]
+        for dx in (-spx / 2, spx / 2):
+            for dy in (-spy / 2, spy / 2):
+                solid += Pos(
+                    cx + dx, cy + dy, wall + p["board_pad_h"] / 2 - 0.5
+                ) * Cylinder(radius=p["board_pad_dia"] / 2,
+                             height=p["board_pad_h"])
+                solid -= Pos(
+                    cx + dx, cy + dy,
+                    wall + p["board_pad_h"] - 0.5
+                    - p["board_pad_pilot_depth"] / 2 + 0.1,
+                ) * Cylinder(radius=p["board_pad_pilot_dia"] / 2,
+                             height=p["board_pad_pilot_depth"])
 
     return solid
 

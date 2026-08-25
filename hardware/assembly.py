@@ -18,6 +18,7 @@ from build123d import Plane, Pos, Rot
 
 import components as comp
 from cabinet import HISTORY_DIR, OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
+from parts import deck_panel
 from render import render_parts
 
 CREAM = (0.87, 0.85, 0.80)
@@ -25,11 +26,11 @@ CREAM = (0.87, 0.85, 0.80)
 LAYOUT = {
     # --- display stack ---------------------------------------------------
     "panel_gap": 0.5,            # mm between the doubler ring and panel glass
-    # --- interior boards (floor-mounted, z = wall) ------------------------
+    # --- interior boards (on printed floor pads, z = wall + pad) -----------
     "sbc_pos": (0.0, 272.0),     # x, y of board center; rides the spine rails
-    "encoder_pos": (0.0, 110.0),
-    "amp_pos": (-100.0, 300.0),
-    "buck_pos": (-100.0, 262.0),  # iter 32: cleared the spine-rail zone
+    "encoder_pos": CAB["encoder_xy"],
+    "amp_pos": CAB["amp_xy"],
+    "buck_pos": CAB["buck_xy"],
     # --- chassis (brief 4.1: minimal spine + top bracket; the side plates
     #     carry the structure, the chassis only mounts equipment) -----------
     "rail_spacing": 90.0,        # x between spine-rail vertical legs
@@ -160,27 +161,21 @@ def place_components():
         (0, 0.1, 0),
     )
 
-    # control plate: local-frame insert placed via the slope-aligned deck
-    # plane; origin 1.0 mm below the deck surface along the normal seats the
-    # plate's top face (local z = t = 0.8) at the designed 0.2 mm setback
+    # swappable deck panels (iter 36): placed on the deck plane, skin top
+    # flush with the deck surface
     s_slope0 = math.radians(CAB["control_deck_slope_deg"])
-    nrm = (0.0, -math.sin(s_slope0), math.cos(s_slope0))  # deck outward normal
-    cy0 = CAB["control_plate_center_y"]
-    cplane = Plane(
-        origin=(
-            0,
-            cy0 + math.sin(s_slope0),
-            deck_z(cy0) - math.cos(s_slope0),
-        ),
+    cos_s0 = math.cos(s_slope0)
+    y00, y10 = CAB["deck_panel_y0"], CAB["deck_panel_y1"]
+    cy0 = (y00 + y10) / 2
+    dplane = Plane(
+        origin=(0, cy0, deck_z(cy0)),
         x_dir=(1, 0, 0),
-        z_dir=nrm,
+        z_dir=(0.0, -math.sin(s_slope0), math.cos(s_slope0)),
     )
-    _, cp_parts, _ = comp.control_plate()
-    add(
-        "control_plate",
-        [(cplane * s, c) for s, c in cp_parts],
-        (0, cy0, deck_z(cy0)),
-    )
+    for side in ("l", "r"):
+        panel = deck_panel(side)
+        add(f"deck_{side}", [(dplane * panel, comp.DARK)],
+            (0, cy0, deck_z(cy0)))
 
     # --- control deck -------------------------------------------------------
     for player in range(CAB["players"]):
@@ -249,8 +244,12 @@ def place_components():
         ("buck", comp.buck_converter),
     ):
         x, y = LAYOUT[f"{name}_pos"]
-        # the SBC rides the spine-rail leg tops (brief 4.2 bottom spine)
-        z0 = wall + LAYOUT["rail_leg"] if name == "sbc" else wall
+        # the SBC rides the spine-rail leg tops; the small boards sit on the
+        # shell's printed mounting pads (cabinet.py, iter 36)
+        if name == "sbc":
+            z0 = wall + LAYOUT["rail_leg"]
+        else:
+            z0 = wall + CAB["board_pad_h"] - 0.5
         _, board_parts, _ = builder()
         add(name, [(Pos(x, y, z0) * s, c) for s, c in board_parts], (x, y, z0))
 

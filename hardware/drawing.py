@@ -201,9 +201,10 @@ def draw_front():
     deck_d = P["control_deck_depth"]
     axd.add_patch(plt.Rectangle((-170, 0), 340, deck_d, fill=False,
                                 edgecolor=REF, lw=0.9, linestyle=(0, (4, 3))))
-    pw, pd = P["control_plate_w"], P["control_plate_d"]
-    cy = P["control_plate_center_y"]
-    rrect(axd, pw, pd, P["control_plate_radius"], cx=P["cluster_offset_x"],
+    pw = 2 * P["deck_panel_x"]
+    pd = P["deck_panel_y1"] - P["deck_panel_y0"]
+    cy = (P["deck_panel_y0"] + P["deck_panel_y1"]) / 2
+    rrect(axd, pw, pd, P["deck_panel_radius"], cx=0.0,
           cy=cy, edgecolor=CUT, lw=1.2)
 
     cx = P["cluster_offset_x"]

@@ -27,6 +27,7 @@ from build123d import (
     BuildSketch,
     Cone,
     Cylinder,
+    Locations,
     Mode,
     Plane,
     Pos,
@@ -39,7 +40,13 @@ from build123d import (
     loft,
 )
 
-from cabinet import OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
+from cabinet import (
+    OUT_DIR,
+    PARAMS as CAB,
+    build_cabinet,
+    deck_screw_points,
+    side_profile,
+)
 from render import render_parts
 
 PARTS_DIR = OUT_DIR / "parts"
@@ -380,7 +387,232 @@ def build_parts():
                 parts[f"base_b{suffix}"] = back
             else:
                 parts[f"{name}{suffix}"] = half
-    return parts
+    return parts, solid
+
+
+# Print orientation per part (None = as modeled, floor/bed face already
+# down). Exports are rotated into print orientation and dropped to z=0;
+# assembly/exploded renders keep model orientation. Verified by
+# printability.py: bed contact up, steep overhangs ~0.
+ORIENT = {
+    # base/mid parts print upright as modeled: the dish floor faces up,
+    # its walls are <=15 deg overhangs, the tub exterior is hidden.
+    "hood_l": (Rot(-78, 0, 0), "back wall down (wall leans 12 deg; one "
+                               "hidden attic ceiling sags harmlessly)"),
+    "hood_r": (Rot(-78, 0, 0), "back wall down (wall leans 12 deg; one "
+                               "hidden attic ceiling sags harmlessly)"),
+    "deck_l": (Rot(180, 0, 0), "show face down"),
+    "deck_r": (Rot(180, 0, 0), "show face down"),
+    "bezel_l": (Rot(180, 0, 0), "flange face down (visible funnel prints "
+                                "up-facing; outer cone 25 deg overhang)"),
+    "bezel_r": (Rot(180, 0, 0), "flange face down (visible funnel prints "
+                                "up-facing; outer cone 25 deg overhang)"),
+}
+
+
+def _split_lr(part, clearance=0.2):
+    """Split a too-wide flat part at x=0 for the 256 bed (butt seam, total
+    gap = clearance). Each half keeps its own 2 corner mount screws."""
+    bb = part.bounding_box()
+    w = bb.max.X - bb.min.X + 20
+    h = bb.max.Y - bb.min.Y + 20
+    z0, z1 = bb.min.Z - 5, bb.max.Z + 5
+    c = clearance / 2
+    left = part & Pos(-w / 2 - c, 0, (z0 + z1) / 2) * Box(w, h, z1 - z0)
+    right = part & Pos(w / 2 + c, 0, (z0 + z1) / 2) * Box(w, h, z1 - z0)
+    return left, right
+
+
+def print_oriented(name, part):
+    entry = ORIENT.get(name)
+    o = entry[0] * part if entry else part
+    bb = o.bounding_box()
+    return Pos(0, 0, -bb.min.Z) * o
+
+
+# --- swappable deck panel (printed part, show face DOWN on the bed) ------
+# Drops into the shell's deck opening (cabinet.py iter 36): flat skin with
+# a waffle-rib underside so it prints perfectly flat and still spans the
+# opening rigidly. Alternate control layouts = reprint this one flat part.
+DP = {
+    "clearance": 0.3,          # per-side fit clearance in the opening
+    "thickness": 2.9,          # skin (3 mm seat - 0.1 flush clearance)
+    "rib_h": 8.0,              # waffle rib height under the skin
+    "rib_t": 3.0,
+    "rib_pitch": 45.0,
+    "rib_edge": 12.0,          # ribs stay this far inside the panel rim
+    "mount_hole_dia": 3.4,     # M3 clearance
+    "countersink_dia": 6.4,    # M3 flat-head, 90 deg, on the show face
+    "countersink_depth": 1.6,
+    "jlf_keepout": 55.0,       # half-width of the JLF plate rib keep-out
+    "hole_keepout": 5.0,       # ribs stay this far from control hole rims
+}
+
+
+def _deck_frame():
+    """(cos_s, cy, u_half, x0) of the deck opening's in-plane frame."""
+    p = CAB
+    cos_s = math.cos(math.radians(p["control_deck_slope_deg"]))
+    y0, y1 = p["deck_panel_y0"], p["deck_panel_y1"]
+    return cos_s, (y0 + y1) / 2, (y1 - y0) / (2 * cos_s), p["deck_panel_x"]
+
+
+def _control_holes():
+    """(x, u, r, kind) of every control hole in deck-panel local coords
+    (x = world x, u = in-plane y along the deck). kind: 'plain' or 'well'."""
+    p = CAB
+    cos_s, cy, _, _ = _deck_frame()
+
+    def u(y_world):
+        return (y_world - cy) / cos_s
+
+    holes = []
+    for player in range(p["players"]):
+        cluster_x = (player - (p["players"] - 1) / 2) * p["player_spacing"] \
+            + p["cluster_offset_x"]
+        jx, jy = cluster_x + p["joystick_offset_x"], p["joystick_offset_y"]
+        holes.append((jx, u(jy), p["joystick_shaft_hole_dia"] / 2, "plain"))
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                my = jy + sy * p["jlf_mount_spacing_y"] / 2
+                holes.append((jx + sx * p["jlf_mount_spacing_x"] / 2,
+                              u(my), p["jlf_mount_hole_dia"] / 2, "plain"))
+        sec_center = p["button_grid_offset_x"] \
+            + p["secondary_pitch"] * (p["secondary_count"] - 1) / 2
+        for i in range(p["secondary_count"]):
+            bx = cluster_x + p["button_grid_offset_x"] + i * p["secondary_pitch"]
+            holes.append((bx, u(p["secondary_row_y"]),
+                          p["secondary_hole_dia"] / 2, "plain"))
+        for i in range(p["primary_count"]):
+            bx = cluster_x + sec_center \
+                + (i - (p["primary_count"] - 1) / 2) * p["primary_pitch"]
+            holes.append((bx, u(p["primary_row_y"]),
+                          p["primary_hole_dia"] / 2, "well"))
+    for sx in (-1, 1):
+        holes.append((sx * p["option_offset_x"], u(p["option_offset_y"]),
+                      p["option_hole_dia"] / 2, "plain"))
+    return holes
+
+
+def deck_panel(side):
+    """One deck half ('l'/'r'): skin + waffle ribs, skin top at local z=0.
+
+    All controls of the 1P cluster live on deck_r / deck_l per the param
+    layout; the seam at x=0 splits the panel so each half prints flat."""
+    p = CAB
+    d = DP
+    clr, t = d["clearance"], d["thickness"]
+    cos_s, cy, u_half, x0 = _deck_frame()
+    xa = clr if side == "r" else -x0 + clr
+    xb = x0 - clr if side == "r" else -clr
+    xc, xw = (xa + xb) / 2, xb - xa
+    uh = u_half - clr
+
+    with BuildPart() as bp:
+        with BuildSketch():
+            with Locations((xc, 0)):
+                RectangleRounded(xw, 2 * uh, p["deck_panel_radius"])
+        extrude(amount=-t)  # skin: z in [-t, 0], show face at z=0
+
+    panel = bp.part
+    rh, rt = d["rib_h"], d["rib_t"]
+    re_ = d["rib_edge"]
+    rib_z = -t - rh / 2 + 0.5
+    ribs = None
+
+    def _add_rib(box):
+        nonlocal ribs
+        ribs = box if ribs is None else ribs + box
+
+    # waffle grid: ribs along u at each x station, ribs along x at each u
+    xs = []
+    xv = xa + re_ + d["rib_pitch"] / 2
+    while xv < xb - re_:
+        xs.append(xv)
+        xv += d["rib_pitch"]
+    us = []
+    uv = -uh + re_ + d["rib_pitch"] / 2
+    while uv < uh - re_:
+        us.append(uv)
+        uv += d["rib_pitch"]
+    for xv2 in xs:
+        _add_rib(Pos(xv2, 0, rib_z) * Box(rt, 2 * (uh - re_), rh))
+    for uv2 in us:
+        _add_rib(Pos(xc, uv2, rib_z) * Box(xw - 2 * re_, rt, rh))
+
+    # rib keep-outs: control holes + the JLF plate/nut zone
+    holes = _control_holes()
+    for hx, hu, hr, kind in holes:
+        if not (xa - 1 < hx < xb + 1):
+            continue
+        ribs -= Pos(hx, hu, rib_z) * Cylinder(
+            radius=hr + d["hole_keepout"], height=rh + 3
+        )
+    jx = p["cluster_offset_x"] + p["joystick_offset_x"]
+    ju = (p["joystick_offset_y"] - cy) / cos_s
+    ribs -= Pos(jx, ju, rib_z) * Box(2 * d["jlf_keepout"], 80.0, rh + 3)
+    panel += ribs
+
+    # control holes through the skin (+ wells and rim chamfers on top)
+    cham = p["hole_chamfer"]
+    for hx, hu, hr, kind in holes:
+        if not (xa - 1 < hx < xb + 1):
+            continue
+        panel -= Pos(hx, hu, -t / 2) * Cylinder(radius=hr, height=t + 2)
+        if kind == "well":
+            wr = p["primary_recess_dia"] / 2
+            wd = p["primary_recess_depth"]
+            panel -= Pos(hx, hu, -wd / 2 + 0.1) * Cylinder(
+                radius=wr, height=wd + 0.2
+            )
+            panel -= Pos(hx, hu, 0.2 - cham / 2) * Cone(
+                bottom_radius=wr, top_radius=wr + cham + 0.4,
+                height=cham + 0.4,
+            )
+        else:
+            panel -= Pos(hx, hu, 0.2 - cham / 2) * Cone(
+                bottom_radius=hr, top_radius=hr + cham + 0.4,
+                height=cham + 0.4,
+            )
+
+    # M3 clearance + countersink at the shell's screw bosses
+    for sx2, sy2 in deck_screw_points(p):
+        if not (xa - 1 < sx2 < xb + 1):
+            continue
+        u2 = (sy2 - cy) / cos_s
+        panel -= Pos(sx2, u2, -t / 2) * Cylinder(
+            radius=d["mount_hole_dia"] / 2, height=t + 2
+        )
+        panel -= Pos(sx2, u2, -d["countersink_depth"] / 2 + 0.1) * Cone(
+            bottom_radius=d["mount_hole_dia"] / 2,
+            top_radius=d["countersink_dia"] / 2,
+            height=d["countersink_depth"] + 0.2,
+        )
+    return panel
+
+
+def hatch_cover():
+    """Rear service-hatch door: flat plate, 4x M3 CSK into the shell's
+    hatch bosses. Print flat; countersinks on the outer (+Z) face."""
+    p = CAB
+    hw, hh = p["hatch_w"], p["hatch_h"]
+    bi = p["hatch_boss_offset"]
+    w = hw + 2 * (bi + 6.0)
+    h = hh + 2 * (bi + 6.0)
+    hx, hy = hw / 2 + bi, hh / 2 + bi
+    with BuildPart() as bp:
+        with BuildSketch():
+            RectangleRounded(w, h, 4.0)
+        extrude(amount=2.5)
+    cover = bp.part
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cx2, cy2 = sx * hx, sy * hy
+            cover -= Pos(cx2, cy2, 1.25) * Cylinder(radius=1.7, height=4.5)
+            cover -= Pos(cx2, cy2, 2.5 - 0.8) * Cone(
+                bottom_radius=1.7, top_radius=3.2, height=1.9
+            )
+    return cover
 
 
 def retainer_frame():
@@ -453,7 +685,9 @@ def check_collisions(parts):
 
 def main():
     PARTS_DIR.mkdir(parents=True, exist_ok=True)
-    parts = build_parts()
+    for stale in list(PARTS_DIR.glob("*.step")) + list(PARTS_DIR.glob("*.stl")):
+        stale.unlink()  # drop exports from older split schemes
+    parts, solid = build_parts()
 
     bed = SPLIT["print_bed"]
     for name, part in parts.items():
@@ -462,34 +696,62 @@ def main():
         bb = part.bounding_box()
         dims = [bb.max.X - bb.min.X, bb.max.Y - bb.min.Y, bb.max.Z - bb.min.Z]
         fits = all(d <= bed for d in dims)
+        note = ORIENT.get(name, (None, "as modeled"))[1]
         print(
             f"{name:8s} valid={valid} bodies={bodies}  dims={dims[0]:.0f}x"
             f"{dims[1]:.0f}x{dims[2]:.0f} mm  fits {bed:.0f} bed: {fits}"
+            f"  [{note}]"
         )
         if not valid or bodies != 1:
             raise RuntimeError(f"part {name}: valid={valid}, bodies={bodies}")
-        export_step(part, str(PARTS_DIR / f"{name}.step"))
-        export_stl(part, str(PARTS_DIR / f"{name}.stl"))
+        oriented = print_oriented(name, part)
+        export_step(oriented, str(PARTS_DIR / f"{name}.step"))
+        export_stl(oriented, str(PARTS_DIR / f"{name}.stl"))
 
     check_collisions(parts)
 
-    # display retainer clamp frame (independent printed part)
-    frame = retainer_frame()
-    f_valid, f_bodies = frame.is_valid, len(frame.solids())
-    print(f"retainer valid={f_valid} bodies={f_bodies}")
-    if not f_valid or f_bodies != 1:
-        raise RuntimeError(f"retainer frame: valid={f_valid}, bodies={f_bodies}")
-    export_step(frame, str(PARTS_DIR / "retainer_frame.step"))
-    export_stl(frame, str(PARTS_DIR / "retainer_frame.stl"))
+    # independent printed parts: retainer + bezel (both split L/R for the
+    # bed — butt seam, 2 corner screws per half), deck panels, hatch cover
+    ret_l, ret_r = _split_lr(retainer_frame())
+    bez_l, bez_r = _split_lr(crt_bezel())
+    extras = {
+        "retainer_l": ret_l,
+        "retainer_r": ret_r,
+        "bezel_l": bez_l,
+        "bezel_r": bez_r,
+        "deck_l": deck_panel("l"),
+        "deck_r": deck_panel("r"),
+        "hatch_cover": hatch_cover(),
+    }
+    for name, part in extras.items():
+        valid, bodies = part.is_valid, len(part.solids())
+        bb = part.bounding_box()
+        dims = [bb.max.X - bb.min.X, bb.max.Y - bb.min.Y, bb.max.Z - bb.min.Z]
+        fits = all(d <= bed for d in dims)
+        note = ORIENT.get(name, (None, "as modeled"))[1]
+        print(f"{name} valid={valid} bodies={bodies}  dims={dims[0]:.0f}x"
+              f"{dims[1]:.0f}x{dims[2]:.0f}  fits: {fits}  [{note}]")
+        if not valid or bodies != 1:
+            raise RuntimeError(f"{name}: valid={valid}, bodies={bodies}")
+        oriented = print_oriented(name, part)
+        export_step(oriented, str(PARTS_DIR / f"{name}.step"))
+        export_stl(oriented, str(PARTS_DIR / f"{name}.stl"))
 
-    # CRT display bezel (independent printed part)
-    bezel = crt_bezel()
-    b_valid, b_bodies = bezel.is_valid, len(bezel.solids())
-    print(f"bezel valid={b_valid} bodies={b_bodies}")
-    if not b_valid or b_bodies != 1:
-        raise RuntimeError(f"CRT bezel: valid={b_valid}, bodies={b_bodies}")
-    export_step(bezel, str(PARTS_DIR / "crt_bezel.step"))
-    export_stl(bezel, str(PARTS_DIR / "crt_bezel.stl"))
+    # deck panels must clear the shell opening (0.3 mm/side by design)
+    for side in ("l", "r"):
+        panel = extras[f"deck_{side}"]
+        _, _, info = side_profile(CAB)
+        cos_s, cy, _, _ = _deck_frame()
+        s_slope = math.radians(CAB["control_deck_slope_deg"])
+        deck_plane = Plane(
+            origin=(0, cy, info["deck_z"](cy)),
+            x_dir=(1, 0, 0),
+            z_dir=(0, -math.sin(s_slope), math.cos(s_slope)),
+        )
+        inter = solid & (deck_plane * panel)
+        vol = sum(s.volume for s in inter.solids()) if inter else 0.0
+        flag = "  <-- COLLISION" if vol > 1.0 else ""
+        print(f"deck_{side} x shell: {vol:.3f} mm^3{flag}")
 
     # exploded view: layers separated in Z, halves in X, base quarters in Y
     shades = [(0.87, 0.85, 0.80), (0.80, 0.77, 0.72), (0.72, 0.69, 0.64)]
@@ -501,11 +763,26 @@ def main():
         dy = -70 if "_f_" in name else (70 if "_b_" in name else 0)
         dz = 70 * layer_i
         exploded.append((Pos(dx, dy, dz) * part, shades[layer_i]))
+    # deck panels hover over their opening
+    _, _, info = side_profile(CAB)
+    cos_s, cy, _, _ = _deck_frame()
+    s_slope = math.radians(CAB["control_deck_slope_deg"])
+    deck_plane = Plane(
+        origin=(0, cy, info["deck_z"](cy)),
+        x_dir=(1, 0, 0),
+        z_dir=(0, -math.sin(s_slope), math.cos(s_slope)),
+    )
+    for side, panel in (("l", extras["deck_l"]), ("r", extras["deck_r"])):
+        dx = -60 if side == "l" else 60
+        exploded.append(
+            (Pos(dx, 0, 50) * deck_plane * panel, (0.30, 0.30, 0.33))
+        )
     render_parts(
         exploded, OUT_DIR, prefix="exploded", size=1200,
         views={"iso": (25, -60, None), "front": (0, -90, None)},
     )
-    print(f"exported {len(parts)} parts + retainer frame + exploded to {PARTS_DIR}")
+    print(f"exported {len(parts)} shell parts + {len(extras)} extras"
+          f" + exploded to {PARTS_DIR}")
 
 
 if __name__ == "__main__":
