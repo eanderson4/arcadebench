@@ -838,3 +838,15 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   corners (same as the metal path) — flat panels can't follow a rounded
   silhouette without their tips poking past it; round physical edges
   with a router or add printed corner caps later.
+
+- Variants system (2026-08-26, hardware-marquee-screen): platform +
+  overlay pattern, industry-style — one shared shell, variants are dict
+  deltas in variants.py (print-base = nameplate, print-marquee = 11.3"
+  bar LCD). cabinet.py takes --variant; archive meta.json now records
+  the variant name + resolved params. Hood height (84 mm) is shared
+  platform geometry so both marquee options fit the same shell; only
+  the face feature differs (aperture vs recess). Both variants verified
+  valid solids (iter-049 base, iter-050 marquee; identical 340x346.5x
+  431.6 bbox). Still TODO for print-marquee: retainer frame part
+  (parts.py), assembly.py placement, panels.py/hybrid.py window cut,
+  BOM line + SBC second-video-output note.

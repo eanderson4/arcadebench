@@ -13,8 +13,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from build123d import Box, Plane, Pos, Text, extrude, mirror
 
-from cabinet import OUT_DIR, PARAMS as CAB, build_cabinet, side_profile
+from cabinet import OUT_DIR, build_cabinet, side_profile
 from render import render_parts
+from variants import get_params
 
 CREAM = (0.87, 0.85, 0.80)
 PANEL_DARK = (0.06, 0.06, 0.08)
@@ -23,8 +24,8 @@ TEXT_CYAN = (0.55, 0.95, 1.0)
 
 
 def main():
-    p = dict(CAB)
-    assert p["marquee_screen"], "PARAMS marquee_screen must be on"
+    p = get_params("print-marquee")
+    assert p["marquee_screen"], "print-marquee variant must enable the screen"
     shell = build_cabinet(p)
     _, _, info = side_profile(p)
     sin_t, cos_t = info["sin_t"], info["cos_t"]

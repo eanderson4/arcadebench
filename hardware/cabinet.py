@@ -98,7 +98,9 @@ PARAMS = {
     "magnet_inset_z": 14.0,        # +/- from nameplate center
     # --- marquee screen (11.3" 1920x440 bar LCD, ET113BA01-T class) -------
     # Second HDMI output: attract loop / per-game marquee art / score ticker.
-    "marquee_screen": True,
+    # Base build keeps the nameplate; the print-marquee variant (variants.py)
+    # flips this on. Hood height is shared platform geometry either way.
+    "marquee_screen": False,
     "mq_outline_w": 266.4,         # panel outline (datasheet)
     "mq_outline_h": 65.0,
     "mq_active_w": 252.9,          # active area -> window aperture
@@ -935,7 +937,7 @@ def render_views(part, size=1000):
     render_parts([(part, (0.87, 0.85, 0.80))], OUT_DIR, size=size)
 
 
-def archive_run(part):
+def archive_run(part, params=None, variant=None):
     """Copy this run's previews + params/stats to out/history/iter-NNN/.
 
     STEP/STL are deliberately not archived — they regenerate from PARAMS;
@@ -955,6 +957,7 @@ def archive_run(part):
     bbox = part.bounding_box()
     meta = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "variant": variant,
         "valid": part.is_valid,
         "solids": len(part.solids()),
         "bbox_mm": [
@@ -963,15 +966,25 @@ def archive_run(part):
             round(bbox.max.Z - bbox.min.Z, 1),
         ],
         "volume_cm3": round(part.volume / 1000, 1),
-        "params": PARAMS,
+        "params": params or PARAMS,
     }
     (dest / "meta.json").write_text(json.dumps(meta, indent=2))
     return dest.name
 
 
 def main():
+    import argparse
+
+    from variants import DEFAULT_VARIANT, get_params
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--variant", default=DEFAULT_VARIANT)
+    args = ap.parse_args()
+    p = get_params(args.variant)
+
     OUT_DIR.mkdir(exist_ok=True)
-    part = build_cabinet()
+    part = build_cabinet(p)
+    print(f"variant: {args.variant}")
     print(f"solid valid: {part.is_valid}, solids: {len(part.solids())}")
     bbox = part.bounding_box()
     print(
@@ -987,7 +1000,7 @@ def main():
     render_views(part)
     print(f"exported previews to {OUT_DIR}")
 
-    name = archive_run(part)
+    name = archive_run(part, p, args.variant)
     print(f"archived run to {HISTORY_DIR / name}")
 
 
