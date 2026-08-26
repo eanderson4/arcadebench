@@ -62,10 +62,11 @@ PARAMS = {
     "display_face_length": 245.0,  # mm along slope, seam -> face top
     # hood is a rectangular box: floor/top PERPENDICULAR to the display
     # face, marquee face PARALLEL to it — all brake bends 90 deg
-    # iter: 63 -> 84 for the marquee screen: the R10 chin/top blends leave a
-    # flat band of (height - 20); the 59.1 mm window needs >= ~2 mm clear of
-    # each blend tangent or the boolean leaves sliver faces (mesh corruption)
-    "marquee_height": 84.0,        # mm, chin -> marquee top, parallel to face
+    # Base keeps the slim 63 mm hood (static nameplate header). The
+    # print-marquee variant bumps this to 84: the R10 chin/top blends leave
+    # a flat band of (height - 20); the 59.1 mm screen window needs >= ~2 mm
+    # clear of each blend tangent or the boolean leaves sliver faces.
+    "marquee_height": 63.0,        # mm, chin -> marquee top, parallel to face
     "marquee_overhang": 56.0,      # mm chin forward of face top, perp. to face
     # --- neck (display column behind the screen) --------------------------
     # neck_depth: perpendicular distance from the display face to the neck
