@@ -85,10 +85,13 @@ drill-guide pilot holes for every cleat station.
 | --- | --- |
 | ![hybrid assembled](images/hardware/hybrid_assembled_iso.png) | ![hybrid exploded](images/hardware/hybrid_exploded_iso.png) |
 
-Known trade-offs (hybrid v1): the wrap panels meet at open corners (the
-silhouette radius covers them from the side, but a dark seam shows from
-the front — the metal path welds these; a printed corner-trim strip is
-the likely fix) and the display stack bonds with VHB tape instead of the
+Known trade-offs (hybrid v1): the wrap panels meet at open corners (a dark
+seam line shows from the front — the metal path welds these; printed
+corner-trim caps are the likely fix and would also restore rounded corners)
+and the wood side outline is modeled with SHARP corners, same as the metal
+flat-pack — flat panels can't follow a rounded silhouette without their
+tips poking past it, so round the physical edges with a router (R3–6)
+after cutting. The display stack bonds with VHB tape instead of the
 monocoque's dish + bosses (mechanical anchor pads are a v1.1 item).
 
 ## Chassis architecture (minimal spine-and-sides)

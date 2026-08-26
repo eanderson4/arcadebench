@@ -824,3 +824,17 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   landed on the seam vertices. Known v1 trade-offs: open corner seams
   between wrap panels (corner-trim strip is the likely fix), display
   stack bonds with VHB (no dish/bosses on the flat face panel).
+
+- Hybrid corner fixes (2026-08-26, same branch): the collision guard
+  (panel-panel + cleat-panel booleans, now part of hybrid.py main)
+  caught two real latent bugs: (1) vertex-to-vertex wrap panels collide
+  in corner wedges (~11k mm3 at 90 deg corners — the metal flat-pack
+  has the same clash, noted for a later panels.py fix), fixed with lap
+  joints: even-index segments shorten by neighbor_t/sin(turn)+0.5 mm at
+  convex corners, odd segments pass through; (2) corner-adjacent cleats
+  collided with the neighboring panel band, fixed by a station inset
+  rule (12 + 6 + margin = 20 mm) and tiered station counts on short
+  segments (46 cleats instead of 60). Also: wood sides keep SHARP
+  corners (same as the metal path) — flat panels can't follow a rounded
+  silhouette without their tips poking past it; round physical edges
+  with a router or add printed corner caps later.
