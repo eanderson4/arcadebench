@@ -22,6 +22,7 @@
     "security:prepush": "npm run security:secrets && npm run security:privacy && npm run security:history",
     "bench": "npm run bench --workspace=@arcadebench/cli --",
     "dev:partition": "npm run dev --workspace=@arcadebench/partition",
+    "dev:smilefall": "npm run dev --workspace=@arcadebench/smilefall",
     "dev:board": "npm run dev --workspace=@arcadebench/board",
     "preview:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler dev",
     "deploy:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy",

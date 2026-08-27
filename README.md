@@ -93,6 +93,7 @@ packages/bench-core/   shared contracts, run records, protocol validation
 packages/arcade-sdk/   game-facing leaderboards, replays, and social client
 packages/harness/      provider-neutral model and tool orchestration
 games/partition/       Partition simulation, controller SDK, and viewer
+games/smilefall/       Smilefall simulation, stages, and viewer (in development)
 apps/cli/              family-wide command line interface
 apps/board/            cross-game run browser and leaderboard
 ```

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Smilefall Sticker Kit</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="../design/tokens.css" />
+    <link rel="stylesheet" href="../design/system.css" />
+    <link rel="stylesheet" href="./kit.css" />
+  </head>
+  <body class="sf-sky-bg">
+    <header class="kit-head">
+      <div>
+        <p class="sf-kicker">Smilefall design system</p>
+        <h1 class="sf-hero sf-hero--sticker">STICKER<em> KIT</em></h1>
+        <p class="sf-lede">Everything the game is built from. Fat ink outlines, hard toy shadows, candy on warm paper, and nothing sits straight.</p>
+      </div>
+      <div class="kit-faces" aria-hidden="true">
+        <span class="sf-face sf-anim-bob" style="--sf-face-size: 86px"><i></i></span>
+        <span class="sf-face sf-face--rock sf-anim-wobble" style="--sf-face-size: 58px"></span>
+        <span class="sf-face sf-face--sad" style="--sf-face-size: 46px"><i></i></span>
+      </div>
+    </header>
+
+    <main class="kit-main">
+      <section class="kit-section">
+        <h2 class="sf-title">Palette</h2>
+        <div class="kit-swatches">
+          <span style="--swatch: var(--sf-ink)"><b>Ink</b><small>#2c1b47</small></span>
+          <span style="--swatch: var(--sf-paper)"><b>Paper</b><small>#fff8ec</small></span>
+          <span style="--swatch: var(--sf-paper-warm)"><b>Paper warm</b><small>#ffeed6</small></span>
+          <span style="--swatch: var(--sf-yolk)"><b>Yolk</b><small>#ffd23f</small></span>
+          <span style="--swatch: var(--sf-yolk-deep)"><b>Yolk deep</b><small>#f2a413</small></span>
+          <span style="--swatch: var(--sf-bubble)"><b>Bubble</b><small>#ff5d8f</small></span>
+          <span style="--swatch: var(--sf-grape)"><b>Grape</b><small>#8b5cf6</small></span>
+          <span style="--swatch: var(--sf-mint)"><b>Mint</b><small>#2fd39b</small></span>
+          <span style="--swatch: var(--sf-tangerine)"><b>Tangerine</b><small>#ff8a3d</small></span>
+          <span style="--swatch: var(--sf-sky)"><b>Sky</b><small>#52c8ff</small></span>
+          <span style="--swatch: var(--sf-grass)"><b>Grass</b><small>#6fd66f</small></span>
+          <span style="--swatch: var(--sf-rock)"><b>Rock</b><small>#9aa0b8</small></span>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Type</h2>
+        <div class="sf-panel sf-stack">
+          <p class="sf-kicker">Kicker · Baloo 2 700 · uppercase</p>
+          <h3 class="sf-hero sf-hero--sticker" style="--sf-size-hero: 64px">Hero</h3>
+          <h3 class="sf-title">Title · Baloo 2 800</h3>
+          <h4 class="sf-head">Head · Baloo 2 800</h4>
+          <p class="sf-lede">Lede · Nunito 600. Used for one-line explanations under a heading.</p>
+          <p>Body · Nunito 600 at 17px. Short and chatty. Smilefall never lectures.</p>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Buttons</h2>
+        <div class="sf-panel sf-stack">
+          <div class="sf-row">
+            <button class="sf-btn sf-btn--jumbo" type="button">DROP 'EM</button>
+            <button class="sf-btn" type="button">Play</button>
+            <button class="sf-btn sf-btn--small" type="button">Small</button>
+          </div>
+          <div class="sf-row">
+            <button class="sf-btn sf-btn--pink" type="button">Pink</button>
+            <button class="sf-btn sf-btn--mint" type="button">Mint</button>
+            <button class="sf-btn sf-btn--grape" type="button">Grape</button>
+            <button class="sf-btn sf-btn--paper" type="button">Paper</button>
+            <button class="sf-btn sf-btn--ghost" type="button">Ghost</button>
+            <button class="sf-btn" type="button" disabled>Disabled</button>
+          </div>
+          <div class="sf-row">
+            <span class="sf-key">←</span><span class="sf-key">→</span><span class="sf-key">SPACE</span><span class="sf-key">P</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Panels &amp; picks</h2>
+        <div class="kit-grid">
+          <div class="sf-panel sf-tilt-l">
+            <p class="sf-kicker">Panel</p>
+            <h3 class="sf-head">Tilted left</h3>
+            <p>Cream paper, ink outline, hard shadow underneath.</p>
+          </div>
+          <div class="sf-panel sf-panel--warm sf-tilt-r">
+            <p class="sf-kicker">Panel warm</p>
+            <h3 class="sf-head">Tilted right</h3>
+            <p>Use the warm variant for secondary information.</p>
+          </div>
+          <button class="sf-pick" type="button" aria-pressed="true">
+            <span class="sf-row"><span class="sf-chip sf-chip--mint">Giggle</span><span class="sf-badge">01</span></span>
+            <h3 class="sf-head">First Giggle</h3>
+            <p>Selected pick state.</p>
+          </button>
+          <button class="sf-pick" type="button" aria-pressed="false">
+            <span class="sf-row"><span class="sf-chip sf-chip--pink">Guffaw</span><span class="sf-badge">03</span></span>
+            <h3 class="sf-head">Wobble Row</h3>
+            <p>Resting pick state.</p>
+          </button>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Readouts</h2>
+        <div class="sf-panel sf-stack">
+          <div class="sf-row">
+            <span class="sf-stat"><small>Score</small><b>2,465</b></span>
+            <span class="sf-stat"><small>Combo</small><b>×4</b></span>
+            <span class="sf-stat"><small>Clock</small><b>0:32</b></span>
+            <span class="sf-stat"><small>Caught</small><b>9/18</b></span>
+          </div>
+          <div class="sf-row">
+            <span class="sf-kicker">Frowns left</span>
+            <span class="sf-pips sf-pips--frown"><i></i><i></i><i></i><i data-spent="true"></i><i data-spent="true"></i></span>
+            <span class="sf-kicker">Hops</span>
+            <span class="sf-pips sf-pips--hop"><i></i><i></i><i data-spent="true"></i></span>
+          </div>
+          <div class="sf-meter" style="--sf-meter-fill: 62%"><i></i><b>BUCKETS 2 / 3</b></div>
+          <div class="sf-row">
+            <span class="sf-wheel" data-lean="left">
+              <u data-side="left">◀</u><i></i><u data-side="right">▶</u>
+              <span><small>Steering</small><b>4 smilies</b></span>
+            </span>
+            <span class="sf-wheel" data-lean="none">
+              <u data-side="left">◀</u><i></i><u data-side="right">▶</u>
+              <span><small>Steering</small><b>4 smilies</b></span>
+            </span>
+            <span class="sf-wheel" data-lean="right">
+              <u data-side="left">◀</u><i></i><u data-side="right">▶</u>
+              <span><small>Steering</small><b>4 smilies</b></span>
+            </span>
+          </div>
+          <div class="sf-tags">
+            <span>3 buckets</span>
+            <span>drifting buckets</span>
+            <span data-hot="true">rocks SMASH</span>
+          </div>
+          <div class="sf-segment">
+            <button type="button" aria-pressed="false">Giggle</button>
+            <button type="button" aria-pressed="true">Chuckle</button>
+            <button type="button" aria-pressed="false">Guffaw</button>
+            <button type="button" aria-pressed="false">Cackle</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Chips &amp; callouts</h2>
+        <div class="sf-panel sf-stack">
+          <div class="sf-row">
+            <span class="sf-chip">Neutral</span>
+            <span class="sf-chip sf-chip--yolk">Yolk</span>
+            <span class="sf-chip sf-chip--mint">Mint</span>
+            <span class="sf-chip sf-chip--pink">Pink</span>
+            <span class="sf-chip sf-chip--grape">Grape</span>
+            <span class="sf-chip sf-chip--sky">Sky</span>
+          </div>
+          <div class="sf-callout sf-callout--tip">
+            <span class="sf-face" style="--sf-face-size: 34px"><i></i></span>
+            <p style="margin: 0">Tip callout. Leaning steers <b>every</b> smiley in the sky at once.</p>
+          </div>
+          <div class="sf-callout sf-callout--oops">
+            <span class="sf-face sf-face--sad" style="--sf-face-size: 34px"><i></i></span>
+            <p style="margin: 0">Oops callout. A smiley that meets a rock is a smiley no more.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Faces</h2>
+        <div class="sf-panel sf-row" style="gap: var(--sf-space-5); align-items: flex-end">
+          <span class="sf-stack" style="align-items: center; gap: 6px">
+            <span class="sf-face" style="--sf-face-size: 66px"><i></i></span>
+            <span class="sf-kicker">Happy</span>
+          </span>
+          <span class="sf-stack" style="align-items: center; gap: 6px">
+            <span class="sf-face sf-face--hurt" style="--sf-face-size: 66px"><i></i></span>
+            <span class="sf-kicker">Bruised</span>
+          </span>
+          <span class="sf-stack" style="align-items: center; gap: 6px">
+            <span class="sf-face sf-face--sad" style="--sf-face-size: 66px"><i></i></span>
+            <span class="sf-kicker">Splatted</span>
+          </span>
+          <span class="sf-stack" style="align-items: center; gap: 6px">
+            <span class="sf-face sf-face--rock" style="--sf-face-size: 66px"><i></i></span>
+            <span class="sf-kicker">Rock</span>
+          </span>
+        </div>
+      </section>
+
+      <section class="kit-section">
+        <h2 class="sf-title">Motion</h2>
+        <div class="sf-panel sf-row">
+          <span class="sf-badge sf-anim-wobble">wobble</span>
+          <span class="sf-badge sf-anim-bob">bob</span>
+          <span class="sf-badge sf-anim-pop">pop</span>
+          <span class="sf-face sf-anim-jelly" style="--sf-face-size: 44px"><i></i></span>
+        </div>
+      </section>
+    </main>
+
+    <footer class="kit-foot">
+      <p class="sf-kicker">ArcadeBench · Smilefall · design tokens live in src/viewer/design/tokens.css</p>
+    </footer>
+  </body>
+</html>
