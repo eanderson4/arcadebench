@@ -116,3 +116,9 @@ worth it against Mouser + Focus Attack reliability.
 
 1. Compute: LattePanda Mu N100 now vs waiting on ODROID N97/N305 stock.
 2. Marquee screen: order with the first batch (premium variant) or defer.
+
+## Display locked (2026-08-27)
+
+Cost-optimized path chosen: **13.5" 3:2 3004×2000 LCD kit ($100–150)**.
+The 14" 2.8K OLED (~$250–350) stays available as the `oled-14` variant
+for a future premium build; 13.9" Huawei 3:2 ruled out (no driver kits).
