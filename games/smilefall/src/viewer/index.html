@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#8ee6ff" />
+    <meta name="description" content="Smilefall: steer a whole sky of falling smilies into buckets, and hop the flock over incoming rocks." />
+    <meta property="og:title" content="Smilefall — ArcadeBench" />
+    <meta property="og:description" content="Every smiley in the sky shares one steering wheel. Fill the buckets. Dodge the rocks." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ArcadeBench" />
+    <meta name="twitter:card" content="summary" />
+    <title>Smilefall — ArcadeBench</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./design/tokens.css" />
+    <link rel="stylesheet" href="./design/system.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="sf-sky-bg" data-screen="home">
+    <!-- ============================ HOME ============================ -->
+    <section id="home-screen" class="screen home">
+      <header class="home-nav">
+        <div class="brand">
+          <span class="sf-face" style="--sf-face-size: 34px"><i></i></span>
+          <b>ARCADEBENCH</b><i>/</i><span>SMILEFALL</span>
+        </div>
+        <a class="sf-btn sf-btn--small sf-btn--paper" href="./kit/">STICKER KIT ↗</a>
+      </header>
+
+      <div class="home-hero">
+        <div class="home-copy sf-stack">
+          <p class="sf-kicker">A silly falling-object game for humans and machines</p>
+          <h1 class="sf-hero sf-hero--sticker">SMILE<em>FALL</em></h1>
+          <p class="sf-lede">
+            The smilies are falling and they all share one steering wheel. Lean the whole sky at once,
+            hop the flock over incoming rocks, and stuff every bucket before you run out of grins.
+          </p>
+          <div class="how-row">
+            <div class="sf-panel sf-panel--warm sf-tilt-l how-card">
+              <span class="sf-chip sf-chip--sky">01 / LEAN</span>
+              <p><span class="sf-key">←</span> <span class="sf-key">→</span> nudges <b>every</b> smiley in the sky at the same time.</p>
+              <span class="sf-wheel" id="demo-wheel" data-lean="none" aria-hidden="true">
+                <u data-side="left">◀</u>
+                <i></i>
+                <u data-side="right">▶</u>
+                <span><small>One wheel</small><b>Every one</b></span>
+              </span>
+            </div>
+            <div class="sf-panel sf-panel--warm how-card">
+              <span class="sf-chip sf-chip--yolk">02 / HOP</span>
+              <p><span class="sf-key">SPACE</span> pops the whole flock upward. Charges refill slowly.</p>
+            </div>
+            <div class="sf-panel sf-panel--warm sf-tilt-r how-card">
+              <span class="sf-chip sf-chip--pink">03 / FILL</span>
+              <p>Fill every bucket to win. Round rocks <b>bruise</b>: the smiley bounces off frowning and pays half.
+                <b>Spiky</b> rocks are a different stage — there the smilies arrive as balloons and a hit <b>pops</b> one for good.</p>
+              <p class="how-rules">
+                <span class="sf-tags">
+                  <span>ROUND ROCK · BRUISES</span>
+                  <span data-hot="true">SPIKE · POPS</span>
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="launcher sf-panel">
+          <div class="sf-spread">
+            <p class="sf-kicker">Pick a stage</p>
+            <span class="sf-chip" id="stage-count">3 STAGES</span>
+          </div>
+          <div id="stage-picker" class="stage-picker"></div>
+
+          <p class="sf-kicker">Mood</p>
+          <div id="mood-segment" class="sf-segment" role="group" aria-label="Mood"></div>
+          <p id="mood-blurb" class="mood-blurb">The stage exactly as it was authored.</p>
+
+          <div class="launcher-stats">
+            <span class="sf-stat"><small>Buckets</small><b id="stat-buckets">3</b></span>
+            <span class="sf-stat"><small>Smilies</small><b id="stat-drops">18</b></span>
+            <span class="sf-stat"><small id="stat-frowns-label">Frowns</small><b id="stat-frowns">6</b></span>
+            <span class="sf-stat"><small>Clock</small><b id="stat-clock">0:40</b></span>
+          </div>
+          <p id="stat-best" class="best-line">No run yet. Go make some smilies happy.</p>
+          <button id="start-run" class="sf-btn sf-btn--jumbo sf-btn--pink" type="button">DROP 'EM →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ PLAY ============================ -->
+    <section id="play-screen" class="screen play">
+      <header class="hud">
+        <div class="hud-left">
+          <button id="quit-button" class="sf-btn sf-btn--small sf-btn--paper" type="button">← HOME</button>
+          <div class="hud-stage">
+            <b id="hud-title">First Giggle</b>
+            <span id="hud-tier" class="sf-chip sf-chip--mint">GIGGLE</span>
+          </div>
+        </div>
+        <div class="hud-center">
+          <div class="sf-meter" id="bucket-meter" style="--sf-meter-fill: 0%"><i></i><b id="bucket-meter-label">BUCKETS 0 / 3</b></div>
+          <div class="hud-pips">
+            <span class="sf-wheel" id="steer-wheel" data-lean="none" title="One wheel steers every smiley in the sky">
+              <u data-side="left">◀</u>
+              <i></i>
+              <u data-side="right">▶</u>
+              <span><small>Steering</small><b id="steer-count">0 smilies</b></span>
+            </span>
+            <span class="sf-kicker" id="frown-label">Frowns</span>
+            <span id="frown-pips" class="sf-pips sf-pips--frown"></span>
+            <span class="sf-kicker">Hops</span>
+            <span id="hop-pips" class="sf-pips sf-pips--hop"></span>
+          </div>
+        </div>
+        <div class="hud-right">
+          <span class="sf-stat"><small>Score</small><b id="hud-score">0</b></span>
+          <span class="sf-stat"><small>Combo</small><b id="hud-combo">×0</b></span>
+          <span class="sf-stat"><small>Clock</small><b id="hud-clock">0:40</b></span>
+          <button id="pause-button" class="sf-btn sf-btn--small sf-btn--paper" type="button">PAUSE</button>
+        </div>
+      </header>
+
+      <div class="stage-wrap">
+        <div class="stage">
+          <canvas id="field" width="1280" height="800" aria-label="Smilefall playfield"></canvas>
+
+          <div id="ready-overlay" class="overlay">
+            <div class="sf-panel sf-anim-pop overlay-card">
+              <span class="sf-face sf-anim-bob" style="--sf-face-size: 74px"><i></i></span>
+              <h2 id="ready-title" class="sf-title">First Giggle</h2>
+              <p id="ready-copy" class="sf-lede">One field. One shared steering wheel.</p>
+              <span id="ready-rules" class="sf-tags ready-rules"></span>
+              <div class="overlay-keys">
+                <span><span class="sf-key">←</span><span class="sf-key">→</span> lean the whole sky</span>
+                <span><span class="sf-key">SPACE</span> hop the flock</span>
+                <span><span class="sf-key">P</span> pause</span>
+              </div>
+              <button id="ready-start" class="sf-btn sf-btn--jumbo sf-btn--mint" type="button">GO!</button>
+            </div>
+          </div>
+
+          <div id="pause-overlay" class="overlay">
+            <div class="sf-panel sf-anim-pop overlay-card">
+              <h2 class="sf-title">Paused</h2>
+              <p class="sf-lede">The smilies are hovering politely.</p>
+              <div class="sf-row overlay-actions">
+                <button id="resume-button" class="sf-btn sf-btn--mint" type="button">RESUME</button>
+                <button id="restart-button" class="sf-btn sf-btn--paper" type="button">RESTART</button>
+                <button id="pause-home" class="sf-btn sf-btn--ghost" type="button">HOME</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="result-overlay" class="overlay">
+            <div class="sf-panel sf-anim-pop overlay-card">
+              <span id="result-face" class="sf-face sf-anim-bob" style="--sf-face-size: 80px"><i></i></span>
+              <h2 id="result-title" class="sf-title">Buckets full!</h2>
+              <p id="result-copy" class="sf-lede">Every smiley found a home.</p>
+              <div id="result-stats" class="result-stats"></div>
+              <div class="sf-row overlay-actions">
+                <button id="result-again" class="sf-btn sf-btn--paper" type="button">TRY AGAIN</button>
+                <button id="result-next" class="sf-btn sf-btn--mint" type="button">NEXT STAGE →</button>
+                <button id="result-replay" class="sf-btn sf-btn--small sf-btn--ghost" type="button">SAVE REPLAY</button>
+                <button id="result-home" class="sf-btn sf-btn--small sf-btn--ghost" type="button">HOME</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- What a rock does and what the ground does, on screen the whole run. -->
+        <p class="stage-hint">
+          <span id="hud-rules" class="sf-tags"></span>
+          <span class="sf-key">←</span><span class="sf-key">→</span> lean ·
+          <span class="sf-key">SPACE</span> hop · <span class="sf-key">P</span> pause · <span class="sf-key">R</span> restart
+        </p>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
