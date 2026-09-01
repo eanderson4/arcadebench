@@ -269,8 +269,11 @@ def make_wood_side(side, segs, names):
             vz = vc_z - cos_t * drop
             with Locations(Pos(vy, vz) * Rot(0, 0, -p["display_tilt_deg"])):
                 Rectangle(svl - svw, svw, mode=Mode.SUBTRACT)
-                for sy in (-1, 1):
-                    with Locations((0, sy * (svl - svw) / 2)):
+                # capsule ends on the LONG axis — local X here (the sketch
+                # rectangle is (len, w)); the 3D shell in cabinet.py uses
+                # local Y because its cutter Box is (t, len, w)
+                for sx in (-1, 1):
+                    with Locations((sx * (svl - svw) / 2, 0)):
                         Circle(svw / 2, mode=Mode.SUBTRACT)
         # cleat pilot drill-marks, at the cleat wood-screw positions
         for i, name in enumerate(names):

@@ -172,6 +172,18 @@ overhang audit.
 - **Power switch:** Bulgin MPI002 (19 mm hole) vs APIELE (16 mm hole) — pick
   locks the CAD cutout.
 
+## Decisions locked (2026-08-27)
+
+- **Display: 13.5″ 3:2 3004×2000 LCD kit ($100–150), cost-optimized to hit
+  the price target.** The 14″ 2.8K OLED (ATNA40YK04, ~$250–350) stays
+  available as the `oled-14` variant in `hardware/variants.py` (350 mm
+  shell) for a future premium build — the A/B render showed the design
+  identity survives either way. 13.9″ Huawei 3:2 ruled out (no HDMI
+  driver kits exist for the LPM139M422 panel).
+- **Power switch:** 19 mm Bulgin MPI002 class — CAD cutout is fixed
+  (`power_switch_hole_dia`).
+- **Encoder:** Raspberry Pi Pico + GP2040-CE.
+
 ## BOM items that constrain the CAD
 
 These must exist as parameters or features in the enclosure model:

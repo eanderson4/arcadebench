@@ -62,6 +62,10 @@ PARAMS = {
     "display_face_length": 245.0,  # mm along slope, seam -> face top
     # hood is a rectangular box: floor/top PERPENDICULAR to the display
     # face, marquee face PARALLEL to it — all brake bends 90 deg
+    # Base keeps the slim 63 mm hood (static nameplate header). The
+    # print-marquee variant bumps this to 84: the R10 chin/top blends leave
+    # a flat band of (height - 20); the 59.1 mm screen window needs >= ~2 mm
+    # clear of each blend tangent or the boolean leaves sliver faces.
     "marquee_height": 63.0,        # mm, chin -> marquee top, parallel to face
     "marquee_overhang": 56.0,      # mm chin forward of face top, perp. to face
     # --- neck (display column behind the screen) --------------------------
@@ -85,6 +89,7 @@ PARAMS = {
     "hood_speaker_pitch": 9.0,
     "hood_speaker_rows": 4,
     # --- marquee nameplate (magnetic swappable inlay) ---------------------
+    # Superseded when marquee_screen is on: the screen IS the nameplate.
     "nameplate_w": 200.0,
     "nameplate_h": 48.0,
     "nameplate_recess": 1.5,       # mm pocket depth in the marquee face
@@ -92,6 +97,18 @@ PARAMS = {
     "magnet_depth": 2.5,
     "magnet_inset_x": 90.0,        # +/- from center
     "magnet_inset_z": 14.0,        # +/- from nameplate center
+    # --- marquee screen (11.3" 1920x440 bar LCD, ET113BA01-T class) -------
+    # Second HDMI output: attract loop / per-game marquee art / score ticker.
+    # Base build keeps the nameplate; the print-marquee variant (variants.py)
+    # flips this on. Hood height is shared platform geometry either way.
+    "marquee_screen": False,
+    "mq_outline_w": 266.4,         # panel outline (datasheet)
+    "mq_outline_h": 65.0,
+    "mq_active_w": 252.9,          # active area -> window aperture
+    "mq_active_h": 57.9,
+    "mq_panel_thickness": 4.6,
+    "mq_window_margin": 0.5,       # aperture = active + margin per side
+    "mq_window_corner_r": 4.0,
     # --- chin datum groove (shadow line under the hood) -------------------
     "chin_groove_width": 3.0,      # mm along-slope groove height
     "chin_groove_depth": 1.0,
@@ -774,25 +791,41 @@ def build_cabinet(p=None):
                     0, 90, 0
                 ) * Cylinder(radius=svw / 2, height=p["cheek_thickness"] + 6)
 
-    # --- marquee nameplate recess + magnet pockets ------------------------
+    # --- marquee face: screen window OR magnetic nameplate -----------------
+    # z_dir is the face's OUTWARD normal (toward the player): cuts use -z.
     mface = Plane(
         origin=(0, (chin_y + mrq_y) / 2, (chin_z + mrq_z) / 2),
         x_dir=(1, 0, 0),
-        z_dir=(0, sin_t, cos_t),  # marquee face is parallel to the display face
+        z_dir=(0, -cos_t, sin_t),  # marquee face is parallel to the display face
     )
-    rec = p["nameplate_recess"]
-    # plain box cutter: the recess is only ~2 mm deep, so the rounded-cutter
-    # edge fillet has no material to bite into (corners stay square)
-    solid -= mface * Pos(0, rec / 2, 0) * Box(
-        p["nameplate_w"], rec + 0.4, p["nameplate_h"]
-    )
-    for sx in (-1, 1):
-        for sz in (-1, 1):
-            solid -= mface * Pos(
-                sx * p["magnet_inset_x"], p["magnet_depth"] / 2, sz * p["magnet_inset_z"]
-            ) * Rot(-90, 0, 0) * Cylinder(
-                radius=p["magnet_dia"] / 2, height=p["magnet_depth"] + 0.4
-            )
+    if p["marquee_screen"]:
+        # Through aperture = active area + margin. No seating pocket: the
+        # panel outline (65 mm) would overlap the chin/top blend tangents
+        # and leave sliver faces. The panel sits flush behind the 3 mm face,
+        # clamped by a printed retainer frame (pattern: main display stack;
+        # retainer part TODO in parts.py when this ships).
+        aw = p["mq_active_w"] + 2 * p["mq_window_margin"]
+        ah = p["mq_active_h"] + 2 * p["mq_window_margin"]
+        with BuildSketch(mface) as mq_sk:
+            Rectangle(aw, ah)
+            fillet(mq_sk.vertices(), radius=p["mq_window_corner_r"])
+        solid -= extrude(mq_sk.sketch, amount=-(wall + 2))
+    else:
+        rec = p["nameplate_recess"]
+        # mface frame: X = across, Y = up-slope, Z = outward normal.
+        # plain box cutter: the recess is only ~2 mm deep, so the
+        # rounded-cutter edge fillet has no material to bite into
+        solid -= mface * Pos(0, 0, -rec / 2 + 0.2) * Box(
+            p["nameplate_w"], p["nameplate_h"], rec + 0.4
+        )
+        for sx in (-1, 1):
+            for sz in (-1, 1):
+                solid -= mface * Pos(
+                    sx * p["magnet_inset_x"], sz * p["magnet_inset_z"],
+                    -p["magnet_depth"] / 2 + 0.2,
+                ) * Cylinder(
+                    radius=p["magnet_dia"] / 2, height=p["magnet_depth"] + 0.4
+                )
 
     # --- swappable deck panel opening (iter 36) ---------------------------
     # The deck skin over the control zone is a separate printed part
@@ -905,7 +938,7 @@ def render_views(part, size=1000):
     render_parts([(part, (0.87, 0.85, 0.80))], OUT_DIR, size=size)
 
 
-def archive_run(part):
+def archive_run(part, params=None, variant=None):
     """Copy this run's previews + params/stats to out/history/iter-NNN/.
 
     STEP/STL are deliberately not archived — they regenerate from PARAMS;
@@ -925,6 +958,7 @@ def archive_run(part):
     bbox = part.bounding_box()
     meta = {
         "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "variant": variant,
         "valid": part.is_valid,
         "solids": len(part.solids()),
         "bbox_mm": [
@@ -933,15 +967,25 @@ def archive_run(part):
             round(bbox.max.Z - bbox.min.Z, 1),
         ],
         "volume_cm3": round(part.volume / 1000, 1),
-        "params": PARAMS,
+        "params": params or PARAMS,
     }
     (dest / "meta.json").write_text(json.dumps(meta, indent=2))
     return dest.name
 
 
 def main():
+    import argparse
+
+    from variants import DEFAULT_VARIANT, get_params
+
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--variant", default=DEFAULT_VARIANT)
+    args = ap.parse_args()
+    p = get_params(args.variant)
+
     OUT_DIR.mkdir(exist_ok=True)
-    part = build_cabinet()
+    part = build_cabinet(p)
+    print(f"variant: {args.variant}")
     print(f"solid valid: {part.is_valid}, solids: {len(part.solids())}")
     bbox = part.bounding_box()
     print(
@@ -957,7 +1001,7 @@ def main():
     render_views(part)
     print(f"exported previews to {OUT_DIR}")
 
-    name = archive_run(part)
+    name = archive_run(part, p, args.variant)
     print(f"archived run to {HISTORY_DIR / name}")
 
 
