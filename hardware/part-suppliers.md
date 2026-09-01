@@ -69,7 +69,7 @@ else here can move to Amazon if you'd rather split the cart.
 | Speakers ×2 | Generic 2" full-range 4Ω (cutout ~50mm, depth ≤32mm — 2" max: hood floor is only ~57mm deep) | $10 |
 | Cover window | 2.5–3mm polycarbonate sheet, cut-to-size listing | $15 |
 | Sealing | Adhesive EPDM/neoprene foam strip | $8 |
-| Inserts + screws | M3 heat-set (~45×, 4.6mm OD → 4.0–4.2mm hole) + M3×8–10 stainless + M2.5 self-tappers | $10 |
+| Inserts + screws | M3 heat-set (~60×, 4.6mm OD → 4.0–4.2mm hole — the hybrid's 46 cleats take one each) + M3×8–10 stainless (~50×) + M2.5 self-tappers | $10 |
 | HDMI | Short right-angle HDMI leads (main panel + marquee) | $8 |
 | Storage (opt.) | 256GB NVMe if 64GB eMMC feels tight | $30 |
 
@@ -91,6 +91,9 @@ worth it against Mouser + Focus Attack reliability.
   side cheeks + 6mm ply for the flat wrap panels (bottom/back/taper/
   neck/top), cut to the exported DXF templates; round edges with a router
   (flat panels can't follow the rounded silhouette).
+- **Fasteners + sundries:** ~100× #6 × 5/8" (3.5mm) wood screws (cleat→side,
+  2 per cleat), VHB tape (CRT bezel bond — the hybrid face panel is flat),
+  foam tape (display panel clamp). The M3 inserts/screws are in cart 4.
 - **Finish:** sanding sealer/primer + color enamel rattle-can
   (Rust-Oleum 2X class, or Montana/Molotow for color pop) — colorway TBD
   with the colorway study. (Real Cerakote is a gun-sprayed ceramic; that's
