@@ -379,14 +379,14 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
         package: '@arcadebench/maltline', mode: 'tsx-cli',
         source: {
           fileCount: 22,
-          sha256: '7152f778324f8e542a0168acf2941eefdd3e270dab6aedaefffe71689f24070c',
+          sha256: '6f90f4aa56f9d99b88eb7e07edbf3db50efbaaa79a8dfd653c5b0c06b0dfb735',
         },
         kernel: {
           fileCount: 19,
-          sha256: '18bc7c06e5ab736e9f1dfd081b49e172882a2a1d9922087084edddff511d4a39',
+          sha256: 'b067a45fd025c07a6ac340fbcb6ac7c14971485cfe6f3b701a792f7b0299c7a1',
         },
         build: {
-          sha256: 'd9b7a11a222ac04486972527b1313bcd3b5710a797d0038472a151dfaa6c657e',
+          sha256: '995812f49643ba389d642f5564d3dec7e5f038e0f0a86725d5073c1d9cd46b07',
           toolchain: { node: process.versions.node, typescript: '7.0.2', tsx: '4.23.12' },
         },
       },
@@ -405,7 +405,7 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
     expect(Object.isFrozen(envelope)).toBe(true);
     expect(Object.isFrozen(envelope.producer.kernel.files)).toBe(true);
     expect(envelope.integrity.canonicalEnvelopeSha256)
-      .toBe('062f04551e324018df2d8b7cd9c5e5f8eb05734eb7ac7351256bccda64a94cb1');
+      .toBe('c932363c4e2a6d8a507a2d270ce886a82a27f4a8a11cf5be6d122676d75baca4');
     await expect(verifyP102Stage8ReliefEnvelope(envelope)).resolves.toEqual(envelope);
     await expect(parseP102Stage8ReliefEnvelopeJson(formatP102Stage8ReliefEnvelope(envelope)))
       .resolves.toEqual(envelope);
@@ -590,6 +590,6 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
     expect(() => JSON.parse(output)).not.toThrow();
     expect(output).not.toMatch(/^>\s/u);
     expect(Buffer.byteLength(output)).toBe(533_836);
-    expect(sha(output)).toBe('a1bbcd42c24bc2577a19a49bde25c6c8ecc94936bf4423aefb00c20e47ca4201');
+    expect(sha(output)).toBe('db567cdb23dfc853a3920f0b8c6c713831293c2d1f813bb792e11778d881ce00');
   }, 60_000);
 });

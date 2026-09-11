@@ -3645,3 +3645,64 @@ Each experiment records:
   closure or model equivalence as human pacing/preference evidence.
 - **Tasks:** P0-54, P0-62, P0-61, P0-48, P1-02, P1-04, P1-08, P1-10, P4-03,
   P4-04, P4-05, P4-06
+
+## EXP-089 — PR freeze, main sync, and Claude Fable review
+
+- **Date:** 2026-09-11
+- **State and scope:** PR #9 was updated from the original Maltline prototype to
+  the complete release-candidate tranche and synchronized with current `main`.
+  The PR diff excludes local `.research/`, `.token-usage.jsonl`, and `hardware/`
+  content. The protected Partition sitemap remains byte-exact. This freeze does
+  not claim the retained human, reference-device, live-deploy, or paid-audio
+  gates.
+- **Independent review:** Claude Fable reviewed the platform/security slice in
+  read-only mode and posted its findings to PR #9. It found one merge-artifact
+  blocker: `wrangler-local-smoke.mjs` hard-coded Wrangler 4.124.0 after `main`
+  advanced the lock. The smoke now obtains the exact root Wrangler version from
+  `package-lock.json` and still rejects an installed mismatch. The expanded
+  verify job receives a 20-minute job ceiling; simulation test limits remain
+  unchanged. P0-63 retains Fable's nonblocking IPv6-prefix admission, missing-
+  object retry, consume-expiry status, proof-HEAD cost, and measured CI-duration
+  follow-ups rather than silently treating them as closed.
+- **Dependency repair:** Root Wrangler advances to 4.131.1. The current
+  Cloudflare Vitest pool remains 0.22.0 but receives a narrow Miniflare
+  5.20260911.0-alpha override, bringing Sharp to 0.35.4; routine lock repair
+  brings `fast-uri` to 3.1.7 and `js-yaml` to 4.3.2. `npm ci` succeeds and
+  `npm audit --audit-level=high` reports zero vulnerabilities. `lint-staged`
+  17.3.0 still declares Node >=22.22.1 while the evidence runtime is pinned to
+  22.19.0; npm emits a support-policy warning, but the staged hook and build run
+  successfully. A runtime-pin revision must be a separate provenance change.
+- **Post-freeze current identities:** Staged whitespace normalization and the
+  merged lock changed source/build bytes, so EXP-088 remains the pre-freeze
+  current snapshot. P102 is now source
+  `6f90f4aa56f9d99b88eb7e07edbf3db50efbaaa79a8dfd653c5b0c06b0dfb735`
+  (22 files), kernel
+  `b067a45fd025c07a6ac340fbcb6ac7c14971485cfe6f3b701a792f7b0299c7a1`
+  (19 files), build
+  `995812f49643ba389d642f5564d3dec7e5f038e0f0a86725d5073c1d9cd46b07`,
+  integrity
+  `c932363c4e2a6d8a507a2d270ce886a82a27f4a8a11cf5be6d122676d75baca4`,
+  and formatted 533,836-byte SHA-256
+  `db567cdb23dfc853a3920f0b8c6c713831293c2d1f813bb792e11778d881ce00`.
+  P108 is now source
+  `8bbae9c3def04bd142413f781e0a4415b08fb079a536a0a92bdb9f5ffd0a5c78`
+  (24 files), kernel
+  `481137b6537d71035371fc01fc00cce3db2271d63dcfa41cbf11ee0afc371740`
+  (21 files), build
+  `61f7314384bb8ff8f1b35fff526c94a9ac60bbbf9181cb5170b9246bee6ab955`,
+  integrity
+  `d0e87a3b9a3ac7d0fc9f54210df92c431d36e161cffdc4471837b329832b8411`,
+  and formatted 1,899,811-byte SHA-256
+  `670a6689fc121819b8d9866b4704a977af2512a19a59b8f3e55602121a7f9d96`.
+  All EXP-078/EXP-084/pre-P0-54 archives and the P102/P108 payload, result,
+  controller, and work identities remain unchanged.
+- **Validation:** P102 envelope/CLI checks pass 16/16 and P108 envelope/archive
+  checks pass 12/12. Clean `npm ci`, zero-high advisory audit, all workspace
+  builds, the 4/4 Worker bundle audit, exact 24-file/445,096-byte site assembly,
+  and Wrangler 4.131.1 local composite smoke pass. GitHub CI is rerun from the
+  repaired PR head; this local evidence does not replace that result.
+- **Decision:** Keep the PR open for human review. Do not reopen gameplay or
+  provenance payloads from source-identity movement alone. P0-62 remains due,
+  and P0-63 owns the concrete Fable follow-ups before merge.
+- **Tasks:** P0-63, P0-62, P0-61, P0-48, P3-14, P3-15, P4-03, P4-04, P4-05,
+  P4-06

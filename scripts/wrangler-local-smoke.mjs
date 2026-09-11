@@ -7,7 +7,6 @@ import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SITE_CONTRACT } from './site-contract.mjs';
 
-const EXPECTED_WRANGLER_VERSION = '4.124.0';
 const HOST = '127.0.0.1';
 const STARTUP_TIMEOUT_MS = 30_000;
 const REQUEST_TIMEOUT_MS = 5_000;
@@ -25,9 +24,15 @@ function containedBy(root, candidate) {
 
 async function checkedWrangler() {
   const packagePath = resolve(repositoryRoot, 'node_modules/wrangler/package.json');
+  const lockPath = resolve(repositoryRoot, 'package-lock.json');
   const packageJson = JSON.parse(await readFile(packagePath, 'utf8'));
-  if (packageJson.version !== EXPECTED_WRANGLER_VERSION) {
-    fail(`expected installed Wrangler ${EXPECTED_WRANGLER_VERSION}, found ${String(packageJson.version)}`);
+  const packageLock = JSON.parse(await readFile(lockPath, 'utf8'));
+  const expectedVersion = packageLock.packages?.['node_modules/wrangler']?.version;
+  if (typeof expectedVersion !== 'string' || !/^\d+\.\d+\.\d+$/u.test(expectedVersion)) {
+    fail('package-lock.json does not pin an exact root Wrangler version');
+  }
+  if (packageJson.version !== expectedVersion) {
+    fail(`expected installed Wrangler ${expectedVersion}, found ${String(packageJson.version)}`);
   }
   if (packageJson.bin === null || typeof packageJson.bin !== 'object'
     || typeof packageJson.bin.wrangler !== 'string') {

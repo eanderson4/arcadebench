@@ -90,6 +90,7 @@ changes a decision.
 | P0-60 | done | Run the fourteenth technical-debt/refactor review | Three TD-14 audits find zero P0 blockers, accept P0-57/P0-58, retain human/release gates, and map bounded visual-contract, Worker-policy, and shared experiment-evidence debt |
 | P0-61 | queued | Reject game tool and test sources generically from the Worker bundle | Extend the Worker source-map policy and adversarial fixtures to reject `games/*/tools/**` and `games/*/tests/**` before P4-05 without changing the current bundle |
 | P0-62 | queued | Run the fifteenth technical-debt/refactor review | Review the two substantive post-TD-14 evidence hardening tranches, P0-59 and P0-54, before further implementation |
+| P0-63 | queued | Resolve Claude Fable platform review findings before merge | Normalize IPv6 admission keys, make missing-object retry recoverable, return truthful expiry status at consume, avoid proof-body work on HEAD, and confirm the expanded verify job fits its measured CI budget |
 
 ## Phase 1 — Core game feel
 
