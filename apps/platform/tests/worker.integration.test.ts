@@ -31,6 +31,36 @@ describe('ArcadeBench public platform Worker', () => {
     await expect(response.json()).resolves.toEqual({ status: 'ok', gameVersion: PARTITION_GAME_VERSION });
   });
 
+  it('redirects GET and HEAD from www to apex before assets or sessions', async () => {
+    const before = await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM anonymous_sessions',
+    ).first<{ count: number }>();
+    const cases = [
+      { method: 'GET', path: '/partition/?mode=replay&tick=7' },
+      { method: 'HEAD', path: '/api/v1/games/partition/runs?probe=1' },
+    ] as const;
+    for (const entry of cases) {
+      const response = await exports.default.fetch(`https://www.arcadebench.org${entry.path}`, {
+        method: entry.method,
+        redirect: 'manual',
+      });
+      expect(response.status).toBe(308);
+      expect(response.headers.get('location')).toBe(`https://arcadebench.org${entry.path}`);
+      expect(response.headers.has('set-cookie')).toBe(false);
+      expect((await response.arrayBuffer()).byteLength).toBe(0);
+    }
+    const after = await env.DB.prepare(
+      'SELECT COUNT(*) AS count FROM anonymous_sessions',
+    ).first<{ count: number }>();
+    expect(after?.count).toBe(before?.count);
+  });
+
+  it('keeps Partition API errors on the legacy exact uncoded envelope', async () => {
+    const response = await exports.default.fetch(`${api}/leaderboards/arcade`);
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: 'Difficulty filter is required.' });
+  });
+
   it('runs the verified score, replay, vote, and board path end to end', async () => {
     const runResponse = await exports.default.fetch(`${api}/runs`, {
       method: 'POST',
@@ -119,6 +149,15 @@ describe('ArcadeBench public platform Worker', () => {
     const replayResponse = await exports.default.fetch(published.replayUrl);
     expect(replayResponse.status).toBe(200);
     expect(await replayResponse.json()).toEqual(replay);
+    const replayViewerResponse = await exports.default.fetch(published.url, {
+      redirect: 'manual',
+    });
+    const expectedViewer = new URL('/partition/', origin);
+    expectedViewer.searchParams.set('mode', 'replay');
+    expectedViewer.searchParams.set('replay', `/api/v1/games/partition/replays/${published.id}`);
+    expect(replayViewerResponse.status).toBe(302);
+    expect(replayViewerResponse.headers.get('location')).toBe(expectedViewer.toString());
+    expect(replayViewerResponse.headers.has('set-cookie')).toBe(false);
 
     const voteResponse = await exports.default.fetch(`${api}/votes/level/first-light`, {
       method: 'PUT',

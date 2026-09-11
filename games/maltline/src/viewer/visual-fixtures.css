@@ -1,0 +1,13 @@
+/* Fixture-only stability rules. Production motion and layout remain unchanged. */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  caret-color: transparent !important;
+  scroll-behavior: auto !important;
+  transition: none !important;
+}
+
+html[data-fixture-ready='false'] [data-visual-fixture] {
+  visibility: hidden;
+}

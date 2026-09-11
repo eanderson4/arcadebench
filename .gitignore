@@ -17,3 +17,7 @@ coverage/
 # Local benchmark output. Published fixtures belong under fixtures/.
 runs/
 artifacts/
+
+# Browser visual-test run metadata and failure artifacts; goldens are tracked.
+/test-results/
+games/maltline/test-results/

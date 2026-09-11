@@ -5,6 +5,7 @@ declare global {
     interface Env {
       DB: D1Database;
       REPLAYS: R2Bucket;
+      MALTLINE_ADMISSION_RATE_LIMITER: RateLimit;
       TEST_MIGRATIONS: D1Migration[];
       COOKIE_SIGNING_SECRET: string;
     }

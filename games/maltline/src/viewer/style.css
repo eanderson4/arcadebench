@@ -20,7 +20,7 @@ body {
 body {
   background: radial-gradient(1200px 700px at 50% -10%, #14513d 0%, var(--bg) 60%);
   color: var(--ink);
-  font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  font-family: "Maltline UI", system-ui, sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -34,7 +34,29 @@ body {
   padding: 18px 0 26px;
 }
 
+.shell:focus {
+  outline: none;
+}
+
+.shell:focus-visible .stage-wrap {
+  outline: 3px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .topline {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -54,6 +76,40 @@ body {
   font-style: normal;
   opacity: 0.6;
   margin-left: 8px;
+}
+
+.topline:has(.competition-trigger:not([hidden])) .tagline {
+  margin-right: 110px;
+}
+
+@media (min-width: 700px) and (max-width: 900px) {
+  .topline .tagline {
+    display: none;
+  }
+}
+
+.competition-trigger {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid rgba(243, 233, 210, 0.24);
+  border-radius: 7px;
+  background: rgba(4, 20, 14, 0.5);
+  color: var(--ink);
+  font: 800 9px "Maltline UI", system-ui, sans-serif;
+  letter-spacing: 0.13em;
+  cursor: pointer;
+}
+
+.competition-trigger:hover {
+  border-color: var(--accent);
+}
+
+.competition-trigger:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .stage-wrap {
@@ -87,8 +143,13 @@ canvas {
   pointer-events: none;
 }
 
+.unsupported-device {
+  display: none;
+}
+
 .overlay-card {
   text-align: center;
+  width: min(760px, calc(100% - 80px));
   padding: 30px 52px;
   border-radius: 18px;
   background: linear-gradient(160deg, rgba(18, 80, 62, 0.96), rgba(9, 38, 29, 0.96));
@@ -96,6 +157,15 @@ canvas {
     0 24px 60px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(243, 233, 210, 0.18),
     0 0 60px rgba(0, 128, 98, 0.25);
+}
+
+.overlay-card .overlay-kicker {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .overlay-card h1 {
@@ -108,6 +178,51 @@ canvas {
 .overlay-card p {
   margin: 6px 0;
   color: var(--dim);
+}
+
+.overlay-card .overlay-steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px 10px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.overlay-card .overlay-steps[hidden] {
+  display: none;
+}
+
+.overlay-card .overlay-steps li {
+  padding: 8px 10px;
+  border: 1px solid rgba(243, 233, 210, 0.15);
+  border-radius: 8px;
+  background: rgba(7, 26, 20, 0.42);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.overlay-card[data-overlay-variant='instructions'] h1 {
+  font-size: 25px;
+  letter-spacing: 0.13em;
+}
+
+.overlay-card[data-overlay-variant='countdown'] {
+  width: min(420px, calc(100% - 80px));
+}
+
+.overlay-card[data-overlay-variant='countdown'] h1 {
+  margin: -4px 0;
+  font-size: 78px;
+  line-height: 1;
+}
+
+.overlay-card[data-overlay-variant='countdown'] #overlay-body {
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .overlay-card #overlay-hint {
@@ -136,6 +251,736 @@ canvas {
   text-transform: uppercase;
 }
 
-.controls b {
+.controls kbd {
   color: var(--ink);
+  font: inherit;
+  font-weight: 800;
+}
+
+.maltline-competition[hidden] {
+  display: none;
+}
+
+.maltline-competition {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: stretch end;
+  color: var(--ink);
+  font-family: "Maltline UI", system-ui, sans-serif;
+}
+
+.maltline-competition__shade {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 20, 14, 0.72);
+  backdrop-filter: blur(3px);
+}
+
+.maltline-competition__sheet {
+  position: relative;
+  width: min(448px, calc(100vw - 48px));
+  height: 100%;
+  overflow: auto;
+  padding: 26px 26px 34px;
+  border-left: 1px solid rgba(243, 233, 210, 0.18);
+  outline: none;
+  background:
+    radial-gradient(circle at 82% 4%, rgba(242, 140, 180, 0.18), transparent 28%),
+    linear-gradient(160deg, rgba(18, 80, 62, 0.99), rgba(7, 30, 23, 0.995));
+  box-shadow: -24px 0 60px rgba(0, 0, 0, 0.48);
+  animation: maltline-competition-enter 180ms ease-out both;
+}
+
+.maltline-competition__sheet[data-competition-view='proof'] {
+  width: min(720px, calc(100vw - 48px));
+}
+
+@keyframes maltline-competition-enter {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+}
+
+.maltline-competition__sheet:focus-visible {
+  box-shadow:
+    inset 3px 0 var(--accent),
+    -24px 0 60px rgba(0, 0, 0, 0.48);
+}
+
+.maltline-competition__header,
+.maltline-competition__section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.maltline-competition__header {
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(243, 233, 210, 0.15);
+}
+
+.maltline-competition__kicker,
+.maltline-competition__description,
+.maltline-competition__standings h3,
+.maltline-competition__submission h3,
+.maltline-competition__notice p,
+.maltline-competition__submission p {
+  margin: 0;
+}
+
+.maltline-competition__kicker {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+}
+
+.maltline-competition__title {
+  margin: 3px 0 4px;
+  font-size: 28px;
+  letter-spacing: 0.2em;
+  text-shadow: 0 2px 18px rgba(0, 128, 98, 0.8);
+}
+
+.maltline-competition__description {
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.maltline-competition__icon-button,
+.maltline-competition__button,
+.maltline-competition__text-button {
+  border: 1px solid rgba(243, 233, 210, 0.2);
+  border-radius: 9px;
+  background: rgba(5, 25, 18, 0.52);
+  color: var(--ink);
+  font: 700 11px "Maltline UI", system-ui, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.maltline-competition__proof-ended {
+  color: var(--dim);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.maltline-competition__icon-button {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  padding: 0 0 3px;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.maltline-competition__button {
+  min-height: 34px;
+  padding: 8px 11px;
+}
+
+.maltline-competition__button--primary {
+  border-color: rgba(242, 140, 180, 0.65);
+  background: var(--accent);
+  color: #09261d;
+}
+
+.maltline-competition__button--quiet {
+  justify-self: start;
+  border-color: transparent;
+  background: transparent;
+  color: var(--dim);
+}
+
+.maltline-competition__icon-button:hover,
+.maltline-competition__button:hover,
+.maltline-competition__text-button:hover {
+  border-color: var(--accent);
+}
+
+.maltline-competition__icon-button:focus-visible,
+.maltline-competition__button:focus-visible,
+.maltline-competition__text-button:focus-visible,
+.maltline-competition input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.maltline-competition__content {
+  display: grid;
+  gap: 22px;
+  padding-top: 22px;
+}
+
+.maltline-competition__standings,
+.maltline-competition__submission,
+.maltline-competition__inspection {
+  display: grid;
+  gap: 13px;
+}
+
+.maltline-competition__standings h3,
+.maltline-competition__submission h3,
+.maltline-competition__inspection h3 {
+  align-self: center;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+}
+
+.maltline-competition__notice,
+.maltline-competition__submission {
+  padding: 17px;
+  border: 1px solid rgba(243, 233, 210, 0.14);
+  border-radius: 12px;
+  background: rgba(5, 25, 18, 0.38);
+}
+
+.maltline-competition__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.maltline-competition__notice strong {
+  width: 100%;
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+}
+
+.maltline-competition__notice--error {
+  border-color: rgba(242, 140, 180, 0.42);
+}
+
+.maltline-competition__spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(243, 233, 210, 0.24);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: maltline-competition-spin 700ms linear infinite;
+}
+
+@keyframes maltline-competition-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.maltline-competition__table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(243, 233, 210, 0.13);
+  border-radius: 12px;
+}
+
+.maltline-competition__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.maltline-competition__table th,
+.maltline-competition__table td {
+  padding: 11px 9px;
+  border-bottom: 1px solid rgba(243, 233, 210, 0.1);
+  text-align: right;
+  font-size: 12px;
+}
+
+.maltline-competition__table thead th {
+  color: var(--dim);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.maltline-competition__table th:nth-child(2),
+.maltline-competition__table td:nth-child(2) {
+  text-align: left;
+}
+
+.maltline-competition__table tbody tr:last-child th,
+.maltline-competition__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.maltline-competition__table tr[data-current-player='true'] {
+  background: rgba(242, 140, 180, 0.13);
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.maltline-competition__text-button {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: #95e5bc;
+  font-size: 9px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.maltline-competition__callsign {
+  max-width: 130px;
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.maltline-competition__submission {
+  line-height: 1.5;
+}
+
+.maltline-competition__inspection {
+  padding: 17px;
+  border: 1px solid rgba(149, 229, 188, 0.3);
+  border-radius: 12px;
+  background: rgba(5, 25, 18, 0.38);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.maltline-competition__inspection p {
+  margin: 0;
+}
+
+.maltline-competition__proof-stages {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 18px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--dim);
+}
+
+.maltline-competition__proof-digest {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  color: var(--dim);
+  font-size: 9px;
+}
+
+.maltline-competition__proof-details {
+  color: var(--dim);
+}
+
+.maltline-competition__proof-details summary {
+  width: fit-content;
+  color: #95e5bc;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.maltline-competition__replay-host {
+  min-width: 0;
+}
+
+.maltline-replay-scrubber {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid rgba(243, 233, 210, 0.14);
+  border-radius: 10px;
+  background: rgba(4, 20, 14, 0.46);
+}
+
+.maltline-replay-scrubber__heading {
+  margin: 0;
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+}
+
+.maltline-replay-scrubber__label {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  color: var(--dim);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.maltline-replay-scrubber__stage-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.maltline-replay-scrubber select {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid rgba(243, 233, 210, 0.24);
+  border-radius: 8px;
+  background: #071e17;
+  color: var(--ink);
+  font: 700 12px "Maltline UI", system-ui, sans-serif;
+}
+
+.maltline-replay-scrubber__canvas {
+  display: block;
+  justify-self: center;
+  width: min(100%, 480px, calc((100vh - 490px) * 16 / 9));
+  height: auto;
+  aspect-ratio: 16 / 9;
+  border: 1px solid rgba(149, 229, 188, 0.4);
+  border-radius: 10px;
+  background: #061a14;
+}
+
+.maltline-replay-scrubber__transport,
+.maltline-replay-scrubber__seek {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
+.maltline-replay-scrubber__transport {
+  grid-template-columns: 1fr minmax(74px, 1.15fr) 1fr;
+}
+
+.maltline-replay-scrubber__seek {
+  grid-template-columns: auto auto minmax(110px, 1fr) auto auto;
+  align-items: end;
+}
+
+.maltline-replay-scrubber__button {
+  min-width: 0;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid rgba(243, 233, 210, 0.22);
+  border-radius: 8px;
+  background: rgba(18, 80, 62, 0.42);
+  color: var(--ink);
+  font: 800 10px "Maltline UI", system-ui, sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.maltline-replay-scrubber__button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.maltline-replay-scrubber__button:not(:disabled):hover {
+  border-color: var(--accent);
+}
+
+.maltline-replay-scrubber__button:focus-visible,
+.maltline-replay-scrubber select:focus-visible,
+.maltline-replay-scrubber input:focus-visible,
+.maltline-competition__proof-details summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.maltline-replay-scrubber__position {
+  width: 100%;
+  min-height: 24px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.maltline-replay-scrubber__time {
+  grid-column: 1 / -1;
+  justify-self: end;
+  color: var(--ink);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.maltline-replay-scrubber__summary,
+.maltline-replay-scrubber__event,
+.maltline-replay-scrubber__canvas-failure {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.maltline-replay-scrubber__summary,
+.maltline-replay-scrubber__event {
+  color: var(--dim);
+}
+
+.maltline-replay-scrubber__event {
+  min-height: 1.45em;
+  padding-left: 9px;
+  border-left: 2px solid rgba(149, 229, 188, 0.6);
+}
+
+.maltline-replay-scrubber__canvas-failure {
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  color: var(--ink);
+}
+
+.maltline-competition__submission > p:not(.maltline-competition__eligibility) {
+  color: var(--dim);
+  font-size: 13px;
+}
+
+.maltline-competition__eligibility {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+}
+
+.maltline-competition__eligibility--eligible {
+  color: #95e5bc;
+}
+
+.maltline-competition__eligibility--pending {
+  color: #f0b940;
+}
+
+.maltline-competition__eligibility--ineligible {
+  color: var(--accent);
+}
+
+.maltline-competition__muted {
+  opacity: 0.78;
+}
+
+.maltline-competition__inline-error {
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  color: var(--ink) !important;
+}
+
+.maltline-competition__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.maltline-competition__form label {
+  display: grid;
+  gap: 5px;
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.maltline-competition__form input {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(243, 233, 210, 0.24);
+  border-radius: 8px;
+  background: rgba(4, 20, 14, 0.7);
+  color: var(--ink);
+  font: 700 14px "Maltline UI", system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    transition: none;
+  }
+
+  .overlay-card #overlay-hint {
+    animation: none;
+  }
+
+  .maltline-competition__sheet,
+  .maltline-competition__spinner {
+    animation: none;
+  }
+}
+
+@media (min-width: 700px) and (max-width: 760px) {
+  .maltline-competition__sheet {
+    width: min(420px, calc(100vw - 24px));
+    padding-inline: 20px;
+  }
+
+  .maltline-competition__sheet[data-competition-view='proof'] {
+    width: calc(100vw - 24px);
+  }
+
+  .maltline-replay-scrubber__canvas {
+    width: min(100%, 430px);
+  }
+
+  .maltline-competition__form {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 699px) {
+  body {
+    align-items: flex-start;
+  }
+
+  .shell {
+    width: min(92vw, 520px);
+    gap: 14px;
+    padding-top: 22px;
+  }
+
+  .topline {
+    justify-content: center;
+    text-align: center;
+  }
+
+  .competition-trigger {
+    position: static;
+  }
+
+  .topline .tagline,
+  canvas,
+  .overlay,
+  .controls {
+    display: none;
+  }
+
+  .maltline-replay-scrubber__canvas {
+    display: block;
+  }
+
+  .stage-wrap {
+    border: 1px solid rgba(243, 233, 210, 0.16);
+    background:
+      radial-gradient(circle at 50% 18%, rgba(242, 140, 180, 0.18), transparent 34%),
+      linear-gradient(155deg, rgba(18, 80, 62, 0.98), rgba(5, 23, 17, 0.99));
+  }
+
+  .unsupported-device {
+    min-height: min(560px, calc(100vh - 100px));
+    padding: 42px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .device-mark {
+    position: relative;
+    width: 132px;
+    height: 92px;
+    margin-bottom: 24px;
+    border: 2px solid var(--dim);
+    border-radius: 18px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3), inset 0 0 0 5px rgba(7, 26, 20, 0.45);
+    display: grid;
+    place-items: center;
+    transform: rotate(-4deg);
+  }
+
+  .device-mark span {
+    position: absolute;
+    top: -22px;
+    right: -19px;
+    color: var(--accent);
+    font-size: 34px;
+  }
+
+  .device-mark kbd {
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(5, 20, 14, 0.7);
+    color: var(--ink);
+    font: 800 15px "Maltline UI", system-ui, sans-serif;
+    letter-spacing: 0.08em;
+  }
+
+  .device-kicker {
+    margin: 0 0 9px;
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+  }
+
+  .unsupported-device h2 {
+    max-width: 300px;
+    margin: 0 0 12px;
+    color: var(--ink);
+    font-size: clamp(24px, 7vw, 34px);
+    line-height: 1.08;
+  }
+
+  .unsupported-device p:not(.device-kicker) {
+    max-width: 300px;
+    margin: 4px 0;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+
+  .unsupported-device .device-hint {
+    color: var(--ink);
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 480px) {
+  .maltline-competition__table th,
+  .maltline-competition__table td {
+    padding-inline: 5px;
+  }
+
+  .maltline-competition__table th:nth-child(4),
+  .maltline-competition__table td:nth-child(4) {
+    display: none;
+  }
+
+  .maltline-competition__callsign {
+    max-width: 92px;
+  }
+
+  .maltline-competition__proof-stages {
+    grid-template-columns: 1fr;
+  }
+
+  .maltline-replay-scrubber {
+    padding: 10px;
+  }
+
+  .maltline-replay-scrubber__transport {
+    gap: 5px;
+  }
+
+  .maltline-replay-scrubber__seek {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .maltline-replay-scrubber__seek .maltline-replay-scrubber__label {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .maltline-replay-scrubber__seek .maltline-replay-scrubber__button {
+    grid-row: 2;
+  }
+
+  .maltline-replay-scrubber__time {
+    grid-row: 3;
+  }
 }

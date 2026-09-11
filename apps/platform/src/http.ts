@@ -2,6 +2,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code?: string,
+    readonly headers?: HeadersInit,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -16,13 +18,49 @@ export function json(body: unknown, status = 200, headers?: HeadersInit): Respon
 }
 
 export async function readJson(request: Request, maximumBytes: number): Promise<unknown> {
-  const declaredLength = Number(request.headers.get('content-length') ?? 0);
-  if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) {
+  if (!Number.isSafeInteger(maximumBytes) || maximumBytes < 1) {
+    throw new Error('JSON byte limit must be a positive safe integer.');
+  }
+  const encoding = request.headers.get('content-encoding');
+  if (encoding && encoding.toLocaleLowerCase() !== 'identity') {
+    throw new ApiError(415, 'Compressed request bodies are not supported.');
+  }
+  const declaredHeader = request.headers.get('content-length');
+  if (declaredHeader !== null && !/^\d+$/u.test(declaredHeader)) {
+    throw new ApiError(400, 'Content-Length is invalid.');
+  }
+  const declaredLength = declaredHeader === null ? null : Number(declaredHeader);
+  if (declaredLength !== null && (!Number.isSafeInteger(declaredLength) || declaredLength > maximumBytes)) {
     throw new ApiError(413, 'This submission is too large.');
   }
-  const text = await request.text();
-  if (new TextEncoder().encode(text).byteLength > maximumBytes) {
-    throw new ApiError(413, 'This submission is too large.');
+
+  const reader = request.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let byteLength = 0;
+  if (reader) {
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      byteLength += result.value.byteLength;
+      if (byteLength > maximumBytes) {
+        await reader.cancel('request body exceeds byte limit');
+        throw new ApiError(413, 'This submission is too large.');
+      }
+      chunks.push(result.value);
+    }
+  }
+
+  const bytes = new Uint8Array(byteLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new ApiError(400, 'Request body must be valid UTF-8 JSON.');
   }
   try {
     return JSON.parse(text);

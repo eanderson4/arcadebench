@@ -26,7 +26,7 @@ export interface MaltlineScenario {
   /** Lane length in abstract units. Positions are stored × FIXED_SCALE. */
   laneLength: number;
   /** Station bank layout, left to right. The menu is exactly what stations sell. */
-  stations: FlavorId[];
+  stations: readonly FlavorId[];
   jarPoolSize: number;
   /** Station dwell to produce one shake, in ticks. */
   blendTicks: number;
@@ -71,6 +71,12 @@ export interface CustomerState {
   phase: CustomerPhase;
   /** Ticks remaining in the current phase (drinking). */
   timer: number;
+  /** Whether this customer's authored order has already awarded serve points. */
+  fulfilled: boolean;
+  /** Number of late-service returns to the line; capped at one by the engine. */
+  requeues: number;
+  /** Whether the jar from the current drink may award its one-time catch bonus. */
+  catchBonusEligible: boolean;
   exitAfterDrink: boolean;
 }
 
@@ -85,8 +91,11 @@ export interface SlideState {
 /** An empty jar sliding back toward the counter after a customer finishes. */
 export interface JarState {
   id: number;
+  customerId: number;
   lane: number;
   x: number;
+  /** Catch points are tied to the customer's first fulfillment, not each refill. */
+  catchBonusEligible: boolean;
 }
 
 export interface PlayerState {
@@ -112,7 +121,15 @@ export interface MaltlineState {
   washing: number[];
   jarsAvailable: number;
   spawned: number;
-  served: number;
+  /** Every shake-to-customer collision, including the one permitted re-service. */
+  serviceActions: number;
+  /** Distinct customers whose authored order has been fulfilled at least once. */
+  fulfilled: number;
+  /** Customers removed after reaching the counter. */
+  walkouts: number;
+  /** All removed customers: successful exits plus walkouts. */
+  resolved: number;
+  /** Successfully served customers that finished drinking and left. */
   exited: number;
   spawnCountdown: number;
   currentInput: MaltlineInput;
@@ -121,10 +138,19 @@ export interface MaltlineState {
 export type GameEvent =
   | { tick: number; type: 'customer_spawned'; customerId: number; lane: number; flavor: FlavorId }
   | { tick: number; type: 'shake_launched'; lane: number; flavor: FlavorId }
-  | { tick: number; type: 'served'; customerId: number; lane: number; flavor: FlavorId; exitAfterDrink: boolean }
+  | {
+      tick: number;
+      type: 'served';
+      customerId: number;
+      lane: number;
+      flavor: FlavorId;
+      exitAfterDrink: boolean;
+      firstFulfillment: boolean;
+      points: number;
+    }
   | { tick: number; type: 'customer_exited'; customerId: number }
   | { tick: number; type: 'jar_returned'; customerId: number; lane: number }
-  | { tick: number; type: 'jar_caught'; lane: number }
+  | { tick: number; type: 'jar_caught'; customerId: number; lane: number; points: number }
   | { tick: number; type: 'shake_smashed'; lane: number; flavor: FlavorId }
   | { tick: number; type: 'jar_smashed'; lane: number }
   | { tick: number; type: 'walkout'; customerId: number; lane: number }
@@ -145,7 +171,7 @@ export interface ReplayTick {
 }
 
 export interface MaltlineReplay {
-  version: 1;
+  version: 2;
   scenario: MaltlineScenario;
   run: RunContext;
   ticks: ReplayTick[];

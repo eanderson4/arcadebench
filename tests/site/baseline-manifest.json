@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "project": "chromium-site",
+  "platform": "linux",
+  "browser": {
+    "product": "Chrome for Testing",
+    "version": "153.0.8010.12",
+    "playwrightRevision": 1243
+  },
+  "playwright": "1.63.0",
+  "screenshots": [
+    {
+      "name": "launcher-1280.png",
+      "sha256": "6fc1ff63277834b6762a802a056a1a582922affb1725fedeabb5673e0dfb69de"
+    },
+    {
+      "name": "launcher-700.png",
+      "sha256": "28eb2c2caef57004e6064d5eeeb50376c4ff91d62d623fea54827d60f754f226"
+    },
+    {
+      "name": "launcher-390.png",
+      "sha256": "8728c375ff673817695f6bacbbe3cb66fc1d8632a5f79bc69c72c9c749949744"
+    },
+    {
+      "name": "launcher-320.png",
+      "sha256": "e3b1fa4f273c40587d046facc5eb277b75c073ed69348a72f2d2b61fdb6cf9a1"
+    },
+    {
+      "name": "launcher-focus-700.png",
+      "sha256": "6b9c8a2755c49dac8a704fa2889b91948c3ca3c01056488bb40e82033c72765a"
+    },
+    {
+      "name": "not-found-1280.png",
+      "sha256": "6fe173f1162060e0547a7094402f6471f4a08ff750dc4a39eaeb86e99c0095bb"
+    },
+    {
+      "name": "not-found-390.png",
+      "sha256": "d4bff4ed4406ed170b2902dc15350728ee317afbdb1b5fad8e49c260f881c373"
+    }
+  ]
+}

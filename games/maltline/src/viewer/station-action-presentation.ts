@@ -1,0 +1,97 @@
+import type { FlavorId, MaltlineScenario, MaltlineState } from '../core/types';
+import { FLAVOR_LABELS } from '../core/types';
+
+export type MaltlineStationActionMode = 'holding' | 'blending' | 'blocked-no-jars' | 'idle';
+export type MaltlineStationActionTone = 'ready' | 'blending' | 'blocked' | 'selected-flavor';
+
+export interface MaltlineStationActionPresentation {
+  readonly mode: MaltlineStationActionMode;
+  readonly selectedStation: Readonly<{
+    index: number;
+    flavor: FlavorId;
+  }>;
+  /** Flavor currently being processed, independent of later station movement. */
+  readonly processingFlavor: FlavorId | null;
+  readonly heldFlavor: FlavorId | null;
+  /** Flavor named by the highest-precedence current action. */
+  readonly actionFlavor: FlavorId;
+  readonly quantizedPercent: number | null;
+  readonly tone: MaltlineStationActionTone;
+  readonly canvasText: string;
+  readonly semanticText: string;
+}
+
+/**
+ * Shared presentation policy for station identity, action precedence, and
+ * player-facing copy. It remains presentation-only and never influences engine
+ * state.
+ */
+export function deriveMaltlineStationActionPresentation(
+  scenario: Readonly<MaltlineScenario>,
+  state: Readonly<MaltlineState>,
+): MaltlineStationActionPresentation {
+  const selectedIndex = state.player.station;
+  const selectedFlavor = scenario.stations[selectedIndex];
+  if (!Number.isSafeInteger(selectedIndex) || selectedFlavor === undefined) {
+    throw new Error('Maltline presentation needs a valid selected station.');
+  }
+  const selectedStation = Object.freeze({ index: selectedIndex, flavor: selectedFlavor });
+
+  if (state.player.holding !== null) {
+    const flavor = state.player.holding;
+    return Object.freeze({
+      mode: 'holding',
+      selectedStation,
+      processingFlavor: state.player.blending,
+      heldFlavor: flavor,
+      actionFlavor: flavor,
+      quantizedPercent: null,
+      tone: 'ready',
+      canvasText: 'READY · F / ENTER',
+      semanticText: `${FLAVOR_LABELS[flavor]} shake ready. Press F or Enter to slide.`,
+    });
+  }
+
+  if (state.player.blending !== null) {
+    const flavor = state.player.blending;
+    const exactProgress = Math.min(1, state.player.blendProgress / scenario.blendTicks);
+    const quantizedPercent = Math.round(exactProgress * 20) * 5;
+    return Object.freeze({
+      mode: 'blending',
+      selectedStation,
+      processingFlavor: flavor,
+      heldFlavor: null,
+      actionFlavor: flavor,
+      quantizedPercent,
+      tone: 'blending',
+      canvasText: `BLENDING · ${quantizedPercent}%`,
+      semanticText: `Blending ${FLAVOR_LABELS[flavor]}, ${quantizedPercent} percent.`,
+    });
+  }
+
+  if (state.jarsAvailable === 0) {
+    return Object.freeze({
+      mode: 'blocked-no-jars',
+      selectedStation,
+      processingFlavor: null,
+      heldFlavor: null,
+      actionFlavor: selectedFlavor,
+      quantizedPercent: null,
+      tone: 'blocked',
+      canvasText: 'NO CLEAN JARS · CATCH A RETURN',
+      semanticText: "No clean jars. Face a returning jar's window to catch it automatically.",
+    });
+  }
+
+  return Object.freeze({
+    mode: 'idle',
+    selectedStation,
+    processingFlavor: null,
+    heldFlavor: null,
+    actionFlavor: selectedFlavor,
+    quantizedPercent: null,
+    tone: 'selected-flavor',
+    canvasText: 'SELECTED · HOLD SPACE',
+    semanticText: `Selected ${FLAVOR_LABELS[selectedFlavor]}. Hold Space to blend.`,
+  });
+}

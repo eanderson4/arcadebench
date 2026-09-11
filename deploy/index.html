@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#05070d" />
+    <meta name="description" content="Choose an ArcadeBench game: play Partition or Maltline, then inspect the deterministic run evidence." />
+    <meta property="og:title" content="ArcadeBench — Choose your cabinet" />
+    <meta property="og:description" content="Deterministic arcade games for humans and machines. Play Partition or Maltline and inspect every run." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ArcadeBench" />
+    <meta property="og:url" content="https://arcadebench.org/" />
+    <meta name="twitter:card" content="summary" />
+    <title>ArcadeBench — Choose your cabinet</title>
+    <link rel="canonical" href="https://arcadebench.org/" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/arcade.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#cabinets">Skip to cabinets</a>
+    <div class="arcade-glow arcade-glow--left" aria-hidden="true"></div>
+    <div class="arcade-glow arcade-glow--right" aria-hidden="true"></div>
+    <div class="page-shell">
+      <header class="site-nav">
+        <a class="wordmark" href="/" aria-current="page">
+          <span class="wordmark__mark" aria-hidden="true"></span>
+          <span>ARCADEBENCH</span>
+        </a>
+        <p>TWO CABINETS <span aria-hidden="true">/</span> OPEN PLAY</p>
+      </header>
+
+      <main class="launcher">
+        <header class="launcher__intro">
+          <div>
+            <p class="kicker"><span aria-hidden="true"></span> GAMES FOR HUMANS + MACHINES</p>
+            <h1>Choose your cabinet.</h1>
+          </div>
+          <p class="launcher__dek">Choose a game, play a run, and inspect its deterministic result.</p>
+        </header>
+
+        <ul id="cabinets" class="cabinet-grid" aria-label="Available games" tabindex="-1">
+          <li>
+            <a
+              class="cabinet cabinet--partition"
+              href="/partition/"
+              aria-labelledby="partition-name"
+              aria-describedby="partition-description partition-facts"
+            >
+              <span class="cabinet__meta"><b>01</b><span>REAL-TIME TERRITORY</span></span>
+              <span class="cabinet__glyph cabinet__glyph--partition" aria-hidden="true"><i></i></span>
+              <span class="cabinet__copy">
+                <span class="cabinet__genre">FIELD CONTROL</span>
+                <strong id="partition-name">PARTITION</strong>
+                <span id="partition-description" class="cabinet__description">Cut through a live field. Isolate the anomalies.</span>
+              </span>
+              <span id="partition-facts" class="cabinet__facts">
+                <span>KEYBOARD + TOUCH</span>
+                <span>20 AUTHORED FIELDS</span>
+              </span>
+              <span class="cabinet__action"><b>ENTER PARTITION</b><span aria-hidden="true">→</span></span>
+            </a>
+          </li>
+          <li>
+            <a
+              class="cabinet cabinet--maltline"
+              href="/maltline/"
+              aria-labelledby="maltline-name"
+              aria-describedby="maltline-description maltline-facts"
+            >
+              <span class="cabinet__meta"><b>02</b><span>SHAKE-COUNTER ARCADE</span></span>
+              <span class="cabinet__glyph cabinet__glyph--maltline" aria-hidden="true"><i></i></span>
+              <span class="cabinet__copy">
+                <span class="cabinet__genre">COUNTER SERVICE</span>
+                <strong id="maltline-name">MALTLINE</strong>
+                <span id="maltline-description" class="cabinet__description">Blend each order. Slide shakes. Catch returning jars.</span>
+              </span>
+              <span id="maltline-facts" class="cabinet__facts">
+                <span>KEYBOARD · 700PX+ TO PLAY</span>
+                <span>VERIFIED SHIFT BOARD</span>
+              </span>
+              <span class="cabinet__action"><b>ENTER MALTLINE</b><span aria-hidden="true">→</span></span>
+            </a>
+          </li>
+        </ul>
+      </main>
+
+      <footer class="site-footer">
+        <p>DETERMINISTIC PLAY <span aria-hidden="true">/</span> INSPECTABLE RUNS</p>
+        <nav aria-label="Site information">
+          <a href="/privacy/">PRIVACY</a>
+          <a href="/terms/">TERMS</a>
+          <a href="https://github.com/eanderson4/arcadebench">SOURCE</a>
+        </nav>
+      </footer>
+    </div>
+  </body>
+</html>

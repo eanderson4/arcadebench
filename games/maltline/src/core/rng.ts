@@ -1,5 +1,9 @@
 export type Rng = () => number;
 
+/** Stable identity for the deterministic generator used by ranked simulation. */
+export const MALTLINE_RNG_ID = 'mulberry32' as const;
+export const MALTLINE_RNG_VERSION = 1 as const;
+
 export function mulberry32(seed: number): Rng {
   let value = seed >>> 0;
   return () => {

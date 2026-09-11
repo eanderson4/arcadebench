@@ -1,5 +1,12 @@
 import { mulberry32 } from './rng';
 import type { Rng } from './rng';
+import { normalizeMaltlineInput } from './input';
+import { MALTLINE_RULES } from './rules';
+import {
+  normalizeMaltlineRunContext,
+  normalizeMaltlineScenario,
+  type NormalizedMaltlineScenario,
+} from './scenario';
 import type {
   CustomerState,
   FlavorId,
@@ -15,13 +22,7 @@ import type {
 } from './types';
 import { IDLE_INPUT } from './types';
 
-export const FIXED_SCALE = 1024;
-const INITIAL_SPAWN_DELAY_TICKS = 30;
-const STAGE_CLEAR_BONUS_PER_LIFE = 250;
-const SERVE_BASE_SCORE = 100;
-const SERVE_STREAK_STEP = 10;
-const SERVE_STREAK_CAP = 10;
-const JAR_CATCH_SCORE = 25;
+export const FIXED_SCALE = MALTLINE_RULES.fixedScale;
 
 /**
  * Deterministic fixed-tick simulation for one stage. The tick order is part
@@ -48,9 +49,12 @@ export class MaltlineEngine {
   private washing: number[] = [];
   private jarsAvailable: number;
   private spawned = 0;
-  private served = 0;
+  private serviceActions = 0;
+  private fulfilled = 0;
+  private walkouts = 0;
+  private resolved = 0;
   private exited = 0;
-  private spawnCountdown = INITIAL_SPAWN_DELAY_TICKS;
+  private spawnCountdown: number = MALTLINE_RULES.initialSpawnDelayTicks;
   private nextId = 1;
   private readonly rng: Rng;
 
@@ -62,26 +66,30 @@ export class MaltlineEngine {
   private readonly returnSpeedFp: number;
   private readonly resumeExitThresholdFp: number;
 
-  constructor(readonly scenario: MaltlineScenario, run?: RunContext) {
-    if (scenario.lanes < 1) throw new Error('Maltline scenario needs at least one lane');
-    if (scenario.stations.length < 1) throw new Error('Maltline scenario needs at least one station');
-    this.lives = run ? run.lives : scenario.lives;
-    this.score = run ? run.score : 0;
-    this.jarsAvailable = scenario.jarPoolSize;
-    this.rng = mulberry32(scenario.seed);
-    this.lanesFp = scenario.lanes;
-    this.laneLengthFp = Math.round(scenario.laneLength * FIXED_SCALE);
-    this.marchSpeedFp = Math.round(scenario.marchSpeed * FIXED_SCALE);
-    this.leaveSpeedFp = Math.round(scenario.leaveSpeed * FIXED_SCALE);
-    this.slideSpeedFp = Math.round(scenario.slideSpeed * FIXED_SCALE);
-    this.returnSpeedFp = Math.round(scenario.returnSpeed * FIXED_SCALE);
+  readonly scenario: NormalizedMaltlineScenario;
+
+  constructor(scenario: MaltlineScenario, run?: RunContext) {
+    this.scenario = normalizeMaltlineScenario(scenario);
+    const normalizedRun = normalizeMaltlineRunContext(run, this.scenario);
+    this.lives = normalizedRun.lives;
+    if (this.lives === 0) this.status = 'lost';
+    this.score = normalizedRun.score;
+    this.jarsAvailable = this.scenario.jarPoolSize;
+    this.rng = mulberry32(this.scenario.seed);
+    this.lanesFp = this.scenario.lanes;
+    this.laneLengthFp = Math.round(this.scenario.laneLength * FIXED_SCALE);
+    this.marchSpeedFp = Math.round(this.scenario.marchSpeed * FIXED_SCALE);
+    this.leaveSpeedFp = Math.round(this.scenario.leaveSpeed * FIXED_SCALE);
+    this.slideSpeedFp = Math.round(this.scenario.slideSpeed * FIXED_SCALE);
+    this.returnSpeedFp = Math.round(this.scenario.returnSpeed * FIXED_SCALE);
     this.resumeExitThresholdFp = Math.round(
-      scenario.resumeExitThreshold * scenario.laneLength * FIXED_SCALE,
+      this.scenario.resumeExitThreshold * this.scenario.laneLength * FIXED_SCALE,
     );
   }
 
   setInput(input: MaltlineInput): void {
-    this.input = { ...input };
+    if (this.status !== 'running') return;
+    this.input = normalizeMaltlineInput(input);
   }
 
   snapshot(): MaltlineState {
@@ -105,7 +113,10 @@ export class MaltlineEngine {
       washing: [...this.washing],
       jarsAvailable: this.jarsAvailable,
       spawned: this.spawned,
-      served: this.served,
+      serviceActions: this.serviceActions,
+      fulfilled: this.fulfilled,
+      walkouts: this.walkouts,
+      resolved: this.resolved,
       exited: this.exited,
       spawnCountdown: this.spawnCountdown,
       currentInput: { ...this.input },
@@ -119,8 +130,11 @@ export class MaltlineEngine {
     this.applyInput(events);
     this.spawn(events);
     this.moveCustomers(events);
+    if (this.status !== 'running') return { state: this.snapshot(), events };
     this.moveSlides(events);
+    if (this.status !== 'running') return { state: this.snapshot(), events };
     this.moveJars(events);
+    if (this.status !== 'running') return { state: this.snapshot(), events };
     this.tickWashing();
     this.checkStageCleared(events);
     return { state: this.snapshot(), events };
@@ -189,6 +203,9 @@ export class MaltlineEngine {
       flavor,
       phase: 'marching',
       timer: 0,
+      fulfilled: false,
+      requeues: 0,
+      catchBonusEligible: false,
       exitAfterDrink: false,
     };
     this.customers.push(customer);
@@ -202,18 +219,32 @@ export class MaltlineEngine {
 
   private moveCustomers(events: GameEvent[]): void {
     const remaining: CustomerState[] = [];
-    for (const customer of this.customers) {
+    for (let index = 0; index < this.customers.length; index++) {
+      const customer = this.customers[index]!;
       if (customer.phase === 'marching') {
         customer.x -= this.marchSpeedFp;
         if (customer.x <= 0) {
           events.push({ tick: this.tickNumber, type: 'walkout', customerId: customer.id, lane: customer.lane });
+          this.walkouts++;
+          this.resolved++;
           this.loseLife('walkout', events);
+          if (this.status === 'lost') {
+            remaining.push(...this.customers.slice(index + 1));
+            break;
+          }
           continue;
         }
       } else if (customer.phase === 'drinking') {
         customer.timer--;
         if (customer.timer <= 0) {
-          this.jars.push({ id: this.nextId++, lane: customer.lane, x: customer.x });
+          this.jars.push({
+            id: this.nextId++,
+            customerId: customer.id,
+            lane: customer.lane,
+            x: customer.x,
+            catchBonusEligible: customer.catchBonusEligible,
+          });
+          customer.catchBonusEligible = false;
           events.push({ tick: this.tickNumber, type: 'jar_returned', customerId: customer.id, lane: customer.lane });
           customer.phase = customer.exitAfterDrink ? 'leaving' : 'marching';
         }
@@ -222,6 +253,7 @@ export class MaltlineEngine {
         if (customer.x >= this.laneLengthFp) {
           events.push({ tick: this.tickNumber, type: 'customer_exited', customerId: customer.id });
           this.exited++;
+          this.resolved++;
           continue;
         }
       }
@@ -232,7 +264,8 @@ export class MaltlineEngine {
 
   private moveSlides(events: GameEvent[]): void {
     const remaining: SlideState[] = [];
-    for (const slide of this.slides) {
+    for (let index = 0; index < this.slides.length; index++) {
+      const slide = this.slides[index]!;
       slide.x += this.slideSpeedFp;
       // The shake reaches customers in increasing-x order; the first matching
       // one it has passed is the closest to the counter.
@@ -243,12 +276,25 @@ export class MaltlineEngine {
         if (target === null || customer.x < target.x) target = customer;
       }
       if (target !== null) {
+        const firstFulfillment = !target.fulfilled;
         target.phase = 'drinking';
         target.timer = this.scenario.drinkTicks;
-        target.exitAfterDrink = target.x >= this.resumeExitThresholdFp;
-        this.served++;
-        this.score += SERVE_BASE_SCORE + SERVE_STREAK_STEP * Math.min(this.streak, SERVE_STREAK_CAP);
-        this.streak++;
+        const mayRequeue = target.x < this.resumeExitThresholdFp
+          && target.requeues < MALTLINE_RULES.maximumRequeuesPerCustomer;
+        target.exitAfterDrink = !mayRequeue;
+        if (mayRequeue) target.requeues++;
+        target.fulfilled = true;
+        target.catchBonusEligible = firstFulfillment;
+        this.serviceActions++;
+        const points = firstFulfillment
+          ? MALTLINE_RULES.serveBaseScore
+            + MALTLINE_RULES.serveStreakStep * Math.min(this.streak, MALTLINE_RULES.serveStreakCap)
+          : 0;
+        if (firstFulfillment) {
+          this.fulfilled++;
+          this.score += points;
+          this.streak++;
+        }
         events.push({
           tick: this.tickNumber,
           type: 'served',
@@ -256,12 +302,18 @@ export class MaltlineEngine {
           lane: slide.lane,
           flavor: slide.flavor,
           exitAfterDrink: target.exitAfterDrink,
+          firstFulfillment,
+          points,
         });
         continue;
       }
       if (slide.x > this.laneLengthFp) {
         events.push({ tick: this.tickNumber, type: 'shake_smashed', lane: slide.lane, flavor: slide.flavor });
         this.loseLife('shake_smashed', events);
+        if (this.status === 'lost') {
+          remaining.push(...this.slides.slice(index + 1));
+          break;
+        }
         continue;
       }
       remaining.push(slide);
@@ -271,16 +323,28 @@ export class MaltlineEngine {
 
   private moveJars(events: GameEvent[]): void {
     const remaining: JarState[] = [];
-    for (const jar of this.jars) {
+    for (let index = 0; index < this.jars.length; index++) {
+      const jar = this.jars[index]!;
       jar.x -= this.returnSpeedFp;
       if (jar.x <= 0) {
         if (this.playerLane === jar.lane) {
           this.washing.push(this.scenario.washTicks);
-          this.score += JAR_CATCH_SCORE;
-          events.push({ tick: this.tickNumber, type: 'jar_caught', lane: jar.lane });
+          const points = jar.catchBonusEligible ? MALTLINE_RULES.jarCatchScore : 0;
+          this.score += points;
+          events.push({
+            tick: this.tickNumber,
+            type: 'jar_caught',
+            customerId: jar.customerId,
+            lane: jar.lane,
+            points,
+          });
         } else {
           events.push({ tick: this.tickNumber, type: 'jar_smashed', lane: jar.lane });
           this.loseLife('jar_smashed', events);
+          if (this.status === 'lost') {
+            remaining.push(...this.jars.slice(index + 1));
+            break;
+          }
         }
         continue;
       }
@@ -302,10 +366,10 @@ export class MaltlineEngine {
   }
 
   private loseLife(reason: LifeLossReason, events: GameEvent[]): void {
-    this.lives--;
+    this.lives = Math.max(0, this.lives - 1);
     this.streak = 0;
     events.push({ tick: this.tickNumber, type: 'life_lost', reason, lives: this.lives });
-    if (this.lives <= 0) {
+    if (this.lives === 0) {
       this.status = 'lost';
       events.push({ tick: this.tickNumber, type: 'game_lost' });
     }
@@ -314,8 +378,9 @@ export class MaltlineEngine {
   private checkStageCleared(events: GameEvent[]): void {
     if (this.status !== 'running') return;
     if (this.spawned < this.scenario.customerCount) return;
+    if (this.resolved < this.scenario.customerCount) return;
     if (this.customers.length > 0 || this.slides.length > 0 || this.jars.length > 0) return;
-    const bonus = STAGE_CLEAR_BONUS_PER_LIFE * this.lives;
+    const bonus = MALTLINE_RULES.stageClearBonusPerLife * this.lives;
     this.score += bonus;
     this.status = 'won';
     events.push({ tick: this.tickNumber, type: 'stage_cleared', bonus });

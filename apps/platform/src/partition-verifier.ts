@@ -10,7 +10,7 @@ import {
   type PartitionScenario,
   type PartitionState,
   type ReplayTick,
-} from '@arcadebench/partition';
+} from '@arcadebench/partition/verifier';
 import { ApiError, requiredObject } from './http';
 
 const DIRECTIONS = new Set(['up', 'down', 'left', 'right', 'idle']);
