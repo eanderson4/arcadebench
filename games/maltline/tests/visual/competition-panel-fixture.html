@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0c2f25" />
+    <title>Maltline competition panel fixture</title>
+    <link rel="stylesheet" href="../../src/viewer/style.css" />
+    <style>
+      .competition-fixture-counter {
+        min-height: 540px;
+        display: grid;
+        place-items: center;
+        border-radius: 14px;
+        background:
+          linear-gradient(rgba(7, 26, 20, 0.45), rgba(7, 26, 20, 0.72)),
+          repeating-linear-gradient(90deg, #12503e 0 150px, #0f4636 150px 300px);
+        color: #9fc4b2;
+        letter-spacing: 0.16em;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topline">
+        <span class="brand">ARCADEBENCH <i>/</i> MALTLINE <em>prototype</em></span>
+        <span class="tagline">slide shakes · catch jars · keep the line moving</span>
+      </header>
+      <div class="stage-wrap competition-fixture-counter" aria-hidden="true">COUNTER FLOOR</div>
+      <button id="competition-opener" type="button">Open competition</button>
+      <div id="competition-host"></div>
+    </main>
+    <script type="module" src="./competition-panel-fixture.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,123 @@
+import type { MaltlineScenario } from '../core/types';
+
+/**
+ * Campaign generation 1, retained as immutable input for the historical
+ * EXP-021 matrix after its winning candidate became generation 2.
+ */
+const BASE_GENERATION_1 = {
+  ticksPerSecond: 60,
+  laneLength: 100,
+  jarPoolSize: 5,
+  blendTicks: 45,
+  washTicks: 120,
+  drinkTicks: 60,
+  spawnIntervalTicks: 170,
+  spawnAccelerationTicks: 4,
+  spawnIntervalFloorTicks: 80,
+  marchSpeed: 0.1,
+  leaveSpeed: 0.5,
+  slideSpeed: 1.6,
+  returnSpeed: 1.2,
+  resumeExitThreshold: 0.5,
+  stationRepeatTicks: 5,
+  laneRepeatTicks: 5,
+  lives: 3,
+} as const;
+
+function freezeScenario(scenario: MaltlineScenario): Readonly<MaltlineScenario> {
+  return Object.freeze({ ...scenario, stations: Object.freeze([...scenario.stations]) });
+}
+
+export const EXP_021_BASELINE_CAMPAIGN: readonly Readonly<MaltlineScenario>[] = Object.freeze([
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-01-first-pour',
+    name: 'First Pour',
+    stations: ['vanilla'],
+    lanes: 2,
+    customerCount: 8,
+    spawnIntervalTicks: 200,
+    marchSpeed: 0.08,
+    seed: 1101,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-02-two-tap',
+    name: 'Two-Tap',
+    stations: ['vanilla', 'chocolate'],
+    lanes: 2,
+    customerCount: 10,
+    seed: 1102,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-03-three-windows',
+    name: 'Three Windows',
+    stations: ['vanilla', 'chocolate', 'strawberry'],
+    lanes: 3,
+    customerCount: 12,
+    seed: 1103,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-04-lunch-rush',
+    name: 'Lunch Rush',
+    stations: ['vanilla', 'chocolate', 'strawberry'],
+    lanes: 3,
+    customerCount: 14,
+    spawnIntervalTicks: 150,
+    spawnAccelerationTicks: 5,
+    marchSpeed: 0.11,
+    seed: 1104,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-05-jar-shortage',
+    name: 'Jar Shortage',
+    stations: ['vanilla', 'chocolate', 'strawberry'],
+    lanes: 3,
+    customerCount: 14,
+    jarPoolSize: 4,
+    washTicks: 160,
+    seed: 1105,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-06-thick-shakes',
+    name: 'Thick Shakes',
+    stations: ['vanilla', 'chocolate', 'strawberry'],
+    lanes: 3,
+    customerCount: 12,
+    blendTicks: 75,
+    spawnIntervalTicks: 160,
+    marchSpeed: 0.09,
+    seed: 1106,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-07-happy-hour',
+    name: 'Happy Hour',
+    stations: ['vanilla', 'chocolate', 'strawberry'],
+    lanes: 3,
+    customerCount: 18,
+    spawnIntervalTicks: 120,
+    spawnIntervalFloorTicks: 55,
+    marchSpeed: 0.12,
+    jarPoolSize: 6,
+    seed: 1107,
+  }),
+  freezeScenario({
+    ...BASE_GENERATION_1,
+    id: 'maltline-08-closing-time',
+    name: 'Closing Time',
+    stations: ['vanilla', 'chocolate', 'strawberry'],
+    lanes: 3,
+    customerCount: 20,
+    spawnIntervalTicks: 110,
+    spawnIntervalFloorTicks: 50,
+    marchSpeed: 0.13,
+    jarPoolSize: 6,
+    resumeExitThreshold: 0.55,
+    seed: 1108,
+  }),
+]);

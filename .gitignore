@@ -18,6 +18,10 @@ coverage/
 runs/
 artifacts/
 
+# Browser visual-test run metadata and failure artifacts; goldens are tracked.
+/test-results/
+games/maltline/test-results/
+
 # Hardware CAD: Python env and generated outputs
 hardware/.venv/
 hardware/out/

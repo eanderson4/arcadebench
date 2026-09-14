@@ -19,6 +19,7 @@
     "directory": "./dist/site",
     "binding": "ASSETS",
     "run_worker_first": true,
+    "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
   "d1_databases": [
@@ -52,6 +53,14 @@
       "namespace_id": "8172602",
       "simple": {
         "limit": 12,
+        "period": 60
+      }
+    },
+    {
+      "name": "MALTLINE_ADMISSION_RATE_LIMITER",
+      "namespace_id": "8172603",
+      "simple": {
+        "limit": 60,
         "period": 60
       }
     }

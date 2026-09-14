@@ -15,6 +15,14 @@ export default defineConfig({
         },
         d1Databases: ['DB'],
         r2Buckets: ['REPLAYS'],
+        ratelimits: {
+          MALTLINE_ADMISSION_RATE_LIMITER: {
+            namespace_id: '8172603',
+            // Route tests inject exact outcomes; keep the shared workerd binding
+            // high enough that unrelated integration cases cannot exhaust it.
+            simple: { limit: 10_000, period: 60 },
+          },
+        },
         serviceBindings: {
           ASSETS: () => new Response('test asset', { status: 200 }),
         },

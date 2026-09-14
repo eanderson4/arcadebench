@@ -1,0 +1,388 @@
+.human-lab {
+  align-items: flex-start;
+}
+
+.human-lab .shell {
+  width: min(960px, 96vw);
+  gap: 8px;
+  padding: 12px 0 16px;
+}
+
+.human-lab .competition-trigger {
+  display: none !important;
+}
+
+.human-lab__banner {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 13px;
+  border: 1px solid rgba(242, 140, 180, 0.46);
+  border-radius: 10px;
+  background:
+    repeating-linear-gradient(-45deg, rgba(242, 140, 180, 0.07) 0 8px, transparent 8px 16px),
+    rgba(5, 25, 18, 0.72);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.human-lab__banner strong::before {
+  content: "●";
+  margin-right: 8px;
+  color: var(--accent);
+}
+
+.human-lab__progress {
+  flex: 0 0 auto;
+  color: var(--dim);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-align: right;
+}
+
+.human-lab__stop {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 5px 9px;
+  border: 1px solid rgba(243, 233, 210, 0.38);
+  border-radius: 7px;
+  background: rgba(4, 20, 14, 0.72);
+  color: var(--ink);
+  font: 800 9px "Maltline UI", system-ui, sans-serif;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.human-lab__stop:hover {
+  border-color: var(--accent);
+}
+
+.human-lab__stop:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.human-lab .overlay-card {
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.human-lab__actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  text-align: left;
+}
+
+.human-lab__actions--centered {
+  justify-items: center;
+  text-align: center;
+}
+
+.human-lab__consent {
+  display: grid;
+  gap: 12px;
+}
+
+.human-lab__disclosure {
+  display: grid;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid rgba(243, 233, 210, 0.16);
+  border-radius: 9px;
+  background: rgba(4, 20, 14, 0.38);
+}
+
+.human-lab__disclosure p {
+  margin: 0;
+  color: var(--dim);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.human-lab__consent-field {
+  display: grid;
+  gap: 5px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.human-lab__consent-field small {
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.human-lab__consent-field input {
+  min-height: 44px;
+  padding: 9px 11px;
+  border: 1px solid rgba(243, 233, 210, 0.28);
+  border-radius: 7px;
+  background: rgba(2, 15, 10, 0.62);
+  color: var(--ink);
+  font: 700 13px "Maltline UI", system-ui, sans-serif;
+}
+
+.human-lab__affirmation {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  align-items: start;
+  gap: 9px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.human-lab__affirmation input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.human-lab__consent-field input:focus-visible,
+.human-lab__affirmation input:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.human-lab__consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.human-lab__button,
+.human-lab__download {
+  display: inline-flex;
+  min-width: 190px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+  padding: 10px 16px;
+  border: 1px solid rgba(242, 140, 180, 0.72);
+  border-radius: 9px;
+  background: var(--accent);
+  color: #09261d;
+  font: 800 11px "Maltline UI", system-ui, sans-serif;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.human-lab__button--quiet {
+  border-color: rgba(243, 233, 210, 0.25);
+  background: rgba(4, 20, 14, 0.48);
+  color: var(--ink);
+}
+
+.human-lab__button:hover,
+.human-lab__download:hover {
+  border-color: var(--ink);
+}
+
+.human-lab__button:focus-visible,
+.human-lab__download:focus-visible,
+.human-lab__choice input:focus-visible + span,
+.human-lab__text-question textarea:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.human-lab__survey,
+.human-lab__comparison {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.human-lab__round-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(242, 140, 180, 0.24);
+  border-radius: 11px;
+  background: rgba(7, 26, 20, 0.28);
+}
+
+.human-lab__round-card h2 {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.human-lab__question {
+  display: grid;
+  grid-template-columns: minmax(145px, 1fr) auto;
+  align-items: center;
+  gap: 9px 18px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(243, 233, 210, 0.14);
+  border-radius: 9px;
+  background: rgba(4, 20, 14, 0.38);
+}
+
+.human-lab__question legend {
+  float: left;
+  padding: 0;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.human-lab__choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.human-lab__choices--scale .human-lab__choice span {
+  min-width: 44px;
+}
+
+.human-lab__choice {
+  position: relative;
+}
+
+.human-lab__choice input {
+  position: absolute;
+  opacity: 0;
+}
+
+.human-lab__choice span {
+  display: inline-flex;
+  min-width: 74px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 9px;
+  border: 1px solid rgba(243, 233, 210, 0.2);
+  border-radius: 7px;
+  background: rgba(7, 26, 20, 0.62);
+  color: var(--dim);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.human-lab__choice input:checked + span {
+  border-color: var(--accent);
+  background: rgba(242, 140, 180, 0.18);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.human-lab__text-question {
+  display: grid;
+  gap: 6px;
+  padding: 9px 12px;
+  border: 1px solid rgba(243, 233, 210, 0.14);
+  border-radius: 9px;
+  background: rgba(4, 20, 14, 0.38);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.human-lab__text-question textarea {
+  width: 100%;
+  min-height: 58px;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid rgba(243, 233, 210, 0.25);
+  border-radius: 7px;
+  background: rgba(2, 15, 10, 0.62);
+  color: var(--ink);
+  font: 400 13px "Maltline UI", system-ui, sans-serif;
+  line-height: 1.35;
+}
+
+.human-lab__text-question textarea:invalid:not(:focus):not(:placeholder-shown) {
+  border-color: var(--accent);
+}
+
+.human-lab__error {
+  width: min(620px, calc(100vw - 36px));
+  margin: max(40px, 12vh) auto;
+  padding: 28px;
+  border: 1px solid rgba(242, 140, 180, 0.54);
+  border-radius: 14px;
+  background: rgba(7, 30, 23, 0.96);
+  box-shadow: 0 24px 60px var(--shadow);
+  text-align: center;
+}
+
+.human-lab__error p {
+  color: var(--dim);
+}
+
+@media (min-width: 700px) and (max-width: 760px) {
+  .human-lab .shell {
+    padding-top: 8px;
+  }
+
+  .human-lab__banner {
+    min-height: 38px;
+    padding: 6px 10px;
+    font-size: 9px;
+  }
+
+  .human-lab__progress {
+    font-size: 9px;
+  }
+
+  .human-lab__stop {
+    min-height: 30px;
+    padding-inline: 7px;
+    font-size: 8px;
+  }
+
+  .human-lab .overlay-card {
+    width: calc(100% - 34px);
+    padding: 18px 24px;
+  }
+
+  .human-lab .overlay-card h1 {
+    font-size: 25px;
+  }
+
+  .human-lab .stage-wrap:has(.human-lab__survey) {
+    min-height: min(570px, calc(100vh - 130px));
+  }
+
+  .human-lab__choices {
+    justify-content: flex-end;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .human-lab *,
+  .human-lab *::before,
+  .human-lab *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

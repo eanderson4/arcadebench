@@ -3,13 +3,19 @@ import {
   PARTITION_GAME_VERSION,
   createPartitionCampaign,
   type DifficultyId,
-} from '@arcadebench/partition';
+} from '@arcadebench/partition/verifier';
 import { canonicalStringify, randomId, randomSeed, sha256Hex } from './crypto';
 import type { ArcadeBenchEnv } from './env';
 import { ApiError, assertSameOrigin, json, readJson, requiredObject, requiredString } from './http';
 import { moderateCallsign } from './moderation';
 import { isDifficulty, verifyPartitionReplay, verifyRankedScore, type RankedChallenge } from './partition-verifier';
 import { anonymousSession, attachSessionCookie, enforceRateLimit, type AnonymousSession } from './session';
+import {
+  MALTLINE_API_PREFIX,
+  cleanupExpiredMaltlineProofs,
+  handleMaltlineApi,
+  reconcileMaltlineProofs,
+} from './maltline-worker';
 
 const CANONICAL_HOST = 'arcadebench.org';
 const API_PREFIX = `/api/v1/games/${PARTITION_GAME_ID}`;
@@ -525,6 +531,9 @@ async function handleVote(
 async function handleApi(request: Request, env: ArcadeBenchEnv): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
+  if (path === MALTLINE_API_PREFIX || path.startsWith(`${MALTLINE_API_PREFIX}/`)) {
+    return handleMaltlineApi(request, env);
+  }
   const replayMatch = path.match(new RegExp(`^${API_PREFIX}/replays/([^/]+)$`, 'u'));
   if (replayMatch && (request.method === 'GET' || request.method === 'HEAD')) {
     return loadReplay(request, env, decodeSegment(replayMatch[1]!));
@@ -568,7 +577,7 @@ async function handleRequest(request: Request, env: ArcadeBenchEnv): Promise<Res
   if (replayViewerMatch) {
     const id = decodeSegment(replayViewerMatch[1]!);
     await replayRow(env, id);
-    const viewer = new URL('/', url.origin);
+    const viewer = new URL('/partition/', url.origin);
     viewer.searchParams.set('mode', 'replay');
     viewer.searchParams.set('replay', `${API_PREFIX}/replays/${id}`);
     return Response.redirect(viewer.toString(), 302);
@@ -581,22 +590,56 @@ export default {
     try {
       return await handleRequest(request, env);
     } catch (error) {
-      if (error instanceof ApiError) return json({ error: error.message }, error.status, { 'cache-control': 'no-store' });
+      if (error instanceof ApiError) {
+        const body = error.code === undefined
+          ? { error: error.message }
+          : { error: error.message, code: error.code };
+        const headers = new Headers(error.headers);
+        headers.set('cache-control', 'no-store');
+        const response = json(body, error.status, headers);
+        return request.method === 'HEAD' ? new Response(null, response) : response;
+      }
       console.error('Unhandled ArcadeBench platform error', error instanceof Error ? error.message : 'unknown');
-      return json({ error: 'Arcade services hit an unexpected error.' }, 500, { 'cache-control': 'no-store' });
+      const response = json(
+        { error: 'Arcade services hit an unexpected error.' },
+        500,
+        { 'cache-control': 'no-store' },
+      );
+      return request.method === 'HEAD' ? new Response(null, response) : response;
     }
   },
 
   async scheduled(_controller: ScheduledController, env: ArcadeBenchEnv): Promise<void> {
     const now = new Date().toISOString();
     const staleRateWindow = Date.now() - 24 * 60 * 60 * 1000;
-    await cleanupExpiredReplayData(env, new Date(now));
-    await env.DB.batch([
+    const failures: string[] = [];
+    const maintenance = async (name: string, task: () => Promise<unknown>): Promise<void> => {
+      try {
+        await task();
+      } catch (error) {
+        failures.push(name);
+        console.error(
+          `ArcadeBench scheduled maintenance failed: ${name}`,
+          error instanceof Error ? error.message : 'unknown',
+        );
+      }
+    };
+    await maintenance('maltline-reconciliation', () => reconcileMaltlineProofs(env, new Date(now)));
+    await maintenance('maltline-retention', () => cleanupExpiredMaltlineProofs(env, new Date(now)));
+    await maintenance('partition-retention', () => cleanupExpiredReplayData(env, new Date(now)));
+    await maintenance('database-expiry', () => env.DB.batch([
       env.DB.prepare('DELETE FROM rate_windows WHERE window_start < ?').bind(staleRateWindow),
       env.DB.prepare(`
         DELETE FROM run_challenges
         WHERE expires_at <= ? AND consumed_score_id IS NULL
       `).bind(now),
-    ]);
+      env.DB.prepare(`
+        DELETE FROM maltline_run_challenges
+        WHERE expires_at <= ? AND consumed_score_id IS NULL
+      `).bind(now),
+    ]));
+    if (failures.length > 0) {
+      throw new Error(`Scheduled maintenance failed: ${failures.join(', ')}`);
+    }
   },
 };

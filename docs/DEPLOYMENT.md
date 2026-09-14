@@ -1,9 +1,9 @@
 # ArcadeBench deployment
 
-ArcadeBench deploys as a Cloudflare Worker with Static Assets. The first
-production artifact exposes Partition at both `/` and its permanent
-`/partition/` route. When the cross-game launcher replaces `/`, existing game
-links will continue to work. Production is live at <https://arcadebench.org>.
+ArcadeBench deploys as a Cloudflare Worker with Static Assets. The root `/`
+serves the cross-game launcher; Partition and Maltline keep permanent direct
+routes at `/partition/` and `/maltline/`. Production is live at
+<https://arcadebench.org>.
 
 ## Local production preview
 
@@ -12,9 +12,21 @@ npm install
 npm run preview:site
 ```
 
-`npm run build:site` builds Partition and assembles the deployable artifact at
-`dist/site`. The assembly step also promotes the Vite entry page to `/`, keeps
-`/partition/`, and adds the production headers and legacy viewer redirects.
+`npm run build:site` builds both games and selectively assembles the deployable
+artifact at `dist/site`. The assembly step installs the static launcher at `/`,
+keeps Partition's entry and root-scoped assets under `/partition/` and
+`/assets/`, installs Maltline's entry, hashed assets, and font-license notice
+under `/maltline/`, and adds the policy pages, production headers, and legacy
+viewer redirects. The launcher does not import or mount either game runtime.
+
+`npm run test:site:wrangler-local` starts the installed Wrangler version on an
+ephemeral local port and probes the combined Worker and Static Assets runtime.
+Cache policy follows the incoming request pathname, as Cloudflare `_headers`
+matching does: `/404.html` itself is `no-store`, while an arbitrary missing or
+hidden-control pathname that displays the custom page uses
+`public, max-age=0, must-revalidate`. A 404 status alone does not select the
+`/404.html` cache rule. This local check complements, but does not replace,
+post-deploy edge verification.
 
 ## GitHub Actions
 

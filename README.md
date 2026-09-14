@@ -9,7 +9,10 @@ controllers, inspect replays, and compare results.
 
 <a href="https://mathvsvibes.com"><img src="games/partition/public/math-vs-vibes-badge.svg" width="206" alt="A Math vs Vibes project"></a>
 
-**[Play Partition at arcadebench.org →](https://arcadebench.org/)**
+**[Choose a game at arcadebench.org →](https://arcadebench.org/)**
+
+[Play Partition](https://arcadebench.org/partition/) ·
+[Play Maltline](https://arcadebench.org/maltline/)
 
 ArcadeBench is a growing cabinet of inspectable games. Humans play directly;
 language models play through small structured SDKs or build resident
@@ -28,7 +31,7 @@ expire after five days; verified leaderboard summaries and replay hashes remain.
 Read the [plain-language privacy promise](docs/PRIVACY.md) or the
 [live version](https://arcadebench.org/privacy/).
 
-## The first cabinet: Partition
+## Cabinet 01: Partition
 
 Partition is a real-time control game inspired by the territory-capture arcade
 tradition. Trace boundaries, isolate moving anomalies, and stabilize the field
@@ -43,26 +46,50 @@ before the clock runs out.
 - **Replay Lab:** scrub human or model runs tick by tick and inspect every
   control signal.
 
-Partition is playable online and locally today. `dev-0` is intentionally
+Partition is playable at [arcadebench.org/partition/](https://arcadebench.org/partition/)
+and locally today. `dev-0` is intentionally
 unfrozen, so its results are development evidence rather than permanent
 leaderboard entries.
 
+## Cabinet 02: Maltline
+
+Maltline is a Tapper-lineage shake-counter game. Match each order, blend and
+slide the right shake, then face its window to catch the returning jar.
+
+- **Human arcade shift:** eight stages, four lives, and escalating order, jar,
+  and window pressure.
+- **Deterministic replay:** fixed-tick inputs reproduce each stage and retained
+  Shift Board proofs can be inspected locally.
+- **Current status:** generation 2 remains a gameplay prototype pending broader
+  human and reference-device evidence. It requires a keyboard and a window at
+  least 700 CSS pixels wide.
+
+Play the prototype at
+[arcadebench.org/maltline/](https://arcadebench.org/maltline/).
+
 ## Play
 
-Open **[arcadebench.org](https://arcadebench.org/)** to start an arcade run or
-explore the field catalog.
+Open **[arcadebench.org](https://arcadebench.org/)** to choose a cabinet. The
+launcher does not start or resume gameplay; Partition and Maltline keep their
+permanent direct routes at `/partition/` and `/maltline/`.
 
 For local development, use Node.js 22 or newer:
 
 ```sh
 npm install
 npm run dev:partition
+# In a second terminal, or instead of Partition:
+npm run dev --workspace=@arcadebench/maltline
 ```
 
-Open <http://127.0.0.1:5183/src/viewer/?seed=11> and choose **Play**. Arrow
-keys move along walls; hold Space with a direction to cut through the field.
-**Fit Screen** letterboxes the full 3:2 playfield, and **Watch Run** opens the
-attempt in Replay Lab.
+For Partition, open <http://127.0.0.1:5183/src/viewer/?seed=11> and choose
+**Play**. Arrow keys move along walls; hold Space with a direction to cut
+through the field. **Fit Screen** letterboxes the full 3:2 playfield, and
+**Watch Run** opens the attempt in Replay Lab.
+
+For Maltline, open <http://127.0.0.1:5184/src/viewer/> in a keyboard-equipped
+window at least 700 CSS pixels wide. Its title and instructions teach the
+match, blend, slide, and catch loop before Stage 1 begins.
 
 Run the complete repository check with:
 
@@ -93,8 +120,10 @@ packages/bench-core/   shared contracts, run records, protocol validation
 packages/arcade-sdk/   game-facing leaderboards, replays, and social client
 packages/harness/      provider-neutral model and tool orchestration
 games/partition/       Partition simulation, controller SDK, and viewer
+games/maltline/        Maltline deterministic engine, proof core, and viewer
 apps/cli/              family-wide command line interface
 apps/board/            cross-game run browser and leaderboard
+deploy/                static launcher, policy pages, and Worker entry
 ```
 
 The [architecture](docs/ARCHITECTURE.md), [run format](docs/RUN-FORMAT.md),

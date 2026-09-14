@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "inlineAssets": [
+    {
+      "id": "maltline-favicon-v1",
+      "element": "link[rel=icon]",
+      "mediaType": "image/svg+xml",
+      "href": "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><rect width=%2264%22 height=%2264%22 rx=%2212%22 fill=%22%230c2f25%22/><path d=%22M18 14h28l-3 40H21z%22 fill=%22%23f0b940%22/><path d=%22M26 9h12v25H26z%22 fill=%22%23f8f1df%22/></svg>"
+    }
+  ],
+  "fontBundle": {
+    "id": "noto-sans-5.3.0-latin",
+    "sourcePackage": "@fontsource/noto-sans",
+    "sourceVersion": "5.3.0",
+    "license": "OFL-1.1",
+    "notice": {
+      "sourcePackagePath": "LICENSE",
+      "publicPath": "/maltline/third-party-licenses/noto-sans-OFL-1.1.txt",
+      "byteLength": 4518,
+      "sha256": "54ec7b5a35310ad66f9f3091426f7028484cbf9ae1ab5da30122ee412a3009e1"
+    },
+    "files": [
+      {
+        "weight": 400,
+        "style": "normal",
+        "subset": "latin",
+        "sourcePackagePath": "files/noto-sans-latin-400-normal.woff2",
+        "byteLength": 13120,
+        "sha256": "09aee8065d25508f23a4c3d92cd777ac869c52d93fd868a88f025d888a7937d6"
+      },
+      {
+        "weight": 600,
+        "style": "normal",
+        "subset": "latin",
+        "sourcePackagePath": "files/noto-sans-latin-600-normal.woff2",
+        "byteLength": 13496,
+        "sha256": "79e274470d1c5a0118eb325e2ea6f2eb2a449336d7fde1a4f20a2f32fe1119ed"
+      },
+      {
+        "weight": 700,
+        "style": "normal",
+        "subset": "latin",
+        "sourcePackagePath": "files/noto-sans-latin-700-normal.woff2",
+        "byteLength": 13464,
+        "sha256": "e77bfe1db912f687b0319b60de158cfada67f89c8ee4f8e2bd6020f970accbfb"
+      },
+      {
+        "weight": 800,
+        "style": "normal",
+        "subset": "latin",
+        "sourcePackagePath": "files/noto-sans-latin-800-normal.woff2",
+        "byteLength": 13656,
+        "sha256": "a5650ea2e07952bc6cd44f67cea720697ac9fdc9e35f33e76ccc5004370c21a6"
+      }
+    ]
+  }
+}
