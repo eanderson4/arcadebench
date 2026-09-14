@@ -202,4 +202,4 @@ and pouring moved into the bartender's hand. Chocolate now uses a segmented
 bar silhouette. Desktop geometry keeps the 16:9 playfield inside a 1280×720
 viewport while using the available height. The reviewed 49-image ledger's
 ordered raw-PNG SHA-256 is
-`3081a3b3510661f0a631f7fd8d66d20a03d798e6a8e2c67abbcb644522aee2ef`.
+`a9296bc8c8698ea1072b118f98ff111f3d554d20a94dd27e05145d695e8a5359`.

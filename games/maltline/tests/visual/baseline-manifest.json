@@ -196,7 +196,7 @@
     },
     {
       "name": "unsupported-portrait.png",
-      "sha256": "e364229575968a6bbc1f6e84e3b4508cc687f193e22ea808a8dbc9d59118ce38"
+      "sha256": "4a1ed59eb3be12697730e2d8cc743e659e7b9428f88e6371a9d0f138381e08a9"
     },
     {
       "name": "victory.png",
@@ -207,5 +207,5 @@
       "sha256": "a2761bd769debd96a2e38bd1eb02d1c5435e43f37c504c90b40ef876df1c169f"
     }
   ],
-  "orderedRawPngSha256": "3081a3b3510661f0a631f7fd8d66d20a03d798e6a8e2c67abbcb644522aee2ef"
+  "orderedRawPngSha256": "a9296bc8c8698ea1072b118f98ff111f3d554d20a94dd27e05145d695e8a5359"
 }

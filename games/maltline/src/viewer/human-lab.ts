@@ -258,7 +258,12 @@ const renderer = new MaltlineRenderer({
 });
 renderer.setScenario(engine.scenario);
 let clock = new FixedStepClock(engine.scenario.ticksPerSecond, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS);
-let inputAdapter = new MaltlineViewerInputAdapter(engine.scenario);
+// The archived generation-2 comparison deck keeps its original wraparound
+// route so existing offline study assignments remain reproducible.
+let inputAdapter = new MaltlineViewerInputAdapter({
+  stationRepeatTicks: engine.scenario.stationRepeatTicks,
+  laneRepeatTicks: engine.scenario.laneRepeatTicks,
+});
 let observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
 const announcer = new MaltlineEventAnnouncer(shell.liveEvents);
 let surface: LabSurface = 'welcome';
@@ -576,7 +581,10 @@ function beginCurrentEngine(): void {
   const scenario = stagePackage().campaign[state.activeStage - 1]!;
   engine = new MaltlineEngine(scenario, state.activeRun);
   clock = new FixedStepClock(scenario.ticksPerSecond, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS);
-  inputAdapter = new MaltlineViewerInputAdapter(scenario);
+  inputAdapter = new MaltlineViewerInputAdapter({
+    stationRepeatTicks: scenario.stationRepeatTicks,
+    laneRepeatTicks: scenario.laneRepeatTicks,
+  });
   observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
   renderer.resetPresentation();
   renderer.setScenario(engine.scenario);

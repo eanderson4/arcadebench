@@ -387,7 +387,7 @@ test('stops before consent without saving, mounting an artifact action, or calli
   await expect(page.getByRole('heading', { name: 'NOTHING WAS SAVED' })).toBeVisible();
   expect(await page.evaluate(() => ({
     prohibited: (window as typeof window & { __labProhibitedCalls?: string[] }).__labProhibitedCalls
-      ?.filter((call) => !call.startsWith('websocket:ws://127.0.0.1:5184/')),
+      ?.filter((call) => !/^websocket:ws:\/\/127\.0\.0\.1:\d+\//u.test(call)),
     local: localStorage.length,
     session: sessionStorage.length,
     cookie: document.cookie,
@@ -421,7 +421,7 @@ test('persistent stop freezes active play and ignores later input, frames, focus
     .toMatchObject({ surface: 'stopped', engineTick: before, mappingRevealed: false });
   await expect(page.getByRole('link', { name: /Download/iu })).toHaveCount(0);
   expect(await page.evaluate(() => (window as typeof window & { __labProhibitedCalls?: string[] })
-    .__labProhibitedCalls?.filter((call) => !call.startsWith('websocket:ws://127.0.0.1:5184/'))))
+    .__labProhibitedCalls?.filter((call) => !/^websocket:ws:\/\/127\.0\.0\.1:\d+\//u.test(call))))
     .toEqual([]);
 });
 
@@ -512,7 +512,7 @@ test('keeps its local identity, mapping, services, and browser state isolated', 
     });
   expect(await page.evaluate(() => ({
     prohibited: (window as typeof window & { __labProhibitedCalls?: string[] }).__labProhibitedCalls
-      ?.filter((call) => !call.startsWith('websocket:ws://127.0.0.1:5184/')),
+      ?.filter((call) => !/^websocket:ws:\/\/127\.0\.0\.1:\d+\//u.test(call)),
     local: localStorage.length,
     session: sessionStorage.length,
     cookie: document.cookie,
@@ -736,7 +736,7 @@ test('runs both hidden orders through fresh rounds and downloads a frozen unrank
   await page.evaluate(() => window.__maltlineHumanLabTestDriver!.resume());
   await expect(page.getByRole('heading', { name: 'SETUPS REVEALED' })).toBeVisible();
   expect(await page.evaluate(() => (window as typeof window & { __labProhibitedCalls?: string[] })
-    .__labProhibitedCalls?.filter((call) => !call.startsWith('websocket:ws://127.0.0.1:5184/'))))
+    .__labProhibitedCalls?.filter((call) => !/^websocket:ws:\/\/127\.0\.0\.1:\d+\//u.test(call))))
     .toEqual([]);
 });
 

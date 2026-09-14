@@ -907,7 +907,8 @@ function fixtureMetadata(
   const visibleRegions: VisibleFixtureRegion[] = [];
   const laneObjectY = (lane: number): number => layout.laneCenterY(lane) + 13;
   for (const customer of state.customers) {
-    const x = layout.lanePx(customer.x);
+    const point = layout.project(customer.x, layout.floorY(customer.lane));
+    const x = point.x;
     visibleRegions.push({
       label: `customer-${customer.id}`,
       x: x - 17,
@@ -917,18 +918,23 @@ function fixtureMetadata(
       colors: [FIXTURE_SKIN_COLORS[(customer.id * 2 + 2) % FIXTURE_SKIN_COLORS.length]!],
     });
     if (customer.phase === 'marching') {
-      const groundY = layout.laneBottom(customer.lane) - 18;
+      const groundY = point.y;
+      const actorScale = layout.actorScale * layout.project(customer.x, 0).scale;
       const walking = !fixture.reducedMotion;
       const bob = walking ? Math.abs(Math.cos((state.tick + customer.id * 7) / 4.5)) * 2 : 0;
       const headY = groundY - 14 - bob - 28;
       const sway = fixture.reducedMotion ? 0 : Math.sin((state.tick + customer.id * 13) / 30) * 2;
-      const ticketY = Math.max(MALTLINE_RENDERER_FRAME.hudHeight + 18, headY - 30 + sway);
+      const ticketY = headY - 4 + sway;
+      const ticketX = x - 33;
+      const scaledRect = (localX: number, localY: number, width: number, height: number) => ({
+        x: x + (localX - x) * actorScale,
+        y: groundY + (localY - groundY) * actorScale,
+        width: width * actorScale,
+        height: height * actorScale,
+      });
       visibleRegions.push({
         label: `order-${customer.id}-${customer.flavor}`,
-        x: x - 22,
-        y: ticketY - 16,
-        width: 44,
-        height: 34,
+        ...scaledRect(ticketX - 22, ticketY - 16, 44, 34),
         colors: [
           FIXTURE_FLAVOR_COLORS[customer.flavor],
           MALTLINE_VISUAL_THEME.customerOrder.ticketKeyline,
@@ -937,33 +943,35 @@ function fixtureMetadata(
       });
       visibleRegions.push({
         label: `ticket-leader-${customer.id}`,
-        x: x - 3,
-        y: ticketY + 14,
-        width: 6,
-        height: 11,
+        ...scaledRect(ticketX - 3, ticketY + 14, 6, 11),
         colors: [MALTLINE_VISUAL_THEME.customerOrder.ticketConnector],
       });
     }
   }
   for (const slide of state.slides) {
-    const slideX = layout.lanePx(slide.x);
+    const point = layout.project(slide.x, layout.vesselY(slide.lane));
+    const vesselScale = 1.35 * point.scale;
     visibleRegions.push({
       label: `slide-body-${slide.id}-${slide.flavor}`,
-      x: slideX - 17,
-      y: laneObjectY(slide.lane) - 43,
-      width: 34,
-      height: 64,
+      x: point.x - 11 * vesselScale,
+      y: point.y - 42 * vesselScale,
+      width: 22 * vesselScale,
+      height: 45 * vesselScale,
       colors: [
         MALTLINE_VISUAL_THEME.outgoingShake.edge,
         FIXTURE_FLAVOR_COLORS[slide.flavor],
       ],
     });
+    const unit = layout.scenario.laneLength * FIXED_SCALE / 100;
+    const trailY = layout.vesselY(slide.lane) - 10;
+    const trailHead = layout.project(slide.x - 2 * unit, trailY);
+    const trailTail = layout.project(slide.x - 8 * unit, trailY);
     visibleRegions.push({
       label: `slide-trail-${slide.id}`,
-      x: slideX - 70,
-      y: laneObjectY(slide.lane) - 10,
-      width: 58,
-      height: 20,
+      x: Math.min(trailHead.x, trailTail.x) - 6,
+      y: Math.min(trailHead.y, trailTail.y) - 6,
+      width: Math.abs(trailHead.x - trailTail.x) + 12,
+      height: Math.abs(trailHead.y - trailTail.y) + 12,
       colors: [MALTLINE_VISUAL_THEME.outgoingShake.edge, MALTLINE_VISUAL_THEME.outgoingShake.trail],
     });
   }

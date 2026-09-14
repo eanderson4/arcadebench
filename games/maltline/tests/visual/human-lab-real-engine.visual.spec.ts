@@ -48,8 +48,8 @@ const FRESH_RUN = Object.freeze({ lives: 4, score: 0 });
 const STAGE_TICK_LIMIT = 10_000;
 const TICKS_PER_FRAME = 5;
 const KEY_BITS = Object.freeze([
-  [1, 'ArrowLeft'],
-  [2, 'ArrowRight'],
+  [1, 'KeyA'],
+  [2, 'KeyD'],
   [4, 'ArrowUp'],
   [8, 'ArrowDown'],
   [16, 'Space'],
@@ -595,7 +595,7 @@ for (const matrixCase of CASES) {
 
     const browserState = await page.evaluate(() => ({
       prohibited: (window as typeof window & { __labProhibitedCalls?: string[] })
-        .__labProhibitedCalls?.filter((call) => !call.startsWith('websocket:ws://127.0.0.1:5184/')),
+        .__labProhibitedCalls?.filter((call) => !/^websocket:ws:\/\/127\.0\.0\.1:\d+\//u.test(call)),
       local: localStorage.length,
       session: sessionStorage.length,
       cookie: document.cookie,

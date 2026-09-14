@@ -130,14 +130,14 @@ describe('P0-37 portable P108 offline artifact envelope', () => {
         logicalEntry: 'p1-08-tuning-experiment',
         source: {
           fileCount: 24,
-          sha256: '8bbae9c3def04bd142413f781e0a4415b08fb079a536a0a92bdb9f5ffd0a5c78',
+          sha256: '31cf1867f42324c816e53d88853222528bc702df68b31824430bb8b16ef3e01a',
         },
         kernel: {
           fileCount: 21,
-          sha256: '481137b6537d71035371fc01fc00cce3db2271d63dcfa41cbf11ee0afc371740',
+          sha256: '6333a4ef45ac6c85cc6700e8c0d37ad2501b06fdb72bbf1687d8a30b09f5d2d4',
         },
         build: {
-          sha256: '61f7314384bb8ff8f1b35fff526c94a9ac60bbbf9181cb5170b9246bee6ab955',
+          sha256: '6f8ace74a5d0a9f1e31ece75a58c2de791b6f41f25ee5ca6379b2200a441e380',
           toolchain: { node: process.versions.node, typescript: '7.0.2', tsx: '4.23.12' },
         },
       },
@@ -160,10 +160,10 @@ describe('P0-37 portable P108 offline artifact envelope', () => {
       .resolves.toEqual(currentEnvelope);
     const formatted = formatP108ArtifactEnvelope(currentEnvelope);
     expect(currentEnvelope.integrity.canonicalEnvelopeSha256)
-      .toBe('d0e87a3b9a3ac7d0fc9f54210df92c431d36e161cffdc4471837b329832b8411');
+      .toBe('4f7a09b02924d5698709a3c1463ffcaae9325f375e5b189b7265706408f71d0f');
     expect(Buffer.byteLength(formatted)).toBe(1_899_811);
     expect(createHash('sha256').update(formatted).digest('hex'))
-      .toBe('670a6689fc121819b8d9866b4704a977af2512a19a59b8f3e55602121a7f9d96');
+      .toBe('7378cc403f558cfee78eb82da20f0e1da01b347d2a963adc473428ce801225c3');
     expect(formatted.endsWith('\n')).toBe(true);
     expect(JSON.parse(formatted)).toEqual(currentEnvelope);
     await expect(parseP108ArtifactEnvelopeJson(formatted, { verifyCurrentSource: true }))
