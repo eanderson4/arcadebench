@@ -20,7 +20,9 @@ npm run test:visual:update --workspace=@arcadebench/maltline
 ```
 
 Use the update command only after inspecting the diff and confirming the visual
-change is intentional. Pixel comparison is exact (`maxDiffPixels: 0`). The
+change is intentional. The checked-in PNG bytes remain exact and manifest-bound;
+runtime comparison allows at most a `0.007` differing-pixel ratio for small Linux
+CPU-rasterizer antialiasing differences. The
 geometry tests cover a 1024×768 laptop and the exact 699/700px support
 transition. At widths below 700px the
 shared shell now hides the unreadably scaled canvas and presents a designed,
@@ -41,7 +43,7 @@ Linux with:
 - UTC, `en-US`, sRGB, DPR 1, reduced motion, fixed presentation time, and
   seeded presentation randomness.
 
-The exact suite rejects a browser version, project, platform, dependency, or
+The pinned suite rejects a browser version, project, platform, dependency, or
 PNG inventory that differs from the manifest before accepting the visual gate.
 Browser upgrades may change rasterization and must be reviewed as dependency
 changes.

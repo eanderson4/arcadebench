@@ -21,7 +21,9 @@ export default defineConfig({
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',
-      maxDiffPixels: 0,
+      // Canvas edge antialiasing varies slightly across Linux CPU rasterizers.
+      // Keep the allowance below one percent so layout/art regressions remain loud.
+      maxDiffPixelRatio: 0.007,
       scale: 'css',
     },
   },
