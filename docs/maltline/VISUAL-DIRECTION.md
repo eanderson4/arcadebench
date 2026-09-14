@@ -357,6 +357,7 @@ evidence of human comprehension.
 Because these production-renderer changes are visible to participants, station
 state repair artifacts use experiment revision 9 and the later truthful
 `CHAIN N` HUD exposure uses revision 10, and the later visible numeric lives
-role uses revision 11. Normalization accepts only revision 11.
+role uses revision 11. The subsequent cabinet hierarchy, contrast, and crisp-overlay
+presentation pass uses revision 12. Normalization accepts only revision 12.
 The study schema, campaign/rules/proof generations, and ranked outcomes remain
 unchanged.

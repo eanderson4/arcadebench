@@ -32,8 +32,8 @@ export const MALTLINE_PHYSICAL_INTENT_ADAPTER_FINGERPRINT_DATA = Object.freeze({
 
 function desiredCodes(input: MaltlineInput): ReadonlySet<string> {
   const codes = new Set<string>();
-  if (input.stationDir < 0) codes.add('ArrowLeft');
-  if (input.stationDir > 0) codes.add('ArrowRight');
+  if (input.stationDir < 0) codes.add('KeyA');
+  if (input.stationDir > 0) codes.add('KeyD');
   if (input.laneDir < 0) codes.add('ArrowUp');
   if (input.laneDir > 0) codes.add('ArrowDown');
   if (input.blend) codes.add('Space');
@@ -70,7 +70,13 @@ export function mediateMaltlinePhysicalIntent(
       let adapter: MaltlineViewerInputAdapter | null = null;
       let heldCodes: ReadonlySet<string> = new Set();
       const mediatedController: MaltlineController = (state, scenario) => {
-        adapter ??= new MaltlineViewerInputAdapter(scenario);
+        // Preserve the generation-2 comparison model's authored wraparound
+        // routes. The shipped viewer supplies `lanes` and clamps edge input,
+        // but these retained telemetry vectors must remain byte-compatible.
+        adapter ??= new MaltlineViewerInputAdapter({
+          stationRepeatTicks: scenario.stationRepeatTicks,
+          laneRepeatTicks: scenario.laneRepeatTicks,
+        });
         const intended = normalizeMaltlineInput(
           controller(state, scenario),
           `Physical-intent controller ${source.id} output`,

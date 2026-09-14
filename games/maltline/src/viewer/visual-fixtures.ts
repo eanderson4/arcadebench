@@ -96,7 +96,7 @@ interface VisualFixtureMetadata {
     jars: number[];
   };
   stationAction: {
-    mode: 'holding' | 'blending' | 'blocked-no-jars' | 'idle';
+    mode: 'return-to-mixer' | 'holding' | 'blending' | 'blocked-no-jars' | 'idle';
     selectedStationIndex: number;
     selectedFlavor: string;
     processingFlavor: string | null;

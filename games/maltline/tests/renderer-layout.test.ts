@@ -45,14 +45,18 @@ describe('Maltline renderer layout', () => {
     }));
 
     expect([twoLane.laneHeight, twoLane.laneCenterY(0), twoLane.laneCenterY(1)])
-      .toEqual([92, 106, 198]);
-    expect([0, 1, 2].map((lane) => threeLane.laneCenterY(lane)))
-      .toEqual([106, 198, 290]);
+      .toEqual([145, 132.5, 277.5]);
+    expect(threeLane.laneCenterY(0)).toBeCloseTo(108.333333);
+    expect(threeLane.laneCenterY(1)).toBeCloseTo(205);
+    expect(threeLane.laneCenterY(2)).toBeCloseTo(301.666667);
+    for (const layout of [twoLane, threeLane, fourLane]) {
+      expect(layout.laneBottom(layout.scenario.lanes - 1)).toBeCloseTo(350);
+    }
     expect([0, 1, 2, 3].map((lane) => fourLane.laneCenterY(lane)))
       .toEqual([96.25, 168.75, 241.25, 313.75]);
-    expect(threeLane.lanePx(0)).toBe(MALTLINE_RENDERER_FRAME.counterX);
+    expect(threeLane.lanePx(0)).toBeCloseTo(MALTLINE_RENDERER_FRAME.counterX);
     expect(threeLane.lanePx(threeLane.scenario.laneLength * FIXED_SCALE))
-      .toBe(MALTLINE_RENDERER_FRAME.doorX);
+      .toBeCloseTo(MALTLINE_RENDERER_FRAME.doorX);
     expect(() => threeLane.laneTop(-1)).toThrow(/lane is out of range/u);
     expect(() => threeLane.laneCenterY(3)).toThrow(/lane is out of range/u);
     expect(() => threeLane.laneBottom(0.5)).toThrow(/lane is out of range/u);
@@ -60,65 +64,66 @@ describe('Maltline renderer layout', () => {
     expect(() => threeLane.lanePx(Number.POSITIVE_INFINITY)).toThrow(/must be finite/u);
   });
 
-  it('projects returning jars at the exact final-approach boundary for every lane layout', () => {
-    const twoLane = deriveMaltlineRendererLayout(MALTLINE_CAMPAIGN[0]!);
-    const threeLane = deriveMaltlineRendererLayout(MALTLINE_CAMPAIGN[2]!);
-    const fourLane = deriveMaltlineRendererLayout(normalizeMaltlineScenario({
-      ...MALTLINE_CAMPAIGN[2]!,
-      id: 'maltline-layout-four-lane-return',
-      lanes: 4,
-    }));
-    const threshold = twoLane.scenario.laneLength * FIXED_SCALE * 0.25;
+  it('projects every lane surface onto one vanishing point with shared depth scale', () => {
+    const layout = deriveMaltlineRendererLayout(MALTLINE_CAMPAIGN[2]!);
+    const end = layout.scenario.laneLength * FIXED_SCALE;
+    const vp = layout.vanishingPoint;
+    for (let lane = 0; lane < layout.scenario.lanes; lane++) {
+      for (const nearY of [layout.floorY(lane), layout.counterBackY(lane),
+        layout.counterFrontY(lane), layout.vesselY(lane)]) {
+        for (const transverse of [-12, 0, 12]) {
+          const near = layout.project(0, nearY, transverse);
+          const far = layout.project(end, nearY, transverse);
+          // Cross-product zero proves these points and the common VP are collinear.
+          const cross = (far.x - near.x) * (vp.y - near.y)
+            - (far.y - near.y) * (vp.x - near.x);
+          expect(cross).toBeCloseTo(0, 7);
+          expect(far.scale).toBeCloseTo(MALTLINE_RENDERER_FRAME.farScale);
+          expect((far.y - vp.y) / (near.y - vp.y)).toBeCloseTo(far.scale);
+        }
+      }
+      const nearThickness = layout.counterFrontY(lane) - layout.counterBackY(lane);
+      const farThickness = layout.project(end, layout.counterFrontY(lane)).y
+        - layout.project(end, layout.counterBackY(lane)).y;
+      expect(farThickness / nearThickness).toBeCloseTo(MALTLINE_RENDERER_FRAME.farScale);
+      expect(layout.vesselY(lane)).toBeGreaterThan(layout.counterBackY(lane));
+      expect(layout.vesselY(lane)).toBeLessThan(layout.counterFrontY(lane));
+      expect(layout.floorY(lane)).toBeGreaterThan(layout.counterFrontY(lane));
+    }
+    const positions = Array.from({ length: 11 }, (_, index) => layout.project(end * index / 10, 200));
+    for (let index = 1; index < positions.length; index++) {
+      expect(positions[index]!.x).toBeGreaterThan(positions[index - 1]!.x);
+      expect(positions[index]!.scale).toBeLessThan(positions[index - 1]!.scale);
+    }
+  });
 
-    expect(twoLane.returnApproachMaxFixedX).toBe(threshold);
-    expect(threeLane.returnApproachMaxFixedX).toBe(threshold);
-    expect(fourLane.returnApproachMaxFixedX).toBe(threshold);
-    expect(twoLane.projectReturningJar(threshold - 1, 1)).toMatchObject({
-      finalApproach: true,
-      groundY: 224,
-      catchCue: { x: 107, y: 181, width: 70, height: 19 },
-    });
-    expect(twoLane.projectReturningJar(threshold, 1)).toEqual({
-      anchorX: 303,
-      groundY: 224,
-      finalApproach: true,
-      catchCue: { x: 107, y: 181, width: 70, height: 19 },
-    });
-    expect(twoLane.projectReturningJar(threshold + 1, 1)).toMatchObject({
-      finalApproach: false,
-      groundY: 224,
-      catchCue: null,
-    });
-    expect(threeLane.projectReturningJar(threshold, 2)).toEqual({
-      anchorX: 303,
-      groundY: 316,
-      finalApproach: true,
-      catchCue: { x: 107, y: 273, width: 70, height: 19 },
-    });
-    expect(fourLane.projectReturningJar(threshold, 3)).toEqual({
-      anchorX: 303,
-      groundY: 330,
-      finalApproach: true,
-      catchCue: { x: 107, y: 287, width: 70, height: 19 },
-    });
-
-    const frozen = threeLane.projectReturningJar(threshold, 0);
-    expectDeeplyFrozen(frozen);
-    expect(() => threeLane.projectReturningJar(0, -1)).toThrow(/lane is out of range/u);
-    expect(() => threeLane.projectReturningJar(0, 3)).toThrow(/lane is out of range/u);
-    expect(() => threeLane.projectReturningJar(Number.NaN, 0)).toThrow(/must be finite/u);
-    expect(() => threeLane.projectReturningJar(Number.NEGATIVE_INFINITY, 0))
-      .toThrow(/must be finite/u);
-
-    expect(threeLane.projectReturningJar(-FIXED_SCALE, 0)).toMatchObject({
-      anchorX: 96.04,
-      finalApproach: true,
-    });
-    expect(threeLane.projectReturningJar(101 * FIXED_SCALE, 0)).toMatchObject({
-      anchorX: 907.96,
-      finalApproach: false,
-      catchCue: null,
-    });
+  it('keeps return boundaries exact while projecting jars onto the shared serving surface', () => {
+    for (const lanes of [2, 3, 4]) {
+      const scenario = normalizeMaltlineScenario({
+        ...MALTLINE_CAMPAIGN[2]!, id: 'maltline-projection-' + lanes, lanes,
+      });
+      const layout = deriveMaltlineRendererLayout(scenario);
+      const threshold = scenario.laneLength * FIXED_SCALE * 0.25;
+      for (let lane = 0; lane < lanes; lane++) {
+        const before = layout.projectReturningJar(threshold - 1, lane);
+        const at = layout.projectReturningJar(threshold, lane);
+        const after = layout.projectReturningJar(threshold + 1, lane);
+        expect(before.finalApproach).toBe(true);
+        expect(at.finalApproach).toBe(true);
+        expect(after.finalApproach).toBe(false);
+        expect(after.catchCue).toBeNull();
+        expect(before.catchCue).toEqual(at.catchCue);
+        const surface = layout.project(threshold, layout.vesselY(lane));
+        expect(at.anchorX).toBe(surface.x);
+        expect(at.groundY).toBe(surface.y);
+        expect(at.scale).toBe(surface.scale);
+        expectDeeplyFrozen(at);
+      }
+      expect(layout.projectReturningJar(-FIXED_SCALE, 0).anchorX).toBeLessThan(104);
+      expect(layout.projectReturningJar(101 * FIXED_SCALE, 0).anchorX).toBeGreaterThan(900);
+      expect(() => layout.projectReturningJar(0, -1)).toThrow(/lane is out of range/u);
+      expect(() => layout.projectReturningJar(Number.NaN, 0)).toThrow(/must be finite/u);
+    }
   });
 
   it('derives exact one-, two-, and three-station geometry', () => {

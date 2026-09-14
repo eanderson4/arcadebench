@@ -12,7 +12,7 @@
   "screenshots": [
     {
       "name": "blend-half.png",
-      "sha256": "e668e3ecd0ffb949681ddfab5fbd502b8ac788870db4708cf9d76df29119c7a1"
+      "sha256": "8ea4f15df304ad316c1271beb2fc73f17039f738223d249f8c0696f1bc711c85"
     },
     {
       "name": "competition-accepted-700.png",
@@ -24,11 +24,11 @@
     },
     {
       "name": "competition-inspected-controls-700.png",
-      "sha256": "728ed268086888a4b3ae927c6b3a140e762bf32ef67eb6e8cfd830a3e16d574e"
+      "sha256": "eae0bacf1acb1f86e6c2a878b99006510021815c82554d8de3a2a9c21ccff8d5"
     },
     {
       "name": "competition-inspected.png",
-      "sha256": "f4e27db14c4d8bc6a87b89f466685a4fa9021d5ee5df72eed6ad61a67991a843"
+      "sha256": "37a813cd7a6ed6346c598856f7de3fd7f1517ab6b28f3332ed1fc57666576031"
     },
     {
       "name": "competition-live-empty-390.png",
@@ -40,159 +40,159 @@
     },
     {
       "name": "countdown.png",
-      "sha256": "cbd62d76a9d7fae25dc7078e60d22b5ca37e52650b02132e58f988d851d2b9f7"
+      "sha256": "243e53abfcd1c3855aa3be1499e74ca0c86ea85a9bc29c91e1acb45b7696590d"
     },
     {
       "name": "first-pour-idle.png",
-      "sha256": "3b545abd9d4db1e53ee1f8c9b6c65b2113fcf02b0653d72f4973541cf8b0e8db"
+      "sha256": "a1ab9b42aa2e7ecb1a5dbe3465f43e10ad1c821217c943c701b9bd9a55d55e1d"
     },
     {
       "name": "game-over.png",
-      "sha256": "ce27b8e29c6b8e63625c0356be3f7863986fe46f629cfe9542846d7234fdc00a"
+      "sha256": "7d93ec27d88e2955d7114644b5055478f14947bdd73d4560d169e334dcf9bb12"
     },
     {
       "name": "human-lab-active-700.png",
-      "sha256": "314b5919724c83f0b7bbbaf000d66a3ed66eb94c54cc114d8c976efa54322f3a"
+      "sha256": "0c29e9fda99a0ecce03fa8d68b709f120e4fc1693bdbff93a133388e360173d6"
     },
     {
       "name": "human-lab-countdown-1280.png",
-      "sha256": "67d8c1b1030b5fd84abd001592beb599bda59235188a03ffa2800da08f2f4498"
+      "sha256": "8284585c59c264f94b2509f028d82c442b009bf7a1184b59e6a75b2272007dd0"
     },
     {
       "name": "human-lab-countdown-700.png",
-      "sha256": "5c524e2bcdb4c68da57b4c7d6b679106eaa0504e205b00d455eb357bbaed4e82"
+      "sha256": "bf3cfd56c2a2f8f7c943f8c7e7a2333c7f28f7caed8ec3da1aff53be3d0e1e24"
     },
     {
       "name": "human-lab-final-700.png",
-      "sha256": "2a7bed8ca8a5852633d6603df61c58219a88752c0112dafdcd42a43e0e09bf98"
+      "sha256": "ad618ca8f8f8117aef03c3e683b82f6c3aabb53aa4cf9487c88b13e38435a16f"
     },
     {
       "name": "human-lab-stage-pulse-1280.png",
-      "sha256": "9071f1d3fad3af62d32eeb213b8ce4bede07062fe6e3d4341c1f7b18d73a8300"
+      "sha256": "e28e48e990ae6839d39ae499191b8556a3e1e56601945b312572921458855461"
     },
     {
       "name": "human-lab-welcome-1280.png",
-      "sha256": "7ec95fa3e535df87d1ad76c74f3ddf61bf41663f1de34cf9f490b8d4fed3de64"
+      "sha256": "7c3e3ab4d1fbdbb58ea1779502f6394dd9d311d63baf9112c88e2c1a99b1f554"
     },
     {
       "name": "instructions.png",
-      "sha256": "3de7970b126cda80041e74553440bc8ed7b4999ebb32c0fa61077db6a8c5b22d"
+      "sha256": "829e68a08ab458bb7f3f515dd22add7f10a6a5e5285f70e6b0f3493d6a276f16"
     },
     {
       "name": "jar-catch.png",
-      "sha256": "dec2256e3f9c2debff7f3cf66ba307138245fe519b66f09329f1c8336d45f6ae"
+      "sha256": "9c86c2a8a0e720d85ba59bc7392e7d662be782be12b884cf2c04e1e5948da544"
     },
     {
       "name": "jar-miss.png",
-      "sha256": "ee17903de9fab23eb25a0b24c96d83ccc5f458362381d9953030929fae18c75e"
+      "sha256": "b96b95373da2f627009f22eed67b8d7a1a35c73f9f66f475f5a1a1fac8098e66"
     },
     {
       "name": "keyboard-focus.png",
-      "sha256": "63b12050f9295f337552656e91fa175bd12eb5f3b94143a34f385b888cfddcd3"
+      "sha256": "d5380ed486cca205b3e467de9e8e6245f8be4f232e2c66242d37dabf8ffc04a9"
     },
     {
       "name": "no-clean-jars-700.png",
-      "sha256": "f8ea9187c04a35c1bd6c43ff1ebc0b33265af2247e5d7441f0c24aa698784fc1"
+      "sha256": "7cdbe76110d934b3c5b0653a2271bbf3c55c8285ecb67eec6fc9a02e4f513026"
     },
     {
       "name": "no-clean-jars.png",
-      "sha256": "492e3e24c7b9e8dd1de0f412880b7707307a26467e7cbc1145f983b00ce4435b"
+      "sha256": "d8a4480c2f26c79186871cc61b3666c8edc4ce245d305b8fc7330c5bfd193ea2"
     },
     {
       "name": "ranked-title-trigger.png",
-      "sha256": "3139c953eacd8bf11266506bb07015d92320995cddb56b678054c649320d036a"
+      "sha256": "59bce56b71f7024761bf71ad70aa1022fdd8368927854fe2f3c0fbc7fd5b2ef1"
     },
     {
       "name": "ready.png",
-      "sha256": "56caf63ebe1309a9ac53520f6633d3d680ad6d811f51711d2cdacc9cce35f5ae"
+      "sha256": "b656899430b166cb4e0bab963bc9d32211ab1eb618c659b54d7c7e89c9b44bf1"
     },
     {
       "name": "reduced-motion.png",
-      "sha256": "6bfd44f62f2ab5ab0fb7b6e30977aa24c3b6771c4ef751d434910a2e8d8ec594"
+      "sha256": "e34a0a51b5e4dab287a9c47cc09b8c48888a510625c4c92c443270b92c121de9"
     },
     {
       "name": "repeat-rescue.png",
-      "sha256": "ec9048616da04fa838705c36e7f8c35a29d6f936de1c23479567a89e70ea6c87"
+      "sha256": "df532b40fb5458932d12dc5bb2dd467eb63dd3ff8919d1dcff1426fedef68393"
     },
     {
       "name": "return-window-700.png",
-      "sha256": "fca81dcb707048c719ff30bb18ac48091dc7164616c00261460d524f2f157c7d"
+      "sha256": "c03a8c634f764d5ff0d0a47e85a21579b434894743e8b0a634fea329032fe62a"
     },
     {
       "name": "rush-three-lane.png",
-      "sha256": "be0148ab252b0cbf88dcb09419d311727f4158fd1603767482d0b1f42b8ce623"
+      "sha256": "e26a148594213f9492fa8611abb74c5a2d85d11d7667ee2b4511c432a9ab1060"
     },
     {
       "name": "serve-feedback.png",
-      "sha256": "f827104b7f45712c04ae605a5baa7226474eb3905dda198b8681796652fc3d59"
+      "sha256": "5fbea1fe8019394ae81fde50e9d64543d8de67d22ee0ef321e0191d533bd5ee6"
     },
     {
       "name": "shake-launch.png",
-      "sha256": "67686320b9863f25223be8dd460e3701e5240e06237b544e5875944740bf375a"
+      "sha256": "fd09c70fbe1996de6f2b0bb2272560ac5fc55aa3a56e3147b1264123ef91c173"
     },
     {
       "name": "shake-miss.png",
-      "sha256": "a0156f28fa65425e68dbd8660ec579818bf0cf2724cf254775b99099d079b27a"
+      "sha256": "0a347e8762ee02a1cefce93ac230ec7b052f7c189c36de3a20a0693c96dcbbd3"
     },
     {
       "name": "stage-4-lunch-rush-pressure-700.png",
-      "sha256": "54ade38fe08dde474dd91a5b397ece84967e38fe6fea6fa20c7ad11476278b0b"
+      "sha256": "cd3958cd9c732ace3a7e2f98e10338a24e4b6c6a8b582c5cfae4a61d81f42015"
     },
     {
       "name": "stage-4-lunch-rush-pressure.png",
-      "sha256": "e2ac41ad4e10c4581f7442753f2acf59dab12ef50474604dee251a5cdc544823"
+      "sha256": "778eb698d1d7a90296977602b245df75235661cf73a0edac5321d25b39dc91e8"
     },
     {
       "name": "stage-4-traffic-corridor-700.png",
-      "sha256": "5c8ffd6abcf9dbcacafda1274ed47f4c9472113f22ded795562e2940d5439549"
+      "sha256": "77d0b7bcba4287a149fb31bf5c416bfffed03b4c152c3927b20bf6edfada6596"
     },
     {
       "name": "stage-4-traffic-corridor-reduced-700.png",
-      "sha256": "6c939ac967fe6ae7f9e9b87f3270217ec69b2e8a13fda2903cf6740f1a5adb77"
+      "sha256": "dd1c681ef30ed083b94d1be4edc3dec23e80abf3116b01a6e699834c951069ae"
     },
     {
       "name": "stage-5-jar-shortage-pressure-700.png",
-      "sha256": "088c18b0f494bd4bfd6924e05520ffe966cd952dde002b36a73ad29c7203266b"
+      "sha256": "40562e83aa449890f1c4e5f223a6f479207c6857f1e39f4feea83e09ca391ee3"
     },
     {
       "name": "stage-5-jar-shortage-pressure.png",
-      "sha256": "f8b8cf605b397f446f7a291597f23c03ee59e87e7d67a4132c9d1dba662099fd"
+      "sha256": "f4eb881e2257ef821402240d3210c45fe2e921ebd0ee9361f5a2dd568df69861"
     },
     {
       "name": "stage-6-station-tool-split-700.png",
-      "sha256": "60f6a520e75d85c0c2b3138a40ca9694749c2f2dc9e080ba20c889f26edde236"
+      "sha256": "eac4c150a694c7a7b198325a9b90b4cc40229e293384486d09fa78060b5ff75b"
     },
     {
       "name": "stage-6-station-tool-split-reduced-700.png",
-      "sha256": "aca8f88f0d12c7e613739fa4810b0b824a68f24f50ca78e9a5e5b75788e45af3"
+      "sha256": "92b6b902d87a9f4cda442529e488b60e105cd0024ef17987835c1b687012f835"
     },
     {
       "name": "stage-6-station-tool-split.png",
-      "sha256": "6d04cfb9073de99cd1bc19bbc09e1bbe2423e4e499e01bbfdcbc9f3abc0653f2"
+      "sha256": "1a0c9ffb783d42b9ca7503e1cdf8eab87f792b1dc7489bc73cc7662c5b42ba01"
     },
     {
       "name": "stage-6-thick-shakes-pressure.png",
-      "sha256": "e80d8c827f7e2a69e98aa6d9012f4e478603f71c12b6f7483dc938b98a202dca"
+      "sha256": "42a34f1cf88807f0c564f41119d207e4165d993cab65613e98c7ebabaa84230c"
     },
     {
       "name": "stage-7-happy-hour-pressure-700.png",
-      "sha256": "e1cd2b6f098ced3561464da5eb8deb618ceb32efe13ef3bed7b45673d258d6c7"
+      "sha256": "1762577327818d0808bf176bd194ebfd5d85297d6a3fadc421df527799cfacb8"
     },
     {
       "name": "stage-7-happy-hour-pressure.png",
-      "sha256": "ca2e3213bd418bfccad358531ea3b50f94e4b53c974d3e776d405afb6faa6dd9"
+      "sha256": "f8d5778aed74f07c6273d1959aa9eb447230dbf4faa2b74ff56cfdd081d6739d"
     },
     {
       "name": "stage-card.png",
-      "sha256": "991409ed81b5b658faff1f0947f1bbd4980f42ddf094ecb489dcd28b4cd3a9a7"
+      "sha256": "0789ec5de712b8deab73473fcf8dd1c9f8fbad17e0cf50d4185c07adda4a8d4b"
     },
     {
       "name": "stage-clear-walkout.png",
-      "sha256": "c8715cc1fc1df7a8bb6d6279b6a38cb580b4f602ab624eb0abb132c8feccff50"
+      "sha256": "011a8577c31bd640ed5dfea5f0ba20b684ad9bfc1af6e70abc452422b1c72170"
     },
     {
       "name": "title.png",
-      "sha256": "b0661058a178a3d432d027c815f97a9b72d900a682e2bc4bcbae57d6250d9c3d"
+      "sha256": "51445a9784d70f54714a83f10708bba98aca70161765691dd64c4d1bfc27ecee"
     },
     {
       "name": "unsupported-portrait.png",
@@ -200,12 +200,12 @@
     },
     {
       "name": "victory.png",
-      "sha256": "7d793c5342cc39f05aff0fde75c37a4d371d8a947acb4dc67e41deb2e2caa97d"
+      "sha256": "69bc2360833876ab4fb9efe5b576c12c6e6c01af13bfb989140fa0d13553a689"
     },
     {
       "name": "walkout.png",
-      "sha256": "9100e869b834869c140e1c73a02bceefb7bba029275222477fc2fb59ef4126b1"
+      "sha256": "a2761bd769debd96a2e38bd1eb02d1c5435e43f37c504c90b40ef876df1c169f"
     }
   ],
-  "orderedRawPngSha256": "00ee116a20ba2a43caa0e2166cfde3ce88ace20860708dc86608ec38874cb34f"
+  "orderedRawPngSha256": "3081a3b3510661f0a631f7fd8d66d20a03d798e6a8e2c67abbcb644522aee2ef"
 }

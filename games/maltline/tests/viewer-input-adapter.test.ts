@@ -18,8 +18,9 @@ const IDLE_PRE_STEP: MaltlineViewerPreStepState = {
 function preStep(
   holding: FlavorId | null = null,
   blending: FlavorId | null = null,
+  lane?: number,
 ): MaltlineViewerPreStepState {
-  return { player: { holding, blending } };
+  return { player: { lane, holding, blending } };
 }
 
 function inputTicks(
@@ -45,9 +46,9 @@ describe('Maltline viewer input adapter', () => {
         engine.setInput(adapter.inputForTick(tick, engine.snapshot()));
         engine.step();
       }
-      adapter.keyDown('ArrowRight');
+      adapter.keyDown('KeyD');
       adapter.keyDown('ArrowDown');
-      adapter.keyUp('ArrowRight');
+      adapter.keyUp('KeyD');
       adapter.keyUp('ArrowDown');
 
       const emitted: MaltlineInput[] = [];
@@ -67,7 +68,7 @@ describe('Maltline viewer input adapter', () => {
   it('moves a held direction first at the next eligible tick, then delays and repeats by cadence', () => {
     const adapter = new MaltlineViewerInputAdapter(CADENCE);
     inputTicks(adapter, 1, 2);
-    adapter.keyDown('ArrowRight');
+    adapter.keyDown('KeyD');
     adapter.keyDown('ArrowDown');
     const outputs = inputTicks(adapter, 3, 35);
     const stationTicks = outputs
@@ -82,15 +83,23 @@ describe('Maltline viewer input adapter', () => {
     expect(laneTicks).toEqual(stationTicks);
   });
 
-  it('same-direction aliases share one hold and releasing the final alias cancels repeat', () => {
+  it('does not emit lane movement beyond the top or bottom edge', () => {
+    const adapter = new MaltlineViewerInputAdapter({ ...CADENCE, lanes: 3 });
+
+    adapter.keyDown('ArrowUp');
+    expect(adapter.inputForTick(5, preStep(null, null, 0)).laneDir).toBe(0);
+    adapter.keyUp('ArrowUp');
+
+    adapter.keyDown('ArrowDown');
+    expect(adapter.inputForTick(10, preStep(null, null, 2)).laneDir).toBe(0);
+  });
+
+  it('releasing a held flavor direction cancels its repeat', () => {
     const adapter = new MaltlineViewerInputAdapter(CADENCE);
-    adapter.keyDown('ArrowRight');
     adapter.keyDown('KeyD');
     expect(inputTicks(adapter, 1, 5).at(-1)?.input.stationDir).toBe(1);
-    adapter.keyUp('ArrowRight');
-    expect(inputTicks(adapter, 6, 19).every(({ input }) => input.stationDir === 0)).toBe(true);
     adapter.keyUp('KeyD');
-    expect(inputTicks(adapter, 20, 30).every(({ input }) => input.stationDir === 0)).toBe(true);
+    expect(inputTicks(adapter, 6, 30).every(({ input }) => input.stationDir === 0)).toBe(true);
   });
 
   it('is independent of display frame grouping because only simulation ticks advance it', () => {
@@ -122,13 +131,13 @@ describe('Maltline viewer input adapter', () => {
 
   it('makes opposite chords neutral and treats the remaining held side as a fresh direction', () => {
     const adapter = new MaltlineViewerInputAdapter(CADENCE);
-    adapter.keyDown('ArrowLeft');
-    adapter.keyDown('ArrowRight');
+    adapter.keyDown('KeyA');
+    adapter.keyDown('KeyD');
     expect(inputTicks(adapter, 1, 5).map(({ input }) => input.stationDir)).toEqual([0, 0, 0, 0, 0]);
 
-    adapter.keyUp('ArrowLeft');
+    adapter.keyUp('KeyA');
     expect(inputTicks(adapter, 6, 10).map(({ input }) => input.stationDir)).toEqual([0, 0, 0, 0, 1]);
-    adapter.keyDown('ArrowRight'); // Native repeat keydown does not restart the delay.
+    adapter.keyDown('KeyD'); // Native repeat keydown does not restart the delay.
     expect(inputTicks(adapter, 11, 20)
       .filter(({ input }) => input.stationDir !== 0)
       .map(({ tick }) => tick)).toEqual([]);
@@ -294,7 +303,7 @@ describe('Maltline viewer input adapter', () => {
 
   it('resets on cadence changes and leaves blend as an unbuffered held level', () => {
     const adapter = new MaltlineViewerInputAdapter(CADENCE);
-    adapter.keyDown('ArrowRight');
+    adapter.keyDown('KeyD');
     adapter.keyDown('Space');
     expect(adapter.inputForTick(1, IDLE_PRE_STEP)).toMatchObject({ blend: true, serve: false });
 
@@ -305,6 +314,30 @@ describe('Maltline viewer input adapter', () => {
       blend: false,
       serve: false,
     });
+  });
+
+  it('emits smooth arrow-run input every tick without changing flavor cadence', () => {
+    const scenario = MALTLINE_GENERATION_2_AUTHORITY.campaign[2]!;
+    const adapter = new MaltlineViewerInputAdapter(scenario);
+    const engine = new MaltlineEngine(scenario);
+
+    adapter.keyDown('ArrowRight');
+    for (let tick = 1; tick <= 10; tick++) {
+      const input = adapter.inputForTick(tick, engine.snapshot());
+      expect(input).toMatchObject({ stationDir: 1, blend: true, serve: true });
+      engine.setInput(input);
+      engine.step();
+    }
+    expect(engine.snapshot().player).toMatchObject({ station: 0, x: 10 * Math.round(1024 * 0.9) });
+
+    adapter.keyUp('ArrowRight');
+    adapter.keyDown('KeyD');
+    for (let tick = 11; tick <= 15; tick++) {
+      const input = adapter.inputForTick(tick, engine.snapshot());
+      engine.setInput(input);
+      engine.step();
+    }
+    expect(engine.snapshot().player).toMatchObject({ station: 1 });
   });
 
   it('rejects invalid cadence and tick values', () => {

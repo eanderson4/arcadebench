@@ -8,7 +8,7 @@ import type { FlavorId } from '../core/types';
  * animation timings remain owned by their painters until those boundaries are
  * extracted independently.
  */
-export const MALTLINE_VISUAL_DIRECTION_ID = 'counter-after-dark-v1' as const;
+export const MALTLINE_VISUAL_DIRECTION_ID = 'soda-shop-arcade-v2' as const;
 
 export interface MaltlineFlavorArt {
   readonly base: string;
@@ -25,11 +25,11 @@ function frozenPairs<const T extends readonly ColorPair[]>(pairs: T): T {
 }
 
 const scene = Object.freeze({
-  wallTop: '#0e3a2c',
-  wallBottom: '#07211a',
-  wood: '#8a5a33',
-  woodLight: '#b07a44',
-  woodDark: '#5d3a20',
+  wallTop: '#ffe8b5',
+  wallBottom: '#eeb879',
+  wood: '#e89743',
+  woodLight: '#ffe0a0',
+  woodDark: '#9b492c',
   cream: '#f3e9d2',
   creamDim: '#d9c8a6',
   brass: '#c9a961',
@@ -52,13 +52,13 @@ const flavors = Object.freeze({
 
 const customers = Object.freeze({
   shirts: frozenPairs([
-    ['#e8b04b', '#c58a2d'],
-    ['#d97742', '#b25a2e'],
-    ['#8f7fb8', '#6d5f96'],
-    ['#5f9ea0', '#467c7e'],
-    ['#b85f75', '#96475c'],
-    ['#7f9e5f', '#62804a'],
-    ['#5b8bd0', '#43699f'],
+    ['#ffce4e', '#d98a27'],
+    ['#ff704b', '#cb442d'],
+    ['#ad85ed', '#7752b4'],
+    ['#42c8c5', '#168d94'],
+    ['#f66ba5', '#bd3d72'],
+    ['#91bd45', '#5d872b'],
+    ['#529ef0', '#2a69ae'],
   ] as const),
   hair: frozenPairs([
     ['#2b1d12', '#46301c'],
@@ -119,6 +119,11 @@ const station = Object.freeze({
   ready: '#7dffa8',
 });
 
+const ambience = Object.freeze({
+  activeLane: '#ffe08a',
+  cabinetEdge: '#f3e9d2',
+});
+
 /**
  * Frozen semantic tokens shared by production painters and visual evidence.
  * Keeping fixture identity checks on this object prevents an art repaint from
@@ -135,4 +140,5 @@ export const MALTLINE_VISUAL_THEME = Object.freeze({
   customerOrder,
   outgoingShake,
   station,
+  ambience,
 });

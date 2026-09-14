@@ -101,7 +101,13 @@ function buildStageTape(
 ): StageTape {
   const engine = new MaltlineEngine(scenario, startingRun);
   const controller = REACTIVE_MALTLINE_CONTROLLER.create();
-  const adapter = new MaltlineViewerInputAdapter(engine.scenario);
+  // This retained generation-2 lab tape predates the shipped viewer's bounded
+  // lane edges, so omit the optional lane count and preserve its reviewed
+  // wraparound comparison route byte-for-byte.
+  const adapter = new MaltlineViewerInputAdapter({
+    stationRepeatTicks: engine.scenario.stationRepeatTicks,
+    laneRepeatTicks: engine.scenario.laneRepeatTicks,
+  });
   const runs: LevelRun[] = [];
   let heldMask = 0;
   let observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
@@ -492,7 +498,7 @@ function assertArtifact(
     kind: 'maltline-human-lab-test-driver-session',
     schemaVersion: 3,
     experimentId: 'EXP-049',
-    experimentRevision: 11,
+    experimentRevision: 12,
     policy: {
       rankEligibility: 'unranked',
       authorityRegistration: null,

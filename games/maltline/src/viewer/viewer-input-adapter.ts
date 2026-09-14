@@ -7,10 +7,12 @@ export const MALTLINE_VIEWER_SERVE_LATCH_POLICY = 'pre-step-blend-or-held-one-sh
 export interface MaltlineViewerInputCadence {
   stationRepeatTicks: number;
   laneRepeatTicks: number;
+  lanes?: number;
 }
 
 export interface MaltlineViewerPreStepState {
   readonly player: Readonly<{
+    lane?: number;
     holding: FlavorId | null;
     blending: FlavorId | null;
   }>;
@@ -29,8 +31,13 @@ interface AxisState {
 }
 
 const STATION_BINDING: AxisBinding = {
-  negativeCodes: new Set(['ArrowLeft', 'KeyA']),
-  positiveCodes: new Set(['ArrowRight', 'KeyD']),
+  negativeCodes: new Set(['KeyA']),
+  positiveCodes: new Set(['KeyD']),
+};
+
+const RUN_BINDING: AxisBinding = {
+  negativeCodes: new Set(['ArrowLeft']),
+  positiveCodes: new Set(['ArrowRight']),
 };
 
 const LANE_BINDING: AxisBinding = {
@@ -58,15 +65,18 @@ export class MaltlineViewerInputAdapter {
   private forceServeFalse = false;
   private stationRepeatTicks: number;
   private laneRepeatTicks: number;
+  private lanes: number | null;
 
   constructor(cadence: MaltlineViewerInputCadence) {
     this.stationRepeatTicks = validCadence(cadence.stationRepeatTicks, 'stationRepeatTicks');
     this.laneRepeatTicks = validCadence(cadence.laneRepeatTicks, 'laneRepeatTicks');
+    this.lanes = validOptionalLaneCount(cadence.lanes);
   }
 
   setCadence(cadence: MaltlineViewerInputCadence): void {
     this.stationRepeatTicks = validCadence(cadence.stationRepeatTicks, 'stationRepeatTicks');
     this.laneRepeatTicks = validCadence(cadence.laneRepeatTicks, 'laneRepeatTicks');
+    this.lanes = validOptionalLaneCount(cadence.lanes);
     this.reset();
   }
 
@@ -121,21 +131,33 @@ export class MaltlineViewerInputAdapter {
       || preStepState.player === null || typeof preStepState.player !== 'object') {
       throw new Error('preStepState must provide the current player state');
     }
-    return {
-      stationDir: this.axisInputForTick(
+    const runDir = heldDirection(this.heldCodes, RUN_BINDING);
+    const stationDir = runDir === 0
+      ? this.axisInputForTick(
         simulationTick,
         this.stationRepeatTicks,
         STATION_BINDING,
         this.stationState,
-      ),
-      laneDir: this.axisInputForTick(
-        simulationTick,
-        this.laneRepeatTicks,
-        LANE_BINDING,
-        this.laneState,
-      ),
-      blend: this.heldCodes.has('Space'),
-      serve: this.serveInputForTick(preStepState),
+      )
+      : runDir;
+    const requestedLaneDir = this.axisInputForTick(
+      simulationTick,
+      this.laneRepeatTicks,
+      LANE_BINDING,
+      this.laneState,
+    );
+    const laneDir = this.lanes !== null && preStepState.player.lane !== undefined
+      && ((requestedLaneDir < 0 && preStepState.player.lane <= 0)
+        || (requestedLaneDir > 0 && preStepState.player.lane >= this.lanes - 1))
+      ? 0
+      : requestedLaneDir;
+    return {
+      stationDir,
+      laneDir,
+      // Blend + serve + direction is the deterministic engine's run signal.
+      // A real blend/serve is emitted only when no run arrow is held.
+      blend: runDir !== 0 || this.heldCodes.has('Space'),
+      serve: runDir !== 0 || this.serveInputForTick(preStepState),
     };
   }
 
@@ -200,6 +222,14 @@ export class MaltlineViewerInputAdapter {
     this.forceServeFalse = true;
     return true;
   }
+}
+
+function validOptionalLaneCount(value: number | undefined): number | null {
+  if (value === undefined) return null;
+  if (!Number.isSafeInteger(value) || value < 1) {
+    throw new Error('lanes must be a positive safe integer');
+  }
+  return value;
 }
 
 function heldDirection(heldCodes: ReadonlySet<string>, binding: AxisBinding): Direction {

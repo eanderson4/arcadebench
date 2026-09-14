@@ -22,7 +22,7 @@ import type { P108CanonicalLabCandidateId } from './p1-08-candidates';
 export const P108_HUMAN_LAB_ARTIFACT_KIND = 'maltline-human-lab-session' as const;
 export const P108_HUMAN_LAB_TEST_DRIVER_ARTIFACT_KIND = 'maltline-human-lab-test-driver-session' as const;
 export const P108_HUMAN_LAB_SCHEMA_VERSION = 3 as const;
-export const P108_HUMAN_LAB_EXPERIMENT_REVISION = 11 as const;
+export const P108_HUMAN_LAB_EXPERIMENT_REVISION = 12 as const;
 export type {
   P108HumanLabConsentEvidence,
   P108HumanLabParticipant,

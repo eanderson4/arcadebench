@@ -71,8 +71,9 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
         </section>
       </div>
       <footer class="controls" aria-label="Keyboard controls">
-        <span><kbd>← →</kbd> station</span>
-        <span><kbd>↑ ↓</kbd> window</span>
+        <span><kbd>← →</kbd> run counter</span>
+        <span><kbd>↑ ↓</kbd> lane</span>
+        <span><kbd>A D</kbd> flavor</span>
         <span><kbd>SPACE hold</kbd> blend</span>
         <span><kbd>F / ENTER</kbd> slide held shake</span>
         <span><kbd>R</kbd> restart</span>

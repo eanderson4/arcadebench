@@ -4,6 +4,8 @@ import {
   drawMaltlineCup,
   drawMaltlineJar,
   drawMaltlineSoftServe,
+  drawMaltlineFlavorSymbol,
+  drawMaltlinePouringCup,
 } from '../src/viewer/renderer-vessel-painters';
 import { MALTLINE_VISUAL_THEME } from '../src/viewer/visual-theme';
 
@@ -55,69 +57,57 @@ function expectBalancedState(commands: readonly Command[]): void {
 }
 
 describe('stateless Maltline vessel painters', () => {
-  it.each([
-    ['vanilla', 'V'],
-    ['chocolate', 'C'],
-    ['strawberry', 'S'],
-  ] as const)('draws the %s cup with its non-color cue', (flavor, cue) => {
+  it.each([0, 0.25, 0.5, 0.75, 1])('shows the exact %s liquid fraction in the in-hand cup', (progress) => {
     const { context, commands } = commandRecorder();
-    drawMaltlineCup(context, 12, 34, flavor, 1.25);
-
-    expect(commands.slice(0, 5)).toEqual([
-      ['save'],
-      ['translate', 12, 34],
-      ['rotate', 0],
-      ['scale', 1.25, 1.25],
-      ['createLinearGradient', 0, -7, 0, 7, 0],
+    drawMaltlinePouringCup(context, 40, 50, 'strawberry', progress, 1.15);
+    expect(commands.filter(([method]) => method === 'fillRect')).toEqual([
+      ['fillRect', -9, 12 - 27 * progress, 18, 27 * progress],
     ]);
-    expect(commands).toContainEqual(['fillText', cue, 0, 0.5]);
-    expect(commands).toContainEqual(['set', 'fillStyle', MALTLINE_VISUAL_THEME.flavors[flavor].base]);
-    expect(commands).toContainEqual(['set', 'textAlign', 'center']);
-    expect(commands).toContainEqual(['set', 'textBaseline', 'middle']);
-    expect(commands).toContainEqual(['set', 'textAlign', 'left']);
-    expect(commands).toContainEqual(['set', 'textBaseline', 'alphabetic']);
-    expect(commands.at(-1)).toEqual(['restore']);
+    expect(commands).toContainEqual(['set', 'fillStyle', MALTLINE_VISUAL_THEME.flavors.strawberry.base]);
+    expect(commands).toContainEqual(['clip']);
+    expect(commands.filter(([method]) => method === 'arc')).toEqual([]);
     expectBalancedState(commands);
   });
 
-  it('pins ordinary cup transform, gradient, path, text reset, nesting, and straw order', () => {
-    const { context, commands } = commandRecorder();
-    drawMaltlineCup(context, -4, 7, 'vanilla', 0.75, -0.5);
+  it('animates bubbles without changing the represented fill level', () => {
+    const frames = [0.1, 0.7, null].map((phase) => {
+      const { context, commands } = commandRecorder();
+      drawMaltlinePouringCup(context, 0, 0, 'vanilla', 0.5, 1, phase);
+      return commands;
+    });
+    const fills = frames.map((commands) => commands.filter(([method]) => method === 'fillRect'));
+    expect(fills[0]).toEqual(fills[1]);
+    expect(fills[1]).toEqual(fills[2]);
+    expect(frames[0]).not.toEqual(frames[1]);
+    expect(frames[2]!.filter(([method]) => method === 'arc')).toEqual([]);
+  });
 
-    expect(methods(commands)).toEqual([
-      'save', 'translate', 'rotate', 'scale',
-      'createLinearGradient', 'addColorStop', 'addColorStop', 'addColorStop', 'set',
-      'beginPath', 'moveTo', 'lineTo', 'lineTo', 'lineTo', 'closePath', 'fill',
-      'set', 'beginPath', 'moveTo', 'lineTo', 'lineTo', 'lineTo', 'closePath', 'fill',
-      'set', 'set', 'set', 'set', 'fillText', 'set', 'set',
-      'set', 'beginPath', 'roundRect', 'fill',
-      'set', 'beginPath', 'arc', 'fill',
-      'save', 'translate', 'scale',
-      'set', 'beginPath', 'arc', 'fill',
-      'set', 'beginPath', 'arc', 'fill',
-      'set', 'beginPath', 'arc', 'fill',
-      'set', 'beginPath', 'arc', 'fill',
-      'set', 'beginPath', 'arc', 'arc', 'fill',
-      'set', 'beginPath', 'arc', 'fill', 'restore',
-      'set', 'set', 'beginPath', 'moveTo', 'lineTo', 'stroke', 'restore',
-    ]);
-    expect(commands.slice(5, 8)).toEqual([
-      ['addColorStop', 0, 0, MALTLINE_VISUAL_THEME.scene.creamDim],
-      ['addColorStop', 0, 0.35, '#fdf6e4'],
-      ['addColorStop', 0, 1, MALTLINE_VISUAL_THEME.scene.creamDim],
-    ]);
-    const textIndex = commands.findIndex(([method]) => method === 'fillText');
-    expect(commands.slice(textIndex - 4, textIndex + 4)).toEqual([
-      ['set', 'fillStyle', '#54301a'],
-      ['set', 'font', '800 7px "Maltline UI", system-ui, sans-serif'],
-      ['set', 'textAlign', 'center'],
-      ['set', 'textBaseline', 'middle'],
-      ['fillText', 'V', 0, 0.5],
-      ['set', 'textAlign', 'left'],
-      ['set', 'textBaseline', 'alphabetic'],
-      ['set', 'fillStyle', 'rgba(255, 255, 255, 0.5)'],
-    ]);
-    expectBalancedState(commands);
+  it.each(['vanilla', 'chocolate', 'strawberry'] as const)(
+    'draws the %s cup with the shared ingredient silhouette and no letter badge',
+    (flavor) => {
+      const { context, commands } = commandRecorder();
+      drawMaltlineCup(context, 12, 34, flavor, 1.25);
+      expect(commands.slice(0, 5)).toEqual([
+        ['save'], ['translate', 12, 34], ['rotate', 0], ['scale', 1.25, 1.25],
+        ['createLinearGradient', 0, -7, 0, 7, 0],
+      ]);
+      const symbol = commandRecorder();
+      drawMaltlineFlavorSymbol(symbol.context, 0, 1, flavor, 0.36);
+      expect(JSON.stringify(commands)).toContain(JSON.stringify(symbol.commands).slice(1, -1));
+      expect(commands.filter(([method]) => method === 'fillText')).toEqual([]);
+      expectBalancedState(commands);
+    },
+  );
+
+  it('gives ingredients distinct silhouettes even with every color removed', () => {
+    const silhouettes = (['vanilla', 'chocolate', 'strawberry'] as const).map((flavor) => {
+      const { context, commands } = commandRecorder();
+      drawMaltlineFlavorSymbol(context, 0, 0, flavor, 1);
+      expectBalancedState(commands);
+      expect(commands.filter(([method]) => method === 'fillText')).toEqual([]);
+      return JSON.stringify(commands.filter(([method]) => method !== 'set'));
+    });
+    expect(new Set(silhouettes).size).toBe(3);
   });
 
   it('adds the outgoing silhouette before the ordinary rotated/scaled cup', () => {
@@ -140,7 +130,7 @@ describe('stateless Maltline vessel painters', () => {
       ['addColorStop', 0, 0, MALTLINE_VISUAL_THEME.scene.creamDim],
       ['addColorStop', 0, 0.35, '#fdf6e4'],
     ]);
-    expect(commands).toContainEqual(['fillText', 'S', 0, 0.5]);
+    expect(commands.filter(([method]) => method === 'fillText')).toEqual([]);
     expectBalancedState(commands);
   });
 

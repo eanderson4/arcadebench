@@ -55,7 +55,7 @@ or digits. Do not encode their name, email, or other identity in that code.
 5. Download the JSON for the facilitator before choosing **Reveal setups**.
    Reloading intentionally discards unfinished in-memory work.
 
-The current human-lab schema-3 / EXP-049 experiment-revision-11 artifact records
+The current human-lab schema-3 / EXP-049 experiment-revision-12 artifact records
 ordered stage pulses;
 stage outcomes, ticks,
 score deltas, lives, terminal counters, engine loss causes, and bounded input
