@@ -1,6 +1,8 @@
 :root {
   color-scheme: dark;
-  font-family: Inter, "Helvetica Neue", ui-sans-serif, system-ui, sans-serif;
+  /* Liberation Sans is present in Playwright's Linux dependency set and avoids
+     host-specific Inter/system fallbacks in the offline launcher. */
+  font-family: "Liberation Sans", Arial, sans-serif;
   font-synthesis: none;
   --bg: #05070d;
   --panel: #091117;
