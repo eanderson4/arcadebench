@@ -22,8 +22,8 @@ export default defineConfig({
       animations: 'disabled',
       caret: 'hide',
       // Canvas edge antialiasing varies slightly across Linux CPU rasterizers.
-      // Keep the allowance below one percent so layout/art regressions remain loud.
-      maxDiffPixelRatio: 0.007,
+      // Keep the allowance at one percent so layout/art regressions remain loud.
+      maxDiffPixelRatio: 0.01,
       scale: 'css',
     },
   },

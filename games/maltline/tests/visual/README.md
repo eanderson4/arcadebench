@@ -21,7 +21,7 @@ npm run test:visual:update --workspace=@arcadebench/maltline
 
 Use the update command only after inspecting the diff and confirming the visual
 change is intentional. The checked-in PNG bytes remain exact and manifest-bound;
-runtime comparison allows at most a `0.007` differing-pixel ratio for small Linux
+runtime comparison allows at most a `0.01` differing-pixel ratio for small Linux
 CPU-rasterizer antialiasing differences. The
 geometry tests cover a 1024×768 laptop and the exact 699/700px support
 transition. At widths below 700px the
