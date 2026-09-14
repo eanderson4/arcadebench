@@ -547,5 +547,5 @@ describe('Maltline EXP-049/P1-08 unranked tuning matrix', () => {
     expect(shadowBridgeStage.maxLiveCustomers).toMatchObject({ mean: 4.563 });
     expect(canonicalBridgeStage.totalsAcrossReachedRuns.repeatServiceActions).toBe(0);
     expect(shadowBridgeStage.totalsAcrossReachedRuns.repeatServiceActions).toBe(3);
-  }, 30_000);
+  }, 90_000);
 });

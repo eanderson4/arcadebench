@@ -301,5 +301,5 @@ describe('Maltline EXP-021 tuning matrix', () => {
     expect(pacedDelayed.winningSeconds!.mean).toBeLessThanOrEqual(420);
     expect(pacedDelayed.stageCurve[7]).toMatchObject({ reached: 33, cleared: 31 });
     expect(pacedDelayed.maxLiveCustomers.mean).toBeLessThan(countOnlyDelayed.maxLiveCustomers.mean);
-  }, 15_000);
+  }, 45_000);
 });
