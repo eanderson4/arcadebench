@@ -142,6 +142,42 @@ describe('MaltlineEngine', () => {
     expect(events.find((event) => event.type === 'life_lost')).toMatchObject({ reason: 'jar_smashed' });
   });
 
+  it('lets the bartender run down a lane and catch a returning jar on contact', () => {
+    const engine = new MaltlineEngine(testScenario());
+    const events = runTicks(engine, [
+      ...repeat(40),
+      ...repeat(12, () => input({ blend: true })),
+      ...repeat(1, () => input({ serve: true })),
+      // Blend + serve + direction is the replay-safe run signal emitted by arrows.
+      ...repeat(50, () => input({ stationDir: 1, blend: true, serve: true })),
+      ...repeat(400),
+    ]);
+
+    expect(engine.snapshot().player.x).toBeGreaterThan(0);
+    expect(events.map((event) => event.type)).toContain('jar_caught');
+    expect(events.map((event) => event.type)).not.toContain('jar_smashed');
+  });
+
+  it('snaps the bartender home when the player starts pouring', () => {
+    const engine = new MaltlineEngine(testScenario());
+    runTicks(engine, repeat(12, () => input({ stationDir: 1, blend: true, serve: true })));
+    expect(engine.snapshot().player.x).toBeGreaterThan(0);
+
+    engine.setInput(input({ blend: true }));
+    engine.step();
+    expect(engine.snapshot().player).toMatchObject({ x: 0, blending: 'vanilla' });
+  });
+
+  it('snaps the bartender to the service end when changing lanes', () => {
+    const engine = new MaltlineEngine(testScenario({ lanes: 2 }));
+    runTicks(engine, repeat(12, () => input({ stationDir: 1, blend: true, serve: true })));
+    expect(engine.snapshot().player.x).toBeGreaterThan(0);
+
+    engine.setInput(input({ laneDir: 1 }));
+    engine.step();
+    expect(engine.snapshot().player).toMatchObject({ lane: 1, x: 0 });
+  });
+
   it('carries run context between stages', () => {
     const engine = new MaltlineEngine(testScenario(), { lives: 2, score: 500 });
     const snapshot = engine.snapshot();

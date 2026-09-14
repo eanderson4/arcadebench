@@ -168,8 +168,9 @@ meter uses an exact continuous bottom-up fill with fixed fifth dividers: 50%
 occupies exactly half rather than rounding up to three illuminated bands.
 Full-color, grayscale, and 25% inspections of the twins confirm the neutral
 selection and amber processing cues remain separate without motion. Human-lab
-artifact revision 11 marks the later visible numeric `LIVES N` role and
-supersedes revision 10; revision 10 marked the truthful `CHAIN N` HUD exposure,
+artifact revision 12 marks the later cabinet hierarchy, contrast, and crisp-overlay
+presentation pass and supersedes revision 11; revision 11 marked the visible
+numeric `LIVES N` role, while revision 10 marked the truthful `CHAIN N` HUD exposure,
 and revision 9 had already superseded revision 8 for the station-state repair.
 
 The HUD truth pass replaces the multiplier-looking `STREAK ×N` with the exact
@@ -193,3 +194,12 @@ ordered raw-PNG SHA-256 is
 `00ee116a20ba2a43caa0e2166cfde3ce88ace20860708dc86608ec38874cb34f`.
 This evidence proves deterministic rendering and containment, not human
 cabinet-distance comprehension.
+
+The September playable-overhaul pass regenerated the affected frames after
+the shop moved to a full-height cabinet, the counters and actors adopted one
+shared perspective projection, ingredient letters became distinct symbols,
+and pouring moved into the bartender's hand. Chocolate now uses a segmented
+bar silhouette. Desktop geometry keeps the 16:9 playfield inside a 1280×720
+viewport while using the available height. The reviewed 49-image ledger's
+ordered raw-PNG SHA-256 is
+`3081a3b3510661f0a631f7fd8d66d20a03d798e6a8e2c67abbcb644522aee2ef`.

@@ -31,7 +31,7 @@ import {
   snapshotP108HumanLabTiming,
   type P108HumanLabInterruptionKind,
 } from '../experiments/human-lab-timing';
-import { FixedStepClock } from './fixed-step-clock';
+import { FixedStepClock, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS } from './fixed-step-clock';
 import { prepareMaltlineFonts } from './fonts';
 import { MALTLINE_COUNTDOWN_SERVE_MS, MALTLINE_COUNTDOWN_STEP_MS } from './gameplay-flow';
 import { MaltlineRenderer } from './renderer';
@@ -64,7 +64,6 @@ const ASSIGNMENT_TOKENS = new Map<string, AssignmentRecord>([
   ['exp049-lab-t6r1k8', { assignmentOrder: ['d-combined', 'a-registered-control'],
     studyAssignment: { experienceStratum: 'informed', assignedViewportCssWidth: 700 } }],
 ]);
-const MAXIMUM_CATCH_UP_TICKS = 6;
 const PARTICIPANT_CODE_PATTERN = /^p-[a-z0-9]{6,12}$/u;
 const CONSENT_DISCLOSURE = [
   `Consent statement v2 · ${P108_HUMAN_LAB_CONSENT_STATEMENT_ID}.`,
@@ -258,7 +257,7 @@ const renderer = new MaltlineRenderer({
   reducedMotion,
 });
 renderer.setScenario(engine.scenario);
-let clock = new FixedStepClock(engine.scenario.ticksPerSecond, MAXIMUM_CATCH_UP_TICKS);
+let clock = new FixedStepClock(engine.scenario.ticksPerSecond, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS);
 let inputAdapter = new MaltlineViewerInputAdapter(engine.scenario);
 let observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
 const announcer = new MaltlineEventAnnouncer(shell.liveEvents);
@@ -576,7 +575,7 @@ function beginCurrentEngine(): void {
   }
   const scenario = stagePackage().campaign[state.activeStage - 1]!;
   engine = new MaltlineEngine(scenario, state.activeRun);
-  clock = new FixedStepClock(scenario.ticksPerSecond, MAXIMUM_CATCH_UP_TICKS);
+  clock = new FixedStepClock(scenario.ticksPerSecond, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS);
   inputAdapter = new MaltlineViewerInputAdapter(scenario);
   observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
   renderer.resetPresentation();

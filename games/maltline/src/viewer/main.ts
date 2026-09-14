@@ -8,7 +8,7 @@ import type {
   MaltlineState,
   RunContext,
 } from '../core/types';
-import { FixedStepClock } from './fixed-step-clock';
+import { FixedStepClock, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS } from './fixed-step-clock';
 import { prepareMaltlineFonts } from './fonts';
 import { MaltlineCompetitionClient } from './competition-client';
 import {
@@ -74,10 +74,9 @@ let stageInputs: MaltlineInput[] = [];
 let stageRunStart: RunContext = { lives: MALTLINE_CAMPAIGN[0]!.lives, score: 0 };
 let carriedRun: RunContext = { lives: MALTLINE_CAMPAIGN[0]!.lives, score: 0 };
 const stageReplays: MaltlineReplay[] = [];
-const MAXIMUM_CATCH_UP_TICKS = 6;
 const simulationClock = new FixedStepClock(
   MALTLINE_CAMPAIGN[0]!.ticksPerSecond,
-  MAXIMUM_CATCH_UP_TICKS,
+  MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS,
 );
 const inputAdapter = new MaltlineViewerInputAdapter(MALTLINE_CAMPAIGN[0]!);
 // Deterministic replays of finished stages, handy while tuning gameplay and
@@ -89,6 +88,7 @@ declare global {
     engineTick: number;
     playerLane: number;
     playerStation: number;
+    playerX: number;
     recordedInputs: number;
     competition: Readonly<MaltlineCompetitionControllerStatus>;
   }
@@ -124,6 +124,7 @@ function publishViewerStatus(state: MaltlineState = engine.snapshot()): void {
     engineTick: state.tick,
     playerLane: state.player.lane,
     playerStation: state.player.station,
+    playerX: state.player.x,
     recordedInputs: stageInputs.length,
     competition: competitionStatus,
     ...timingEligibility,
@@ -367,6 +368,13 @@ function interruptRun(
   flow.dispatch({ type: 'interrupt', reason, droppedMs });
 }
 
+function suspendLiveClockWithoutModal(): void {
+  inputAdapter.reset();
+  simulationClock.reset();
+  lastFrameTime = null;
+  publishViewerStatus();
+}
+
 shell.root.addEventListener('keydown', (event) => {
   if (isEditableOrInteractiveTarget(event.target) || !shell.isSupportedDevice()) return;
   if (isRepeatedPresentationAction(event.code, event.repeat)) {
@@ -446,7 +454,7 @@ shell.root.addEventListener('focusout', (event) => {
 
 window.addEventListener('blur', () => {
   windowFocused = false;
-  interruptRun('window_blur');
+  suspendLiveClockWithoutModal();
 });
 
 window.addEventListener('focus', () => {
@@ -460,7 +468,7 @@ window.addEventListener('focus', () => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    interruptRun('document_hidden');
+    suspendLiveClockWithoutModal();
   } else {
     inputAdapter.reset();
     simulationClock.reset();
@@ -500,10 +508,7 @@ function frame(now: number): void {
 
   if (flow.snapshot().screen === 'playing' && !document.hidden && windowFocused) {
     const advance = simulationClock.advance(now);
-    if (advance.droppedMs > 0) {
-      interruptRun('clock_backlog_dropped', advance.droppedMs);
-    } else {
-      for (let stepped = 0; stepped < advance.ticks && flow.snapshot().screen === 'playing'; stepped++) {
+    for (let stepped = 0; stepped < advance.ticks && flow.snapshot().screen === 'playing'; stepped++) {
         const flowBeforeStep = flow.snapshot();
         const preStepState = engine.snapshot();
         const input = inputAdapter.inputForTick(preStepState.tick + 1, preStepState);
@@ -532,7 +537,6 @@ function frame(now: number): void {
           }
         }
         if (flow.snapshot().screen === 'playing') eventAnnouncer.push(result.events);
-      }
     }
   }
 

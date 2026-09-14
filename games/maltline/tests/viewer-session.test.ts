@@ -87,7 +87,7 @@ describe('semantic play status and live events', () => {
     const text = semanticPlayStatus(scenario, state, { stageIndex: 0, stageCount: 8 });
     expect(text).toContain('Stage 1 of 8, First Pour.');
     expect(text).toContain('Score 425. CHAIN 11. 1 life. 5 orders left.');
-    expect(text).toContain("Window 2 of 2. No clean jars. Face a returning jar's window to catch it automatically.");
+    expect(text).toContain('Window 2 of 2. No clean jars. Run along a lane to intercept a returning jar.');
     expect(text).toContain('0 clean jars; 2 washing.');
     expect(text).not.toMatch(/STREAK|×/u);
   });

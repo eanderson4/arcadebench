@@ -1,11 +1,98 @@
 import type { FlavorId } from '../core/types';
 import { MALTLINE_VISUAL_THEME } from './visual-theme';
 
-const FLAVOR_CUES = MALTLINE_VISUAL_THEME.flavorCues;
 const FLAVOR_ART = MALTLINE_VISUAL_THEME.flavors;
 const CREAM_DIM = MALTLINE_VISUAL_THEME.scene.creamDim;
 const RETURN_JAR = MALTLINE_VISUAL_THEME.returnJar;
 const OUTGOING_SHAKE = MALTLINE_VISUAL_THEME.outgoingShake;
+
+/** Shared ingredient silhouettes: swirl, segmented chocolate bar, and seeded berry. */
+export function drawMaltlineFlavorSymbol(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  flavor: FlavorId,
+  scale = 1,
+): void {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = '#fff2d1';
+  if (flavor === 'vanilla') {
+    ctx.fillStyle = '#fff2d1';
+    ctx.beginPath();
+    ctx.moveTo(-9, 8);
+    ctx.quadraticCurveTo(-13, 2, -6, -1);
+    ctx.quadraticCurveTo(-10, -6, -2, -8);
+    ctx.quadraticCurveTo(3, -10, 2, -15);
+    ctx.quadraticCurveTo(11, -9, 6, -5);
+    ctx.quadraticCurveTo(13, -2, 8, 2);
+    ctx.quadraticCurveTo(14, 7, 8, 10);
+    ctx.lineTo(-7, 10);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#bd925c';
+    ctx.beginPath();
+    ctx.moveTo(-6, 0);
+    ctx.quadraticCurveTo(0, 4, 7, 1);
+    ctx.moveTo(-2, -7);
+    ctx.quadraticCurveTo(1, -4, 6, -5);
+    ctx.stroke();
+  } else if (flavor === 'chocolate') {
+    // A segmented bar stays unmistakably "chocolate" at tiny arcade-icon
+    // sizes; the earlier single cocoa bean read too much like an emoji.
+    ctx.rotate(-0.16);
+    ctx.fillStyle = '#6e351f';
+    ctx.beginPath();
+    ctx.roundRect(-10, -13, 20, 26, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#a66438';
+    ctx.strokeStyle = '#d99b62';
+    ctx.lineWidth = 1;
+    for (const [barX, barY] of [[-8, -11], [1, -11], [-8, 1], [1, 1]]) {
+      ctx.beginPath();
+      ctx.roundRect(barX!, barY!, 7, 10, 1.5);
+      ctx.fill();
+      ctx.stroke();
+    }
+    ctx.strokeStyle = '#f4c68b';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-6, -8);
+    ctx.lineTo(-2, -8);
+    ctx.moveTo(3, -8);
+    ctx.lineTo(7, -8);
+    ctx.stroke();
+  } else {
+    ctx.fillStyle = '#ee6381';
+    ctx.beginPath();
+    ctx.moveTo(0, 13);
+    ctx.bezierCurveTo(-20, -2, -10, -14, 0, -8);
+    ctx.bezierCurveTo(10, -14, 20, -2, 0, 13);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#8fc56c';
+    ctx.beginPath();
+    ctx.moveTo(0, -5);
+    ctx.lineTo(-9, -12);
+    ctx.lineTo(-2, -10);
+    ctx.lineTo(1, -16);
+    ctx.lineTo(4, -10);
+    ctx.lineTo(10, -12);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#fff0c2';
+    for (const [sx, sy] of [[-5, -3], [4, -3], [-3, 3], [3, 3], [0, 8]]) {
+      ctx.beginPath();
+      ctx.ellipse(sx!, sy!, 1, 1.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
 
 /** Two-tone soft-serve swirl used by order tickets and shake cups. */
 export function drawMaltlineSoftServe(
@@ -90,13 +177,7 @@ export function drawMaltlineCup(
   ctx.closePath();
   ctx.fill();
 
-  ctx.fillStyle = flavor === 'vanilla' ? '#54301a' : '#fff8ea';
-  ctx.font = '800 7px "Maltline UI", system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(FLAVOR_CUES[flavor], 0, 0.5);
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
+  drawMaltlineFlavorSymbol(ctx, 0, 1, flavor, 0.36);
 
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.beginPath();
@@ -114,6 +195,80 @@ export function drawMaltlineCup(
   ctx.beginPath();
   ctx.moveTo(2.5, -16);
   ctx.lineTo(6.5, -25);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** A transparent in-hand cup whose liquid height is the exact blend fraction. */
+export function drawMaltlinePouringCup(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  flavor: FlavorId,
+  progress: number,
+  scale = 1,
+  motionPhase: number | null = null,
+): void {
+  const fill = Math.min(1, Math.max(0, progress));
+  const art = FLAVOR_ART[flavor];
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.fillStyle = '#183b35';
+  ctx.strokeStyle = '#112c27';
+  ctx.lineWidth = 5;
+  ctx.beginPath();
+  ctx.moveTo(-11, -18);
+  ctx.lineTo(11, -18);
+  ctx.lineTo(8, 15);
+  ctx.lineTo(-8, 15);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+  ctx.strokeStyle = '#fff5db';
+  ctx.lineWidth = 2.2;
+  ctx.stroke();
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(-8.5, -15);
+  ctx.lineTo(8.5, -15);
+  ctx.lineTo(6, 12);
+  ctx.lineTo(-6, 12);
+  ctx.closePath();
+  ctx.clip();
+  const surfaceY = 12 - 27 * fill;
+  ctx.fillStyle = art.base;
+  ctx.fillRect(-9, surfaceY, 18, 27 * fill);
+  if (fill > 0) {
+    ctx.strokeStyle = art.light;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-9, surfaceY);
+    ctx.lineTo(9, surfaceY);
+    ctx.stroke();
+    if (motionPhase !== null) {
+      ctx.fillStyle = art.light;
+      for (let bubble = 0; bubble < 3; bubble++) {
+        const rise = (motionPhase + bubble / 3) % 1;
+        ctx.beginPath();
+        ctx.arc(-4 + bubble * 4, 11 - rise * (11 - surfaceY), 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+  ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+  ctx.lineWidth = 1.7;
+  ctx.beginPath();
+  ctx.moveTo(-6, -12);
+  ctx.lineTo(-4.5, 8);
+  ctx.stroke();
+  ctx.strokeStyle = '#fff5db';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(-11, -18);
+  ctx.lineTo(11, -18);
   ctx.stroke();
   ctx.restore();
 }

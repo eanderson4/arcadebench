@@ -74,7 +74,7 @@ function state(customers: CustomerState[], slides: SlideState[]): MaltlineState 
     score: 0,
     lives: 3,
     streak: 0,
-    player: { lane: 0, station: 0, holding: null, blending: null, blendProgress: 0 },
+    player: { lane: 0, station: 0, x: 0, holding: null, blending: null, blendProgress: 0 },
     customers,
     slides,
     jars: [],

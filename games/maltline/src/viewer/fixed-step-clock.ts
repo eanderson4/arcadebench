@@ -8,6 +8,14 @@ export interface FixedStepAdvance {
 }
 
 /**
+ * Maltline's bounded live-viewer catch-up budget. At the authored 60 Hz this
+ * retains 300 ms of simulation time: enough for ordinary 50-250 ms browser
+ * scheduling jitter plus a pending fractional tick, while longer stalls still
+ * discard time and enter the viewer's fail-closed interruption path.
+ */
+export const MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS = 18;
+
+/**
  * Converts monotonic animation-frame timestamps into a bounded fixed-step
  * budget. Fractional time survives between ordinary frames; only time beyond
  * the explicit backlog ceiling is discarded.

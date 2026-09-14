@@ -31,7 +31,7 @@ function expectDeeplyFrozen(value: unknown): void {
 describe('Maltline visual theme', () => {
   it('has a stable reviewed-direction identity and is deeply immutable', () => {
     expect(MALTLINE_VISUAL_THEME.directionId).toBe(MALTLINE_VISUAL_DIRECTION_ID);
-    expect(MALTLINE_VISUAL_DIRECTION_ID).toBe('counter-after-dark-v1');
+    expect(MALTLINE_VISUAL_DIRECTION_ID).toBe('soda-shop-arcade-v2');
     expectDeeplyFrozen(MALTLINE_VISUAL_THEME);
   });
 
@@ -100,5 +100,12 @@ describe('Maltline visual theme', () => {
     expect(station.processing).toBe(MALTLINE_VISUAL_THEME.feedback.blending);
     expect(station.blocked).toBe(MALTLINE_VISUAL_THEME.feedback.blocked);
     expect(station.ready).toBe(MALTLINE_VISUAL_THEME.feedback.ready);
+  });
+
+  it('keeps cabinet-energy accents semantic and distinct from state colors', () => {
+    const ambience = MALTLINE_VISUAL_THEME.ambience;
+    for (const color of Object.values(ambience)) expect(color).toMatch(HEX_COLOR);
+    expect(ambience.activeLane).not.toBe(MALTLINE_VISUAL_THEME.feedback.ready);
+    expect(ambience.cabinetEdge).toBe(MALTLINE_VISUAL_THEME.scene.cream);
   });
 });

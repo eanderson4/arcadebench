@@ -1,8 +1,8 @@
 :root {
-  --bg: #0c2f25;
-  --panel: #12503e;
+  --bg: #184a43;
+  --panel: #176048;
   --ink: #f3e9d2;
-  --dim: #9fc4b2;
+  --dim: #c2dccf;
   --accent: #f28cb4;
   --shadow: rgba(4, 20, 14, 0.55);
 }
@@ -18,7 +18,8 @@ body {
 }
 
 body {
-  background: radial-gradient(1200px 700px at 50% -10%, #14513d 0%, var(--bg) 60%);
+  min-height: 100dvh;
+  background: repeating-linear-gradient(90deg, #194c43 0 48px, #1d554b 48px 96px);
   color: var(--ink);
   font-family: "Maltline UI", system-ui, sans-serif;
   display: flex;
@@ -27,11 +28,11 @@ body {
 }
 
 .shell {
-  width: min(980px, 96vw);
+  width: min(calc(100vw - 24px), calc((100dvh - 90px) * 16 / 9));
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 18px 0 26px;
+  gap: 7px;
+  padding: 7px 0 8px;
 }
 
 .shell:focus {
@@ -63,7 +64,16 @@ body {
   letter-spacing: 0.14em;
   font-size: 12px;
   text-transform: uppercase;
+  min-height: 24px;
+  padding: 0 5px;
   color: var(--dim);
+  font-weight: 700;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.45);
+}
+
+.topline .brand {
+  color: var(--ink);
+  font-weight: 800;
 }
 
 .topline .brand i {
@@ -114,8 +124,13 @@ body {
 
 .stage-wrap {
   position: relative;
-  border-radius: 14px;
-  box-shadow: 0 24px 60px var(--shadow), 0 0 0 1px rgba(243, 233, 210, 0.08) inset;
+  border-radius: 6px;
+  border: 3px solid #ffd99a;
+  box-shadow:
+    0 18px 46px rgba(2, 13, 9, 0.7),
+    0 0 34px rgba(242, 140, 180, 0.12),
+    0 0 0 2px rgba(243, 233, 210, 0.28) inset,
+    0 -3px 0 rgba(255, 215, 107, 0.28) inset;
   overflow: hidden;
 }
 
@@ -124,7 +139,7 @@ canvas {
   width: 100%;
   height: auto;
   background: var(--bg);
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
 .overlay {
@@ -133,8 +148,10 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(7, 26, 20, 0.58);
-  backdrop-filter: blur(2px);
+  background:
+    repeating-linear-gradient(0deg, rgba(243, 233, 210, 0.025) 0 1px, transparent 1px 5px),
+    linear-gradient(90deg, rgba(4, 15, 11, 0.78), rgba(8, 35, 26, 0.66), rgba(4, 15, 11, 0.78));
+  backdrop-filter: none;
   transition: opacity 160ms ease;
 }
 
@@ -148,15 +165,37 @@ canvas {
 }
 
 .overlay-card {
+  position: relative;
   text-align: center;
-  width: min(760px, calc(100% - 80px));
-  padding: 30px 52px;
-  border-radius: 18px;
-  background: linear-gradient(160deg, rgba(18, 80, 62, 0.96), rgba(9, 38, 29, 0.96));
+  width: min(720px, calc(100% - 80px));
+  padding: 28px 48px;
+  border: 2px solid rgba(243, 233, 210, 0.52);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 215, 107, 0.16), transparent 44%),
+    linear-gradient(150deg, rgba(24, 103, 77, 0.985), rgba(8, 37, 28, 0.99));
   box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(243, 233, 210, 0.18),
-    0 0 60px rgba(0, 128, 98, 0.25);
+    0 24px 52px rgba(0, 0, 0, 0.58),
+    0 0 0 4px rgba(6, 26, 19, 0.78),
+    0 0 46px rgba(242, 140, 180, 0.2);
+}
+
+.overlay-card::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: 10%;
+  width: 80%;
+  height: 3px;
+  border-radius: 0 0 3px 3px;
+  background: linear-gradient(90deg, transparent, var(--accent) 25% 75%, transparent);
+}
+
+.overlay-card[data-overlay-variant='terminal'] {
+  border-color: rgba(255, 215, 107, 0.7);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(242, 140, 180, 0.22), transparent 48%),
+    linear-gradient(150deg, rgba(29, 104, 78, 0.99), rgba(9, 34, 27, 0.995));
 }
 
 .overlay-card .overlay-kicker {
@@ -172,12 +211,12 @@ canvas {
   margin: 0 0 6px;
   letter-spacing: 0.34em;
   font-size: 36px;
-  text-shadow: 0 2px 18px rgba(0, 128, 98, 0.8);
+  text-shadow: 0 2px 0 rgba(4, 20, 14, 0.9), 0 0 20px rgba(242, 140, 180, 0.38);
 }
 
 .overlay-card p {
   margin: 6px 0;
-  color: var(--dim);
+  color: #d7e8df;
 }
 
 .overlay-card .overlay-steps {
@@ -243,8 +282,13 @@ canvas {
 .controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 18px;
+  gap: 10px 18px;
   justify-content: center;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid rgba(243, 233, 210, 0.16);
+  border-radius: 9px;
+  background: rgba(4, 20, 14, 0.52);
   font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--dim);
@@ -255,6 +299,11 @@ canvas {
   color: var(--ink);
   font: inherit;
   font-weight: 800;
+  padding: 1px 5px;
+  border: 1px solid rgba(243, 233, 210, 0.38);
+  border-radius: 4px;
+  background: rgba(243, 233, 210, 0.09);
+  box-shadow: 0 1px 0 rgba(243, 233, 210, 0.16);
 }
 
 .maltline-competition[hidden] {

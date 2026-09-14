@@ -28,7 +28,7 @@ describe('first-run presentation copy', () => {
     expect(completeCopy).toContain('SPACE');
     expect(completeCopy).toContain('F / ENTER');
     expect(completeCopy).toContain('READY');
-    expect(completeCopy).toContain('face return to auto-catch');
+    expect(completeCopy).toContain('intercept return');
     const slideControl = instructions.steps?.find((step) => step.includes('F / ENTER'));
     expect(slideControl).toContain('slide held shake');
     expect(slideControl).not.toContain('catch');
@@ -43,7 +43,7 @@ describe('first-run presentation copy', () => {
     );
     expect(new Set(cards.map((card) => card.kicker)).size).toBe(MALTLINE_CAMPAIGN.length);
     expect(new Set(cards.map((card) => card.body)).size).toBe(MALTLINE_CAMPAIGN.length);
-    expect(cards[0]?.body).toContain('catches automatically');
+    expect(cards[0]?.body).toContain('intercept the returning jar');
     expect(cards[4]?.body).toContain('four jars');
     expect(cards[7]?.body).toContain('final order');
     expect(cards[7]?.body).toContain('remaining lives');

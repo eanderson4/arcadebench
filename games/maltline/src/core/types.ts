@@ -101,6 +101,8 @@ export interface JarState {
 export interface PlayerState {
   lane: number;
   station: number;
+  /** Distance down the active counter, stored in fixed-point lane units. */
+  x: number;
   holding: FlavorId | null;
   blending: FlavorId | null;
   blendProgress: number;

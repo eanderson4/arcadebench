@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { FixedStepClock } from '../src/viewer/fixed-step-clock';
+import {
+  FixedStepClock,
+  MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS,
+} from '../src/viewer/fixed-step-clock';
 
 const TICKS_PER_SECOND = 60;
-const MAXIMUM_CATCH_UP_TICKS = 6;
+const MAXIMUM_CATCH_UP_TICKS = MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS;
 
 interface ScheduleResult {
   ticks: number;
@@ -64,13 +67,33 @@ describe('FixedStepClock', () => {
     const hitch = clock.advance(1000);
     expect(hitch.ticks).toBe(MAXIMUM_CATCH_UP_TICKS);
     expect(hitch.elapsedMs).toBe(1000);
-    expect(hitch.droppedMs).toBeCloseTo(900, 8);
+    expect(hitch.droppedMs).toBeCloseTo(700, 8);
 
     // The discarded hitch does not leak into later frames as hidden backlog.
     expect(clock.advance(1000 + 1000 / TICKS_PER_SECOND)).toMatchObject({
       ticks: 1,
       droppedMs: 0,
     });
+  });
+
+  it.each([50, 100, 150, 250])('retains an ordinary %d ms scheduling hiccup', (hiccupMs) => {
+    const clock = new FixedStepClock(TICKS_PER_SECOND, MAXIMUM_CATCH_UP_TICKS);
+    clock.advance(0);
+    // A nearly complete pending tick is the worst ordinary accumulator state.
+    clock.advance(1000 / TICKS_PER_SECOND - 0.001);
+
+    const advance = clock.advance(1000 / TICKS_PER_SECOND - 0.001 + hiccupMs);
+    expect(advance.elapsedMs).toBeCloseTo(hiccupMs, 8);
+    expect(advance.droppedMs).toBe(0);
+    expect(advance.ticks).toBe(Math.floor((hiccupMs + 1000 / TICKS_PER_SECOND - 0.001)
+      / (1000 / TICKS_PER_SECOND)));
+  });
+
+  it('drops only the portion beyond the 300 ms live-viewer backlog', () => {
+    const clock = new FixedStepClock(TICKS_PER_SECOND, MAXIMUM_CATCH_UP_TICKS);
+    clock.advance(0);
+    expect(clock.advance(300)).toEqual({ ticks: 18, elapsedMs: 300, droppedMs: 0 });
+    expect(clock.advance(650)).toEqual({ ticks: 18, elapsedMs: 350, droppedMs: 50 });
   });
 
   it('reset discards a pre-pause fraction and anchors on the next sample', () => {

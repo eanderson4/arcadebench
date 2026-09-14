@@ -24,7 +24,7 @@ interface StageBrief {
 const STAGE_BRIEFS: Readonly<Record<string, StageBrief>> = {
   'maltline-01-first-pour': {
     kicker: 'LEARN THE LOOP',
-    pressure: 'One flavor. Blend to READY, slide, then face the return window—the jar catches automatically.',
+    pressure: 'One flavor. Blend, slide, then run along the lane to intercept the returning jar.',
   },
   'maltline-02-two-tap': {
     kicker: 'READ THE MENU',
@@ -61,7 +61,7 @@ function flavorSummary(scenario: MaltlineScenario): string {
 }
 
 export function titlePresentation(fontFallbackCopy = ''): OverlayPresentation {
-  const body = `Match each order, blend its flavor, and slide the shake. Face a returning jar's window to catch it automatically. Four lives—misses and walkouts cost one.${fontFallbackCopy}`;
+  const body = `Match each order, blend its flavor, and slide the shake. Run along the lane to intercept returning jars. Four lives—misses and walkouts cost one.${fontFallbackCopy}`;
   return {
     variant: 'title',
     kicker: 'ARCADE SHIFT',
@@ -74,8 +74,9 @@ export function titlePresentation(fontFallbackCopy = ''): OverlayPresentation {
 
 export function instructionPresentation(): OverlayPresentation {
   const steps = [
-    '← →  choose flavor station',
-    '↑ ↓  choose window · face return to auto-catch',
+    '← →  run along the active counter · intercept returns',
+    '↑ ↓  choose lane',
+    'A D  choose flavor station',
     'Hold SPACE until READY',
     'F / ENTER  slide held shake',
   ] as const;
@@ -86,7 +87,7 @@ export function instructionPresentation(): OverlayPresentation {
     body: 'Serve every order before the customer reaches the counter. A walkout, missed shake, or missed return costs one of four lives.',
     steps,
     hint: 'Press Enter for Stage 1',
-    announcement: 'Counter instructions. Match, blend, slide, and face the return window to catch. Press Enter for Stage 1.',
+    announcement: 'Counter instructions. Match, blend, slide, and run along the lane to catch returns. Press Enter for Stage 1.',
   };
 }
 

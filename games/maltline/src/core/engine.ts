@@ -40,6 +40,7 @@ export class MaltlineEngine {
   private prevServe = false;
   private playerLane = 0;
   private playerStation = 0;
+  private playerX = 0;
   private holding: FlavorId | null = null;
   private blending: FlavorId | null = null;
   private blendProgress = 0;
@@ -103,6 +104,7 @@ export class MaltlineEngine {
       player: {
         lane: this.playerLane,
         station: this.playerStation,
+        x: this.playerX,
         holding: this.holding,
         blending: this.blending,
         blendProgress: this.blendProgress,
@@ -142,7 +144,21 @@ export class MaltlineEngine {
 
   private applyInput(events: GameEvent[]): void {
     const input = this.input;
-    if (input.stationDir !== 0 && this.tickNumber % this.scenario.stationRepeatTicks === 0) {
+    // Arrow-run input uses the otherwise impossible blend + serve + station
+    // direction chord, preserving the proof schema without colliding with
+    // retained generation-2 flavor/serve inputs.
+    const running = input.blend && input.serve && input.stationDir !== 0;
+    if (running) {
+      const maximumX = Math.round(this.laneLengthFp * 0.58);
+      const stride = Math.round(FIXED_SCALE * 0.9) * input.stationDir;
+      this.playerX = Math.max(0, Math.min(maximumX, this.playerX + stride));
+      if (input.stationDir < 0 && this.playerX <= FIXED_SCALE * 4) this.playerX = 0;
+      if (this.blending !== null) {
+        this.jarsAvailable++;
+        this.blending = null;
+        this.blendProgress = 0;
+      }
+    } else if (input.stationDir !== 0 && this.tickNumber % this.scenario.stationRepeatTicks === 0) {
       this.playerStation = Math.max(
         0,
         Math.min(this.scenario.stations.length - 1, this.playerStation + input.stationDir),
@@ -150,13 +166,22 @@ export class MaltlineEngine {
     }
     if (input.laneDir !== 0 && this.tickNumber % this.scenario.laneRepeatTicks === 0) {
       this.playerLane = (this.playerLane + input.laneDir + this.lanesFp) % this.lanesFp;
+      this.playerX = 0;
     }
 
-    if (this.blending === null && this.holding === null && input.blend && this.jarsAvailable > 0) {
+    // Old-school arcade affordance: asking to pour always recalls the
+    // bartender to the mixer instead of demanding precise return positioning.
+    if (!running && input.blend && this.holding === null && this.blending === null) {
+      this.playerX = 0;
+    }
+    if (!running && input.serve && this.holding !== null) this.playerX = 0;
+    const workingCounter = !running && this.playerX === 0;
+    if (this.blending === null && this.holding === null && workingCounter
+      && input.blend && this.jarsAvailable > 0) {
       this.jarsAvailable--;
       this.blending = this.scenario.stations[this.playerStation]!;
       this.blendProgress = 0;
-    } else if (this.blending !== null && input.blend) {
+    } else if (this.blending !== null && workingCounter && input.blend) {
       this.blendProgress++;
       if (this.blendProgress >= this.scenario.blendTicks) {
         this.holding = this.blending;
@@ -171,12 +196,12 @@ export class MaltlineEngine {
       this.blendProgress = 0;
     }
 
-    if (input.serve && !this.prevServe && this.holding !== null) {
+    if (!running && this.playerX === 0 && input.serve && !this.prevServe && this.holding !== null) {
       this.slides.push({ id: this.nextId++, lane: this.playerLane, x: 0, flavor: this.holding });
       events.push({ tick: this.tickNumber, type: 'shake_launched', lane: this.playerLane, flavor: this.holding });
       this.holding = null;
     }
-    this.prevServe = input.serve;
+    this.prevServe = running ? false : input.serve;
   }
 
   private spawn(events: GameEvent[]): void {
@@ -325,26 +350,32 @@ export class MaltlineEngine {
     const remaining: JarState[] = [];
     for (let index = 0; index < this.jars.length; index++) {
       const jar = this.jars[index]!;
+      const previousX = jar.x;
       jar.x -= this.returnSpeedFp;
+      const catchRadius = Math.round(FIXED_SCALE * 2.5);
+      const crossedPlayer = this.playerX === 0
+        ? jar.x <= 0
+        : previousX >= this.playerX - catchRadius
+          && jar.x <= this.playerX + catchRadius;
+      if (this.playerLane === jar.lane && crossedPlayer) {
+        this.washing.push(this.scenario.washTicks);
+        const points = jar.catchBonusEligible ? MALTLINE_RULES.jarCatchScore : 0;
+        this.score += points;
+        events.push({
+          tick: this.tickNumber,
+          type: 'jar_caught',
+          customerId: jar.customerId,
+          lane: jar.lane,
+          points,
+        });
+        continue;
+      }
       if (jar.x <= 0) {
-        if (this.playerLane === jar.lane) {
-          this.washing.push(this.scenario.washTicks);
-          const points = jar.catchBonusEligible ? MALTLINE_RULES.jarCatchScore : 0;
-          this.score += points;
-          events.push({
-            tick: this.tickNumber,
-            type: 'jar_caught',
-            customerId: jar.customerId,
-            lane: jar.lane,
-            points,
-          });
-        } else {
-          events.push({ tick: this.tickNumber, type: 'jar_smashed', lane: jar.lane });
-          this.loseLife('jar_smashed', events);
-          if (this.status === 'lost') {
-            remaining.push(...this.jars.slice(index + 1));
-            break;
-          }
+        events.push({ tick: this.tickNumber, type: 'jar_smashed', lane: jar.lane });
+        this.loseLife('jar_smashed', events);
+        if (this.status === 'lost') {
+          remaining.push(...this.jars.slice(index + 1));
+          break;
         }
         continue;
       }

@@ -24,7 +24,8 @@ import { activeChainText } from './presentation-copy';
 import {
   drawMaltlineCup,
   drawMaltlineJar,
-  drawMaltlineSoftServe,
+  drawMaltlineFlavorSymbol,
+  drawMaltlinePouringCup,
 } from './renderer-vessel-painters';
 
 const {
@@ -41,24 +42,19 @@ const {
 
 const {
   wallTop: WALL_TOP,
-  wallBottom: WALL_BOTTOM,
-  wood: WOOD,
-  woodLight: WOOD_LIGHT,
-  woodDark: WOOD_DARK,
   cream: CREAM,
   creamDim: CREAM_DIM,
   brass: BRASS,
-  brassDark: BRASS_DARK,
   ink: INK,
   steamPrefix: STEAM,
 } = MALTLINE_VISUAL_THEME.scene;
-const FLAVOR_CUES = MALTLINE_VISUAL_THEME.flavorCues;
 const FLAVOR_ART = MALTLINE_VISUAL_THEME.flavors;
 const FEEDBACK = MALTLINE_VISUAL_THEME.feedback;
 const RETURN_JAR = MALTLINE_VISUAL_THEME.returnJar;
 const CUSTOMER_ORDER = MALTLINE_VISUAL_THEME.customerOrder;
 const OUTGOING_SHAKE = MALTLINE_VISUAL_THEME.outgoingShake;
 const STATION = MALTLINE_VISUAL_THEME.station;
+const AMBIENCE = MALTLINE_VISUAL_THEME.ambience;
 
 interface MaltlineRendererBinding {
   readonly scenario: NormalizedMaltlineScenario;
@@ -102,12 +98,6 @@ export class MaltlineRenderer {
   private readonly effects: MaltlineRendererEffects;
   private readonly nowMs: () => number;
   private reducedMotion: boolean;
-  private motes = Array.from({ length: 26 }, (_, i) => ({
-    x: (i * 373 % CANVAS_W),
-    y: 80 + (i * 197 % 240),
-    phase: (i * 0.7) % (Math.PI * 2),
-    speed: 0.3 + (i % 5) * 0.12,
-  }));
 
   constructor(dependencies: MaltlinePresentationDependencies = {}) {
     const random = dependencies.random ?? LIVE_RANDOM;
@@ -154,10 +144,6 @@ export class MaltlineRenderer {
     return this.layout.laneCenterY(lane);
   }
 
-  private lanePx(x: number): number {
-    return this.layout.lanePx(x);
-  }
-
   pushEvents(events: GameEvent[], state: MaltlineState): void {
     const { layout } = this.requireBinding(state);
     this.effects.pushEvents(events, state, layout);
@@ -169,6 +155,20 @@ export class MaltlineRenderer {
 
   draw(ctx: CanvasRenderingContext2D, state: MaltlineState, meta: DrawMeta): void {
     const { scenario } = this.requireBinding(state);
+    // Keep enlarged canvas artwork sharp without changing logical game geometry.
+    // A two-times backing-store cap bounds the cost on high-density displays.
+    const canvas = ctx.canvas;
+    if (canvas && typeof canvas.clientWidth === 'number' && canvas.clientWidth > 0) {
+      const density = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
+      const scale = Math.min(2, Math.max(1, canvas.clientWidth * density / CANVAS_W));
+      const width = Math.round(CANVAS_W * scale);
+      const height = Math.round(CANVAS_H * scale);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      ctx.setTransform(width / CANVAS_W, 0, 0, height / CANVAS_H, 0, 0);
+    }
     const presentationTimeMs = this.nowMs();
     ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
     ctx.save();
@@ -179,16 +179,19 @@ export class MaltlineRenderer {
 
     this.drawWall(ctx, state);
     this.drawAwning(ctx);
+    for (let lane = 0; lane < scenario.lanes; lane++) {
+      this.drawDoors(ctx, scenario, lane);
+      this.drawCustomers(ctx, scenario, state, lane);
+      this.drawCounters(ctx, scenario, state, lane);
+      this.drawSlides(ctx, scenario, state, lane);
+      this.drawJars(ctx, state, lane);
+      if (state.player.lane === lane) {
+        this.drawPlayer(ctx, scenario, state);
+        this.drawFlavorSelector(ctx, scenario, state);
+      }
+    }
     this.drawControlRail(ctx, scenario, state);
-    this.drawLamps(ctx, scenario);
-    this.drawCounters(ctx, scenario, state);
-    this.drawDoors(ctx, scenario);
-    this.drawMotes(ctx, state);
-    this.drawCustomers(ctx, scenario, state);
-    this.drawSlides(ctx, scenario, state);
-    this.drawJars(ctx, state);
     this.drawStationBank(ctx, scenario, state, presentationTimeMs);
-    this.drawPlayer(ctx, scenario, state);
     this.drawParticles(ctx);
     this.drawPopups(ctx);
     this.drawVignette(ctx);
@@ -201,31 +204,44 @@ export class MaltlineRenderer {
   // ---- Scene -----------------------------------------------------------
 
   private drawWall(ctx: CanvasRenderingContext2D, state: MaltlineState): void {
-    const wall = ctx.createLinearGradient(0, HUD_H, 0, BANK_TOP);
-    wall.addColorStop(0, WALL_TOP);
-    wall.addColorStop(1, WALL_BOTTOM);
-    ctx.fillStyle = wall;
+    ctx.fillStyle = WALL_TOP;
     ctx.fillRect(0, HUD_H, CANVAS_W, BANK_TOP - HUD_H);
-
-    // Subtle diagonal tile texture.
-    ctx.save();
-    ctx.globalAlpha = 0.05;
-    ctx.strokeStyle = CREAM;
-    ctx.lineWidth = 1;
-    for (let y = HUD_H + 24; y < BANK_TOP; y += 30) {
+    const end = this.layout.scenario.laneLength * FIXED_SCALE * 1.22;
+    // Every floor seam is a ray toward the same vanishing point as the bars.
+    for (let lane = 0; lane < this.layout.scenario.lanes; lane++) {
+      const upper = this.layout.laneTop(lane);
+      const lower = this.layout.laneBottom(lane);
+      const a = this.layout.project(0, upper, -104);
+      const b = this.layout.project(end, upper, -104);
+      const c = this.layout.project(end, lower, -104);
+      const d = this.layout.project(0, lower, -104);
+      ctx.fillStyle = lane % 2 === 0 ? '#28695e' : '#245e55';
+      this.polygon(ctx, [a, b, c, d]);
+      ctx.fill();
+      ctx.strokeStyle = '#d7bc87';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(CANVAS_W, y - 14);
+      ctx.moveTo(d.x, d.y);
+      ctx.lineTo(c.x, c.y);
       ctx.stroke();
+      ctx.strokeStyle = 'rgba(243,233,210,0.12)';
+      ctx.lineWidth = 1;
+      for (let depth = 0; depth <= 1; depth += 0.125) {
+        const top = this.layout.project(end * depth, upper, -104);
+        const bottom = this.layout.project(end * depth, lower, -104);
+        ctx.beginPath();
+        ctx.moveTo(top.x, top.y);
+        ctx.lineTo(bottom.x, bottom.y);
+        ctx.stroke();
+      }
     }
-    ctx.restore();
+  }
 
-    // Warm pool of room light from above.
-    const glow = ctx.createRadialGradient(CANVAS_W / 2, HUD_H + 40, 40, CANVAS_W / 2, HUD_H + 40, 520);
-    glow.addColorStop(0, 'rgba(255, 215, 107, 0.10)');
-    glow.addColorStop(1, 'rgba(255, 215, 107, 0)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, HUD_H, CANVAS_W, BANK_TOP - HUD_H);
+  private polygon(ctx: CanvasRenderingContext2D, points: readonly { x: number; y: number }[]): void {
+    ctx.beginPath();
+    ctx.moveTo(points[0]!.x, points[0]!.y);
+    for (const point of points.slice(1)) ctx.lineTo(point.x, point.y);
+    ctx.closePath();
   }
 
   private drawAwning(ctx: CanvasRenderingContext2D): void {
@@ -234,8 +250,8 @@ export class MaltlineRenderer {
     for (let x = 0; x < CANVAS_W + scallop; x += scallop) {
       const stripe = ctx.createLinearGradient(0, y, 0, y + AWNING_H);
       if ((x / scallop) % 2 === 0) {
-        stripe.addColorStop(0, '#1c6a50');
-        stripe.addColorStop(1, '#12503e');
+        stripe.addColorStop(0, '#ef7257');
+        stripe.addColorStop(1, '#c94b3d');
       } else {
         stripe.addColorStop(0, '#f3e9d2');
         stripe.addColorStop(1, '#d9c8a6');
@@ -306,212 +322,106 @@ export class MaltlineRenderer {
     ctx.textBaseline = 'alphabetic';
   }
 
-  private drawLamps(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario): void {
-    for (let lane = 0; lane < scenario.lanes; lane++) {
-      const cx = COUNTER_X + (DOOR_X - COUNTER_X) * 0.45;
-      const y = this.layout.laneTop(lane);
-      const top = HUD_H + AWNING_H;
 
-      // Light cone behind everything in the lane.
-      const cone = ctx.createLinearGradient(0, top, 0, this.layout.laneBottom(lane));
-      cone.addColorStop(0, 'rgba(255, 215, 107, 0.13)');
-      cone.addColorStop(1, 'rgba(255, 215, 107, 0.02)');
-      ctx.fillStyle = cone;
-      ctx.beginPath();
-      ctx.moveTo(cx - 12, top);
-      ctx.lineTo(cx + 12, top);
-      ctx.lineTo(cx + 90, this.layout.laneBottom(lane));
-      ctx.lineTo(cx - 90, this.layout.laneBottom(lane));
-      ctx.closePath();
-      ctx.fill();
+  private drawCounters(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState, lane: number): void {
+    const layout = this.layout;
+    const end = scenario.laneLength * FIXED_SCALE;
+    const back = layout.counterBackY(lane);
+    const front = layout.counterFrontY(lane);
+    const bottom = layout.floorY(lane) + 3 * layout.actorScale;
+    const nearBack = layout.project(0, back, 12);
+    const farBack = layout.project(end, back, 12);
+    const nearFront = layout.project(0, front, -12);
+    const farFront = layout.project(end, front, -12);
+    const nearBottom = layout.project(0, bottom, -12);
+    const farBottom = layout.project(end, bottom, -12);
 
-      // Cord and brass dome shade.
-      ctx.strokeStyle = 'rgba(217, 200, 166, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(cx, top);
-      ctx.lineTo(cx, top + 26);
+    // Customers are painted first. This solid top and fascia hide their legs;
+    // only vessels are subsequently painted on the serving surface.
+    ctx.fillStyle = '#ae4837';
+    this.polygon(ctx, [nearBack, nearFront, nearBottom, layout.project(0, bottom, 12)]);
+    ctx.fill();
+    const top = ctx.createLinearGradient(0, back, 0, front);
+    top.addColorStop(0, '#fff0c4');
+    top.addColorStop(1, '#efc77f');
+    ctx.fillStyle = top;
+    ctx.strokeStyle = '#915033';
+    ctx.lineWidth = 1.5;
+    this.polygon(ctx, [nearBack, farBack, farFront, nearFront]);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#d96b50';
+    this.polygon(ctx, [nearFront, farFront, farBottom, nearBottom]);
+    ctx.fill();
+    ctx.strokeStyle = '#934635';
+    ctx.lineWidth = 1;
+    for (let depth = 0; depth < 1; depth += 0.125) {
+      const start = depth * end;
+      const finish = (depth + 0.10) * end;
+      this.polygon(ctx, [
+        layout.project(start, front + 3, -12),
+        layout.project(finish, front + 3, -12),
+        layout.project(finish, bottom - 3, -12),
+        layout.project(start, bottom - 3, -12),
+      ]);
       ctx.stroke();
-      const flicker = 0.9 + Math.sin(lane * 2.1) * 0.05;
-      const dome = ctx.createLinearGradient(cx - 22, 0, cx + 22, 0);
-      dome.addColorStop(0, BRASS_DARK);
-      dome.addColorStop(0.5, BRASS);
-      dome.addColorStop(1, BRASS_DARK);
-      ctx.fillStyle = dome;
-      ctx.beginPath();
-      ctx.arc(cx, top + 34, 20, Math.PI, 0);
-      ctx.lineTo(cx + 22, top + 40);
-      ctx.lineTo(cx - 22, top + 40);
-      ctx.closePath();
-      ctx.fill();
+    }
+    ctx.strokeStyle = lane === state.player.lane ? AMBIENCE.activeLane : '#ffe6ac';
+    ctx.lineWidth = lane === state.player.lane ? 3.5 : 2;
+    ctx.beginPath();
+    ctx.moveTo(nearFront.x, nearFront.y);
+    ctx.lineTo(farFront.x, farFront.y);
+    ctx.stroke();
+    ctx.strokeStyle = '#763d2e';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(nearBottom.x, nearBottom.y);
+    ctx.lineTo(farBottom.x, farBottom.y);
+    ctx.stroke();
 
-      const bulbGlow = ctx.createRadialGradient(cx, top + 44, 2, cx, top + 44, 46);
-      bulbGlow.addColorStop(0, `rgba(255, 224, 130, ${0.85 * flicker})`);
-      bulbGlow.addColorStop(0.35, `rgba(255, 215, 107, ${0.28 * flicker})`);
-      bulbGlow.addColorStop(1, 'rgba(255, 215, 107, 0)');
-      ctx.fillStyle = bulbGlow;
-      ctx.beginPath();
-      ctx.arc(cx, top + 44, 46, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffe08a';
-      ctx.beginPath();
-      ctx.arc(cx, top + 44, 6, 0, Math.PI * 2);
+    for (const flash of this.effects.flashes.filter((candidate) => candidate.lane === lane)) {
+      ctx.fillStyle = withAlpha(FEEDBACK.urgent, Math.max(0, 1 - flash.age / flash.ttl) * 0.4);
+      this.polygon(ctx, [nearBack, farBack, farBottom, nearBottom]);
       ctx.fill();
     }
   }
 
-  private drawCounters(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState): void {
-    for (let lane = 0; lane < scenario.lanes; lane++) {
-      const y = this.layout.laneTop(lane);
-      const h = this.layout.laneHeight - 24;
-      const active = lane === state.player.lane;
-
-      ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-      ctx.shadowBlur = 14;
-      ctx.shadowOffsetY = 7;
-      const wood = ctx.createLinearGradient(0, y + 8, 0, y + 8 + h);
-      wood.addColorStop(0, WOOD_LIGHT);
-      wood.addColorStop(0.28, WOOD);
-      wood.addColorStop(1, WOOD_DARK);
-      ctx.fillStyle = wood;
-      ctx.beginPath();
-      ctx.roundRect(COUNTER_X - 14, y + 8, DOOR_X - COUNTER_X + 12, h, 10);
-      ctx.fill();
-      ctx.restore();
-
-      // Wood grain streaks.
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.strokeStyle = WOOD_DARK;
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 3; i++) {
-        const gy = y + 22 + i * (h - 30) / 2.4;
-        ctx.beginPath();
-        ctx.moveTo(COUNTER_X + 8, gy);
-        ctx.bezierCurveTo(COUNTER_X + 260, gy - 4, DOOR_X - 280, gy + 5, DOOR_X - 6, gy - 2);
-        ctx.stroke();
-      }
-      ctx.restore();
-
-      // Glossy top edge catching the lamps.
-      const gloss = ctx.createLinearGradient(0, y + 8, 0, y + 22);
-      gloss.addColorStop(0, 'rgba(255, 248, 234, 0.35)');
-      gloss.addColorStop(1, 'rgba(255, 248, 234, 0)');
-      ctx.fillStyle = gloss;
-      ctx.beginPath();
-      ctx.roundRect(COUNTER_X - 14, y + 8, DOOR_X - COUNTER_X + 12, 14, [10, 10, 0, 0]);
-      ctx.fill();
-
-      // Service lip on the player's side.
-      ctx.fillStyle = active ? CREAM : CREAM_DIM;
-      ctx.beginPath();
-      ctx.roundRect(COUNTER_X - 26, y + 14, 12, h - 12, 5);
-      ctx.fill();
-      if (active) {
-        ctx.strokeStyle = 'rgba(255, 248, 234, 0.9)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(COUNTER_X - 26, y + 14, 12, h - 12, 5);
-        ctx.stroke();
-
-        ctx.save();
-        ctx.strokeStyle = 'rgba(255, 248, 234, 0.72)';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([10, 7]);
-        ctx.beginPath();
-        ctx.roundRect(COUNTER_X - 14, y + 8, DOOR_X - COUNTER_X + 12, h, 10);
-        ctx.stroke();
-        ctx.restore();
-      }
-
-      for (const flash of this.effects.flashes.filter((candidate) => candidate.lane === lane)) {
-        const alpha = Math.max(0, 1 - flash.age / flash.ttl) * 0.4;
-        ctx.fillStyle = withAlpha(FEEDBACK.urgent, alpha);
-        ctx.beginPath();
-        ctx.roundRect(COUNTER_X - 14, y + 8, DOOR_X - COUNTER_X + 12, h, 10);
-        ctx.fill();
-      }
-    }
+  private drawDoors(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, lane: number): void {
+    const point = this.layout.project(scenario.laneLength * FIXED_SCALE, this.layout.floorY(lane), 22);
+    const scale = point.scale * this.layout.actorScale;
+    const w = 29 * scale;
+    const h = 64 * scale;
+    const x = point.x - w / 2;
+    const y = point.y - h;
+    ctx.fillStyle = '#173e35';
+    ctx.beginPath();
+    ctx.roundRect(x - 4 * scale, y - 4 * scale, w + 8 * scale, h + 5 * scale, 4);
+    ctx.fill();
+    ctx.fillStyle = '#f6ddb0';
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 3);
+    ctx.fill();
+    ctx.fillStyle = '#bd9462';
+    ctx.fillRect(x + 4 * scale, y + 5 * scale, w - 8 * scale, h * 0.62);
+    ctx.fillStyle = '#725b42';
+    ctx.beginPath();
+    ctx.arc(point.x, y + 22 * scale, 5 * scale, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.roundRect(point.x - 7 * scale, y + 28 * scale, 14 * scale, 14 * scale, 4);
+    ctx.fill();
+    ctx.fillStyle = '#7a5a3a';
+    ctx.fillRect(x + w - 6 * scale, y + h * 0.7, 3 * scale, 7 * scale);
   }
 
-  private drawDoors(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario): void {
-    for (let lane = 0; lane < scenario.lanes; lane++) {
-      const y = this.layout.laneTop(lane);
-      const w = 42;
-      const h = Math.min(66, this.layout.laneHeight - 18);
-      const x = DOOR_X - 4;
-
-      // Warm interior spilling out.
-      const spill = ctx.createRadialGradient(x + w / 2, y + h / 2, 4, x + w / 2, y + h / 2, 70);
-      spill.addColorStop(0, 'rgba(255, 215, 107, 0.22)');
-      spill.addColorStop(1, 'rgba(255, 215, 107, 0)');
-      ctx.fillStyle = spill;
-      ctx.beginPath();
-      ctx.arc(x + w / 2, y + h / 2, 70, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-      ctx.shadowBlur = 10;
-      ctx.shadowOffsetY = 4;
-      ctx.fillStyle = '#f3e9d2';
-      ctx.beginPath();
-      ctx.roundRect(x, y, w, h, 7);
-      ctx.fill();
-      ctx.restore();
-
-      const glass = ctx.createLinearGradient(x, y, x + w, y + h);
-      glass.addColorStop(0, '#ffe9b8');
-      glass.addColorStop(0.5, '#f7d089');
-      glass.addColorStop(1, '#e8b95f');
-      ctx.fillStyle = glass;
-      ctx.beginPath();
-      ctx.roundRect(x + 5, y + 5, w - 10, h - 10, 5);
-      ctx.fill();
-
-      // Silhouettes of the queue outside.
-      ctx.fillStyle = 'rgba(90, 60, 30, 0.35)';
-      ctx.beginPath();
-      ctx.arc(x + 13, y + h * 0.42, 5, 0, Math.PI * 2);
-      ctx.arc(x + 26, y + h * 0.48, 5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Brass handle.
-      ctx.fillStyle = BRASS;
-      ctx.beginPath();
-      ctx.roundRect(x + w - 12, y + h / 2 - 8, 4, 16, 2);
-      ctx.fill();
-    }
-    ctx.fillStyle = 'rgba(159, 196, 178, 0.9)';
-    ctx.font = '600 10px "Maltline UI", system-ui, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('QUEUE →', DOOR_X - 10, LANES_TOP - 10);
-    ctx.textAlign = 'left';
-  }
-
-  private drawMotes(ctx: CanvasRenderingContext2D, state: MaltlineState): void {
-    ctx.save();
-    for (const mote of this.motes) {
-      const t = (this.reducedMotion ? 0 : state.tick / 60) + mote.phase;
-      const x = mote.x + Math.sin(t * mote.speed) * 14;
-      const y = mote.y + Math.cos(t * mote.speed * 0.8) * 10;
-      const alpha = 0.06 + 0.05 * Math.sin(t * 2);
-      ctx.fillStyle = `rgba(255, 232, 170, ${alpha})`;
-      ctx.beginPath();
-      ctx.arc(x, y, 1.6, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
 
   // ---- Actors ----------------------------------------------------------
 
-  private drawCustomers(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState): void {
-    for (const customer of state.customers) {
-      const px = this.lanePx(customer.x);
-      const groundY = this.layout.laneBottom(customer.lane) - 18;
-      this.drawPerson(ctx, customer, px, groundY, state, scenario);
+  private drawCustomers(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState, lane: number): void {
+    for (const customer of state.customers.filter((customer) => customer.lane === lane).sort((a, b) => b.x - a.x)) {
+      const point = this.layout.project(customer.x, this.layout.floorY(lane));
+      this.drawPerson(ctx, customer, point.x, point.y, state, scenario);
     }
   }
 
@@ -523,6 +433,11 @@ export class MaltlineRenderer {
     state: MaltlineState,
     scenario: MaltlineScenario,
   ): void {
+    ctx.save();
+    const actorScale = this.layout.actorScale * this.layout.project(customer.x, 0).scale;
+    ctx.translate(px, groundY);
+    ctx.scale(actorScale, actorScale);
+    ctx.translate(-px, -groundY);
     const [shirt, shirtDark] = pick(SHIRTS, customer.id);
     const [hair, hairDark] = pick(HAIRS, customer.id * 3 + 1);
     const [skin, skinDark] = pick(SKINS, customer.id * 2 + 2);
@@ -533,12 +448,6 @@ export class MaltlineRenderer {
 
     const cx = px;
     const footY = groundY;
-
-    // Ground shadow.
-    ctx.fillStyle = 'rgba(4, 12, 9, 0.35)';
-    ctx.beginPath();
-    ctx.ellipse(cx, footY + 3, 14, 4.5, 0, 0, Math.PI * 2);
-    ctx.fill();
 
     const bodyY = footY - 14 - bob;
 
@@ -564,6 +473,22 @@ export class MaltlineRenderer {
     ctx.strokeStyle = CUSTOMER_ORDER.silhouetteKeyline;
     ctx.lineWidth = 1.5;
     ctx.stroke();
+
+    // Swinging arms.
+    ctx.fillStyle = CREAM;
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, bodyY - 19);
+    ctx.lineTo(cx, bodyY - 12);
+    ctx.lineTo(cx + 5, bodyY - 19);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = shirtDark;
+    ctx.fillRect(cx + 3, bodyY - 8, 5, 5);
+    ctx.fillStyle = INK;
+    ctx.beginPath();
+    ctx.roundRect(cx - 9 + stride * 3.5, footY - 4, 10, 5, 2);
+    ctx.roundRect(cx + 1 - stride * 3.5, footY - 4, 10, 5, 2);
+    ctx.fill();
 
     // Swinging arms.
     ctx.strokeStyle = skinDark;
@@ -621,6 +546,20 @@ export class MaltlineRenderer {
     ctx.fillStyle = hairDark;
     ctx.beginPath();
     ctx.ellipse(cx + 6, headY - 6, 5, 3, 0.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Profile nose and eye whites read at arcade speed.
+    ctx.fillStyle = skin;
+    ctx.strokeStyle = CUSTOMER_ORDER.silhouetteKeyline;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(cx - 9, headY + 1, 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#fffaf0';
+    ctx.beginPath();
+    ctx.ellipse(cx - 5, headY - 1, 3.5, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 2, headY - 1, 3.5, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Face by mood. Everyone faces the counter (left).
@@ -694,8 +633,8 @@ export class MaltlineRenderer {
     } else {
       // Order bubble.
       const sway = this.reducedMotion ? 0 : Math.sin((state.tick + customer.id * 13) / 30) * 2;
-      const ticketY = Math.max(HUD_H + 18, headY - 30 + sway);
-      this.drawOrderBubble(ctx, cx, ticketY, customer.flavor);
+      const ticketY = headY - 4 + sway;
+      this.drawOrderBubble(ctx, cx - 33, ticketY, customer.flavor);
       if (impatient) {
         ctx.strokeStyle = withAlpha(FEEDBACK.urgent, 0.75);
         ctx.lineWidth = 2;
@@ -704,6 +643,7 @@ export class MaltlineRenderer {
         ctx.stroke();
       }
     }
+    ctx.restore();
   }
 
   private drawOrderBubble(ctx: CanvasRenderingContext2D, x: number, y: number, flavor: FlavorId): void {
@@ -749,45 +689,59 @@ export class MaltlineRenderer {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    drawMaltlineSoftServe(ctx, x - 6, y + 2, flavor, 0.82);
-    ctx.fillStyle = CREAM;
-    ctx.font = '800 11px "Maltline UI", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(FLAVOR_CUES[flavor], x + 10, y + 1);
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'alphabetic';
+    drawMaltlineFlavorSymbol(ctx, x, y + 1, flavor, 0.9);
     ctx.restore();
   }
 
-  private drawSlides(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState): void {
-    for (const slide of state.slides) {
-      const px = this.lanePx(slide.x);
-      const groundY = this.layout.laneBottom(slide.lane) - 22;
-      // A filled rightward delivery trail opposes the return jar's leftward arrows.
-      const trail = ctx.createLinearGradient(px - 70, 0, px - 14, 0);
-      trail.addColorStop(0, 'rgba(255,255,255,0)');
-      trail.addColorStop(1, withAlpha(OUTGOING_SHAKE.trail, 0.72));
-      ctx.fillStyle = trail;
+  private drawVesselTrail(
+    ctx: CanvasRenderingContext2D, fixedX: number, lane: number, direction: 1 | -1,
+    color: string, edge: string, opacity: number,
+  ): void {
+    const unit = this.layout.scenario.laneLength * FIXED_SCALE / 100;
+    const nearY = this.layout.vesselY(lane) - 10;
+    const head = this.layout.project(fixedX - direction * 2 * unit, nearY);
+    const tail = this.layout.project(fixedX - direction * 8 * unit, nearY);
+    const gradient = ctx.createLinearGradient(tail.x, tail.y, head.x, head.y);
+    gradient.addColorStop(0, withAlpha(color, 0));
+    gradient.addColorStop(1, withAlpha(color, opacity));
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 5 * head.scale;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(tail.x, tail.y);
+    ctx.lineTo(head.x, head.y);
+    ctx.stroke();
+    for (const offset of [4, 6]) {
+      const point = this.layout.project(fixedX - direction * offset * unit, nearY);
+      ctx.save();
+      ctx.translate(point.x, point.y);
+      ctx.rotate(Math.atan2(head.y - tail.y, head.x - tail.x));
+      ctx.scale(point.scale, point.scale);
+      ctx.fillStyle = edge;
       ctx.beginPath();
-      ctx.roundRect(px - 68, groundY - 19, 54, 14, 7);
+      ctx.moveTo(4, 0);
+      ctx.lineTo(-3, -5);
+      ctx.lineTo(-3, 5);
+      ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = OUTGOING_SHAKE.edge;
-      for (const offset of [-50, -32]) {
-        ctx.beginPath();
-        ctx.moveTo(px + offset + 6, groundY - 12);
-        ctx.lineTo(px + offset, groundY - 18);
-        ctx.lineTo(px + offset, groundY - 6);
-        ctx.closePath();
-        ctx.fill();
-      }
-      const wobble = this.reducedMotion ? 0 : Math.sin((state.tick + slide.id * 5) / 3.2) * 0.1;
-      drawMaltlineCup(ctx, px, groundY - 12, slide.flavor, 1.4, wobble, true);
+      ctx.restore();
     }
   }
 
-  private drawJars(ctx: CanvasRenderingContext2D, state: MaltlineState): void {
-    for (const jar of state.jars) {
+  private drawSlides(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState, lane: number): void {
+    for (const slide of state.slides.filter((slide) => slide.lane === lane)) {
+      const point = this.layout.project(slide.x, this.layout.vesselY(lane));
+      const px = point.x;
+      const groundY = point.y;
+      this.drawVesselTrail(ctx, slide.x, lane, 1, OUTGOING_SHAKE.trail, OUTGOING_SHAKE.edge, 0.72);
+      const wobble = this.reducedMotion ? 0 : Math.sin((state.tick + slide.id * 5) / 3.2) * 0.1;
+      const vesselScale = 1.35 * point.scale;
+      drawMaltlineCup(ctx, px, groundY - 12 * vesselScale, slide.flavor, vesselScale, wobble, true);
+    }
+  }
+
+  private drawJars(ctx: CanvasRenderingContext2D, state: MaltlineState, lane: number): void {
+    for (const jar of state.jars.filter((jar) => jar.lane === lane)) {
       const projection = this.layout.projectReturningJar(jar.x, jar.lane);
       const px = projection.anchorX;
       const groundY = projection.groundY;
@@ -810,26 +764,9 @@ export class MaltlineRenderer {
         ctx.textBaseline = 'alphabetic';
       }
       const pulse = this.reducedMotion ? 0.72 : 0.64 + Math.sin((state.tick + jar.id * 7) / 6) * 0.12;
-      const trail = ctx.createLinearGradient(px + 12, 0, px + 64, 0);
-      trail.addColorStop(0, withAlpha(RETURN_JAR.trail, pulse));
-      trail.addColorStop(1, withAlpha(RETURN_JAR.trail, 0));
-      ctx.strokeStyle = trail;
-      ctx.lineWidth = 4;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(px + 13, groundY - 14);
-      ctx.lineTo(px + 62, groundY - 14);
-      ctx.stroke();
-      ctx.fillStyle = RETURN_JAR.edge;
-      for (const offset of [27, 43]) {
-        ctx.beginPath();
-        ctx.moveTo(px + offset - 6, groundY - 14);
-        ctx.lineTo(px + offset, groundY - 20);
-        ctx.lineTo(px + offset, groundY - 8);
-        ctx.closePath();
-        ctx.fill();
-      }
-      drawMaltlineJar(ctx, px, groundY - 12, 1.55, true);
+      this.drawVesselTrail(ctx, jar.x, lane, -1, RETURN_JAR.trail, RETURN_JAR.edge, pulse);
+      const vesselScale = 1.5 * projection.scale;
+      drawMaltlineJar(ctx, px, groundY - 12 * vesselScale, vesselScale, true);
     }
   }
 
@@ -841,12 +778,29 @@ export class MaltlineRenderer {
   ): void {
     // Shop floor.
     const floor = ctx.createLinearGradient(0, BANK_TOP - 12, 0, CANVAS_H);
-    floor.addColorStop(0, '#0a231b');
-    floor.addColorStop(1, '#050f0b');
+    floor.addColorStop(0, '#ffe5b2');
+    floor.addColorStop(1, '#edbb77');
     ctx.fillStyle = floor;
     ctx.beginPath();
     ctx.roundRect(0, BANK_TOP - 12, CANVAS_W, CANVAS_H - BANK_TOP + 12, 14);
     ctx.fill();
+
+    // Checker tiles and a coral cabinet keep the workbench part of the shop.
+    for (let row = 0; row < 5; row++) {
+      for (let column = 0; column < 25; column++) {
+        if ((row + column) % 2 === 0) {
+          ctx.fillStyle = '#e2af75';
+          ctx.fillRect(column * 40, BANK_TOP - 12 + row * 40, 40, 40);
+        }
+      }
+    }
+    ctx.fillStyle = '#dc654b';
+    ctx.fillRect(COUNTER_X - 40, MACHINE_BASELINE + 9, DOOR_X - COUNTER_X + 54, 58);
+    ctx.strokeStyle = '#a94333';
+    ctx.lineWidth = 2;
+    for (let x = COUNTER_X - 20; x < DOOR_X; x += 110) {
+      ctx.strokeRect(x, MACHINE_BASELINE + 18, 90, 37);
+    }
 
     // Steel worktop with reflections.
     const steel = ctx.createLinearGradient(0, MACHINE_BASELINE - 6, 0, MACHINE_BASELINE + 12);
@@ -895,7 +849,7 @@ export class MaltlineRenderer {
     const flavors = [...new Set(scenario.stations)];
     const x = 10;
     const y = 388;
-    const width = 84;
+    const width = 98;
     const height = 25 + flavors.length * 22;
     ctx.fillStyle = 'rgba(8, 32, 24, 0.9)';
     ctx.beginPath();
@@ -909,15 +863,7 @@ export class MaltlineRenderer {
     ctx.fillText('FLAVOR KEY', x + 9, y + 14);
     for (const [index, flavor] of flavors.entries()) {
       const rowY = y + 29 + index * 22;
-      ctx.fillStyle = FLAVOR_ART[flavor].base;
-      ctx.beginPath();
-      ctx.roundRect(x + 8, rowY - 10, 18, 17, 5);
-      ctx.fill();
-      ctx.fillStyle = flavor === 'vanilla' ? '#54301a' : '#fff8ea';
-      ctx.font = '800 10px "Maltline UI", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(FLAVOR_CUES[flavor], x + 17, rowY + 2);
-      ctx.textAlign = 'left';
+      drawMaltlineFlavorSymbol(ctx, x + 17, rowY - 1, flavor, 0.63);
       ctx.fillStyle = CREAM;
       ctx.font = '700 8px "Maltline UI", system-ui, sans-serif';
       ctx.fillText(FLAVOR_LABELS[flavor].toUpperCase(), x + 32, rowY + 2);
@@ -962,13 +908,12 @@ export class MaltlineRenderer {
     ctx.font = '800 13px "Maltline UI", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(
-      presentation.mode === 'blocked-no-jars'
-        ? '0'
-        : FLAVOR_CUES[presentation.actionFlavor],
-      badgeX + badgeWidth / 2,
-      badgeY + badgeHeight / 2 + 0.5,
-    );
+    if (presentation.mode === 'blocked-no-jars') {
+      ctx.fillText('0', badgeX + badgeWidth / 2, badgeY + badgeHeight / 2 + 0.5);
+    } else {
+      drawMaltlineFlavorSymbol(ctx, badgeX + badgeWidth / 2, badgeY + badgeHeight / 2,
+        presentation.actionFlavor, 0.58);
+    }
 
     ctx.fillStyle = STATION.statusText;
     ctx.font = '800 13px "Maltline UI", system-ui, sans-serif';
@@ -1039,7 +984,7 @@ export class MaltlineRenderer {
       );
       ctx.stroke();
 
-      // A fixed tab and letter make selection readable without color or motion.
+      // The selected ingredient silhouette remains readable without motion.
       const {
         x: tabX,
         y: tabY,
@@ -1063,7 +1008,7 @@ export class MaltlineRenderer {
       ctx.font = '800 16px "Maltline UI", system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(FLAVOR_CUES[flavor], tabX + tabW / 2, tabY + 22);
+      drawMaltlineFlavorSymbol(ctx, tabX + tabW / 2, tabY + 22, flavor, 0.65);
       ctx.textAlign = 'left';
       ctx.textBaseline = 'alphabetic';
     }
@@ -1117,16 +1062,12 @@ export class MaltlineRenderer {
       ctx.stroke();
     }
 
-    // Brand plate + label.
-    ctx.fillStyle = art.base;
+    // One large ingredient emblem matches the order tickets and selected tab.
+    ctx.fillStyle = STATION.statusPanel;
     ctx.beginPath();
-    ctx.roundRect(cx - 35, y + 48, 70, 16, 4);
+    ctx.roundRect(cx - 18, y + 44, 36, 30, 7);
     ctx.fill();
-    ctx.fillStyle = flavor === 'vanilla' ? '#54301a' : '#fdf6e4';
-    ctx.font = '700 8px "Maltline UI", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${FLAVOR_CUES[flavor]} · ${FLAVOR_LABELS[flavor].toUpperCase()}`, cx, y + 59);
-    ctx.textAlign = 'left';
+    drawMaltlineFlavorSymbol(ctx, cx, y + 59, flavor, 0.9);
 
     if (processing) {
       // The tall meter shows exact progress; fixed bands preserve scale without
@@ -1290,10 +1231,23 @@ export class MaltlineRenderer {
   }
 
   private drawPlayer(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState): void {
-    const px = 64;
-    const groundY = this.layout.laneBottom(state.player.lane) - 16;
-    const breathing = this.reducedMotion ? 0 : Math.sin(state.tick / 18) * 1;
-    const bodyY = groundY - 14 + breathing;
+    const point = this.layout.project(state.player.x, this.layout.floorY(state.player.lane) + 6, -37);
+    const px = point.x;
+    const groundY = point.y;
+    ctx.save();
+    const actorScale = this.layout.actorScale * point.scale;
+    ctx.translate(px, groundY);
+    ctx.scale(actorScale, actorScale);
+    ctx.translate(-px, -groundY);
+    const running = state.currentInput.serve && state.currentInput.stationDir !== 0;
+    const stride = running && !this.reducedMotion ? Math.sin(state.tick / 2.2) : 0;
+    const breathing = this.reducedMotion ? 0 : running
+      ? Math.abs(Math.cos(state.tick / 2.2)) * 2
+      : Math.sin(state.tick / 18);
+    const working = state.player.blending !== null;
+    const hasCup = working || state.player.holding !== null;
+    const bodyY = groundY - 14 + (working ? 0 : breathing);
+    const leverMotion = working && !this.reducedMotion ? Math.sin(state.tick / 2.4) * 3 : 0;
 
     ctx.fillStyle = 'rgba(4, 12, 9, 0.4)';
     ctx.beginPath();
@@ -1306,41 +1260,51 @@ export class MaltlineRenderer {
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(px - 4, bodyY + 6);
-    ctx.lineTo(px - 5, groundY - 1);
+    ctx.lineTo(px - 5 + stride * 6, groundY - 1);
     ctx.moveTo(px + 4, bodyY + 6);
-    ctx.lineTo(px + 5, groundY - 1);
+    ctx.lineTo(px + 5 - stride * 6, groundY - 1);
     ctx.stroke();
 
     // Green shirt.
     const shirt = ctx.createLinearGradient(px - 10, bodyY - 20, px + 10, bodyY + 8);
-    shirt.addColorStop(0, '#2a8a67');
-    shirt.addColorStop(1, '#175640');
+    shirt.addColorStop(0, '#ef6756');
+    shirt.addColorStop(1, '#b63d38');
     ctx.fillStyle = shirt;
     ctx.beginPath();
     ctx.roundRect(px - 10, bodyY - 20, 20, 28, 9);
     ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
     // Cream apron with a tiny mark.
     ctx.fillStyle = '#f3e9d2';
     ctx.beginPath();
     ctx.roundRect(px - 6.5, bodyY - 10, 13, 18, 4);
     ctx.fill();
-    ctx.fillStyle = '#1c6a50';
+    ctx.fillStyle = '#fdf2cf';
     ctx.beginPath();
     ctx.arc(px, bodyY + 1, 2.6, 0, Math.PI * 2);
     ctx.fill();
 
-    // Arms: one steadies, one works.
+    // While pouring the left hand supports the cup and the right pulls the tap.
     ctx.strokeStyle = '#caa27a';
     ctx.lineWidth = 4.5;
     ctx.beginPath();
     ctx.moveTo(px - 9, bodyY - 13);
     ctx.lineTo(px - 13, bodyY - 2);
+    if (hasCup) ctx.lineTo(px + 20, bodyY + 4);
     ctx.stroke();
-    const working = state.player.blending !== null;
     ctx.beginPath();
     ctx.moveTo(px + 9, bodyY - 13);
-    ctx.lineTo(px + (working ? 15 : 12), bodyY + (working ? -4 : -1));
+    if (working) {
+      ctx.lineTo(px + 17, bodyY - 25);
+      ctx.lineTo(px + 40, bodyY - 38 + leverMotion);
+    } else if (state.player.holding !== null) {
+      ctx.lineTo(px + 20, bodyY + 4);
+    } else {
+      ctx.lineTo(px + 12, bodyY - 1);
+    }
     ctx.stroke();
 
     // Head with a relaxed smile.
@@ -1360,25 +1324,130 @@ export class MaltlineRenderer {
     ctx.arc(px, headY + 3.5, 3, Math.PI * 0.15, Math.PI * 0.85);
     ctx.stroke();
 
-    // Cap with brim toward the lanes.
-    ctx.fillStyle = '#1c6a50';
+    // Cream soda-jerk cap with a coral band.
+    ctx.fillStyle = '#fff4d6';
     ctx.beginPath();
     ctx.arc(px, headY - 3, 10.5, Math.PI, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.25;
+    ctx.stroke();
+    ctx.fillStyle = '#e46150';
     ctx.beginPath();
     ctx.roundRect(px - 10, headY - 5, 22, 4.5, 2.5);
     ctx.fill();
 
-    if (state.player.holding !== null) {
+    if (state.player.blending !== null) {
+      const flavor = state.player.blending;
+      const progress = Math.min(1, Math.max(0, state.player.blendProgress / scenario.blendTicks));
+      const phase = this.reducedMotion ? null : (state.tick % 18) / 18;
+      const cupX = px + 27;
+      const cupY = bodyY - 3;
+      // Compact chrome tap at the service end, physically connected to the cup.
+      ctx.strokeStyle = '#13342d';
+      ctx.lineWidth = 9;
+      ctx.beginPath();
+      ctx.moveTo(px + 49, bodyY + 5);
+      ctx.lineTo(px + 49, bodyY - 34);
+      ctx.lineTo(cupX, bodyY - 34);
+      ctx.lineTo(cupX, bodyY - 29);
+      ctx.stroke();
+      ctx.strokeStyle = '#ddebdc';
+      ctx.lineWidth = 5;
+      ctx.stroke();
+      ctx.strokeStyle = '#ffe1a0';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(px + 45, bodyY - 33);
+      ctx.lineTo(px + 40, bodyY - 38 + leverMotion);
+      ctx.stroke();
+      ctx.fillStyle = FLAVOR_ART[flavor].base;
+      ctx.beginPath();
+      ctx.arc(px + 40, bodyY - 38 + leverMotion, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // A continuous stream is visible even with reduced motion enabled.
+      ctx.strokeStyle = FLAVOR_ART[flavor].light;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cupX, bodyY - 28);
+      ctx.lineTo(cupX, cupY - 20);
+      ctx.stroke();
+      drawMaltlinePouringCup(ctx, cupX, cupY, flavor, progress, 1.15, phase);
+      if (!this.reducedMotion) {
+        ctx.fillStyle = FLAVOR_ART[flavor].light;
+        for (let drop = 0; drop < 2; drop++) {
+          const flight = ((state.tick + drop * 5) % 12) / 12;
+          ctx.beginPath();
+          ctx.arc(cupX + (drop === 0 ? -1 : 1) * (4 + flight * 8),
+            cupY - 22 - Math.sin(flight * Math.PI) * 5, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // Fingers wrap the vessel, making the cup belong visibly to the player.
+      ctx.strokeStyle = '#edc397';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cupX - 12, cupY + 9);
+      ctx.lineTo(cupX - 7, cupY + 10);
+      ctx.stroke();
+    } else if (state.player.holding !== null) {
       ctx.fillStyle = STATION.statusPanel;
       ctx.beginPath();
-      ctx.roundRect(px + 3, bodyY - 34, 28, 48, 9);
+      ctx.roundRect(px + 12, bodyY - 46, 31, 64, 9);
       ctx.fill();
       ctx.strokeStyle = STATION.ready;
       ctx.lineWidth = 2.5;
       ctx.stroke();
-      drawMaltlineCup(ctx, px + 15, bodyY - 6, state.player.holding, 1.05, 0.12);
+      drawMaltlineCup(ctx, px + 27, bodyY - 3, state.player.holding, 1.45);
+      ctx.strokeStyle = '#edc397';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(px + 15, bodyY + 6);
+      ctx.lineTo(px + 20, bodyY + 7);
+      ctx.stroke();
     }
+    ctx.restore();
+  }
+
+  private drawFlavorSelector(ctx: CanvasRenderingContext2D, scenario: MaltlineScenario, state: MaltlineState): void {
+    const home = this.layout.project(0, this.layout.floorY(state.player.lane) + 6, -37);
+    const scale = this.layout.actorScale;
+    ctx.save();
+    ctx.translate(home.x, home.y);
+    ctx.scale(scale, scale);
+    const x = 66;
+    const y = -54;
+    ctx.fillStyle = 'rgba(12,40,32,0.94)';
+    ctx.beginPath();
+    ctx.roundRect(x - 17, y - 23, scenario.stations.length * 30 + 8, 43, 7);
+    ctx.fill();
+    ctx.fillStyle = CREAM;
+    ctx.font = '800 7px "Maltline UI", system-ui, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(scenario.stations.length > 1 ? 'A / D  FLAVOR' : 'FLAVOR', x - 10, y - 14);
+    for (const [index, flavor] of scenario.stations.entries()) {
+      const selected = index === state.player.station;
+      const cx = x + index * 30;
+      ctx.fillStyle = selected ? '#315e43' : '#153b32';
+      ctx.beginPath();
+      ctx.roundRect(cx - 12, y - 9, 25, 27, 5);
+      ctx.fill();
+      if (selected) {
+        ctx.strokeStyle = '#ffe39a';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = '#ffe39a';
+        ctx.beginPath();
+        ctx.moveTo(cx - 3, y + 21);
+        ctx.lineTo(cx + 4, y + 21);
+        ctx.lineTo(cx + 0.5, y + 17);
+        ctx.closePath();
+        ctx.fill();
+      }
+      drawMaltlineFlavorSymbol(ctx, cx, y + 5, flavor, 0.68);
+    }
+    ctx.restore();
   }
 
   // ---- FX and HUD ------------------------------------------------------
@@ -1445,7 +1514,7 @@ export class MaltlineRenderer {
       CANVAS_W / 2, CANVAS_H / 2, CANVAS_W * 0.72,
     );
     vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.38)');
+    vignette.addColorStop(1, 'rgba(0, 0, 0, 0.06)');
     ctx.fillStyle = vignette;
     ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
   }

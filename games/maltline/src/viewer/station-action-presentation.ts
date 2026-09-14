@@ -1,7 +1,12 @@
 import type { FlavorId, MaltlineScenario, MaltlineState } from '../core/types';
 import { FLAVOR_LABELS } from '../core/types';
 
-export type MaltlineStationActionMode = 'holding' | 'blending' | 'blocked-no-jars' | 'idle';
+export type MaltlineStationActionMode =
+  | 'return-to-mixer'
+  | 'holding'
+  | 'blending'
+  | 'blocked-no-jars'
+  | 'idle';
 export type MaltlineStationActionTone = 'ready' | 'blending' | 'blocked' | 'selected-flavor';
 
 export interface MaltlineStationActionPresentation {
@@ -36,6 +41,25 @@ export function deriveMaltlineStationActionPresentation(
     throw new Error('Maltline presentation needs a valid selected station.');
   }
   const selectedStation = Object.freeze({ index: selectedIndex, flavor: selectedFlavor });
+
+  if (state.player.x > 0) {
+    const flavor = state.player.holding ?? selectedFlavor;
+    return Object.freeze({
+      mode: 'return-to-mixer',
+      selectedStation,
+      processingFlavor: state.player.blending,
+      heldFlavor: state.player.holding,
+      actionFlavor: flavor,
+      quantizedPercent: null,
+      tone: state.player.holding === null ? 'selected-flavor' : 'ready',
+      canvasText: state.player.holding === null
+        ? 'SPACE · SNAP TO MIXER + POUR'
+        : 'F / ENTER · SNAP HOME + SLIDE',
+      semanticText: state.player.holding === null
+        ? 'Hold Space to return to the mixer and blend.'
+        : `${FLAVOR_LABELS[flavor]} shake ready. Press F or Enter to return and slide it.`,
+    });
+  }
 
   if (state.player.holding !== null) {
     const flavor = state.player.holding;
@@ -79,7 +103,7 @@ export function deriveMaltlineStationActionPresentation(
       quantizedPercent: null,
       tone: 'blocked',
       canvasText: 'NO CLEAN JARS · CATCH A RETURN',
-      semanticText: "No clean jars. Face a returning jar's window to catch it automatically.",
+      semanticText: 'No clean jars. Run along a lane to intercept a returning jar.',
     });
   }
 

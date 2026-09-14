@@ -95,6 +95,21 @@ describe('Maltline station/action presentation model', () => {
     });
   });
 
+  it('tells a down-counter player that Space recalls them to the mixer', () => {
+    const scenario = MALTLINE_CAMPAIGN[0]!;
+    const baseline = new MaltlineEngine(scenario).snapshot();
+    const away: MaltlineState = {
+      ...baseline,
+      player: { ...baseline.player, x: 20 * 1024 },
+    };
+
+    expect(deriveMaltlineStationActionPresentation(scenario, away)).toMatchObject({
+      mode: 'return-to-mixer',
+      canvasText: 'SPACE · SNAP TO MIXER + POUR',
+      semanticText: 'Hold Space to return to the mixer and blend.',
+    });
+  });
+
   it('preserves the existing five-percent quantization at progress boundaries', () => {
     const scenario = MALTLINE_CAMPAIGN[2]!;
     const baseline = new MaltlineEngine(scenario).snapshot();

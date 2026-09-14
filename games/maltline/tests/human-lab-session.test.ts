@@ -232,7 +232,7 @@ describe('P1-10 DOM-free human-lab session core', () => {
     expect(state.phase).toBe('frozen');
     expect(state.artifact).toMatchObject({
       kind: 'maltline-human-lab-session', schemaVersion: 3, experimentId: 'EXP-049',
-      experimentRevision: 11,
+      experimentRevision: 12,
       policy: { rankEligibility: 'unranked', authorityRegistration: null, seasonId: null, submission: 'forbidden' },
       executionMode: 'human',
       studyAssignment: STUDY_ASSIGNMENT,
@@ -479,6 +479,9 @@ describe('P1-10 DOM-free human-lab session core', () => {
     })).toThrow(/identity is unsupported/u);
     expect(() => normalizeP108HumanLabArtifact({
       ...structuredClone(first), experimentRevision: 10,
+    })).toThrow(/identity is unsupported/u);
+    expect(() => normalizeP108HumanLabArtifact({
+      ...structuredClone(first), experimentRevision: 11,
     })).toThrow(/identity is unsupported/u);
 
     const zeroTickHuman = {
