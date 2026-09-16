@@ -35,6 +35,7 @@ export const SITE_CONTRACT = deepFreeze({
     { output: 'arcade.css', source: 'deploy/arcade.css' },
     { output: 'about.css', source: 'deploy/about.css' },
     { output: 'contributors/eric-anderson.webp', source: 'deploy/contributors/eric-anderson.webp' },
+    { output: 'contributors/whit-anderson.webp', source: 'deploy/contributors/whit-anderson.webp' },
     { output: 'information.css', source: 'deploy/information.css' },
     { output: 'brand/brand.css', source: 'deploy/brand/brand.css' },
     { output: 'brand/mark.svg', source: 'deploy/brand/mark.svg' },

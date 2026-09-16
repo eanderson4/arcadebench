@@ -467,6 +467,23 @@ test('about page publishes the mission, the promise, and the Math vs Vibes credi
   await expect(page.getByText('ArcadeBench is supported by donations and contributions from the community.')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Contributors', exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Eric Anderson' })).toHaveAttribute('href', 'https://github.com/eanderson4');
+  const contributors = page.getByRole('region', { name: 'Contributors', exact: true });
+  await expect(contributors.getByRole('list')).toHaveCount(1);
+  await expect(contributors.getByRole('listitem')).toHaveCount(2);
+  const whit = contributors.getByRole('listitem').filter({ hasText: 'Whit Anderson' });
+  await expect(whit.locator('.about__person-name')).toHaveText('Whit Anderson');
+  await expect(whit.locator('.about__person-role')).toHaveText('Game designer & playtester');
+  await expect(whit.locator('.about__person-bio')).toHaveText(
+    "Helped shape Smilefall's central idea, levels, and game feel through design and playtesting.",
+  );
+  await expect(whit.getByRole('link')).toHaveCount(0);
+  for (const name of ['Eric Anderson', 'Whit Anderson']) {
+    const portrait = contributors.getByRole('img', { name: `Caricature of ${name}` });
+    await expect(portrait).toBeVisible();
+    expect(await portrait.evaluate((image: HTMLImageElement) => ({
+      complete: image.complete, width: image.naturalWidth, height: image.naturalHeight,
+    }))).toEqual({ complete: true, width: 512, height: 512 });
+  }
   await expect(page.getByRole('link', { name: 'ArcadeBench' })).toHaveAttribute('href', '/');
 
   // Header navigation is Games plus the current page; Source stays a footer
@@ -493,7 +510,7 @@ test('about page publishes the mission, the promise, and the Math vs Vibes credi
   await expect(footerNav.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms/');
 });
 
-test('about page loads the shipped brand faces and nothing else', async ({ page }) => {
+test('about page loads only its shipped styles, brand faces, and contributor portraits', async ({ page }) => {
   await openAbout(page);
   await page.evaluate(() => document.fonts.ready);
   expect(await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => (
@@ -507,6 +524,7 @@ test('about page loads the shipped brand faces and nothing else', async ({ page 
     '/brand/fonts/noto-sans-latin-800-normal.woff2',
     '/brand/mark.svg',
     '/contributors/eric-anderson.webp',
+    '/contributors/whit-anderson.webp',
   ]);
   const faces = await page.evaluate(async () => {
     await document.fonts.ready;
@@ -528,6 +546,8 @@ test('about page loads the shipped brand faces and nothing else', async ({ page 
 });
 
 for (const viewport of [
+  { width: 1280, height: 720 },
+  { width: 700, height: 720 },
   { width: 390, height: 720 },
   { width: 320, height: 568 },
 ] as const) {
@@ -549,7 +569,17 @@ for (const viewport of [
         body: bounds('.about__body'),
         promise: bounds('.about__promise'),
         attribution: bounds('.about__attribution'),
-        contributors: [...document.querySelectorAll<HTMLElement>('a[href="https://github.com/eanderson4"]')]
+        contributors: [...document.querySelectorAll<HTMLElement>('.about__person')]
+          .map((person) => {
+            const rect = person.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+          }),
+        portraits: [...document.querySelectorAll<HTMLElement>('.about__portrait')]
+          .map((portrait) => {
+            const rect = portrait.getBoundingClientRect();
+            return { left: rect.left, right: rect.right, width: rect.width, height: rect.height };
+          }),
+        contributorLinks: [...document.querySelectorAll<HTMLElement>('.about__person a')]
           .map((link) => {
             const rect = link.getBoundingClientRect();
             return { left: rect.left, right: rect.right, height: rect.height };
@@ -572,8 +602,27 @@ for (const viewport of [
       expect(box!.left).toBeGreaterThanOrEqual(0);
       expect(box!.right).toBeLessThanOrEqual(measurements.innerWidth);
     }
-    expect(measurements.contributors).toHaveLength(1);
-    for (const link of measurements.contributors) {
+    expect(measurements.contributors).toHaveLength(2);
+    for (const person of measurements.contributors) {
+      expect(person.left).toBeGreaterThanOrEqual(0);
+      expect(person.right).toBeLessThanOrEqual(measurements.innerWidth);
+    }
+    const [eric, whit] = measurements.contributors;
+    if (viewport.width >= 900) {
+      expect(whit!.top).toBe(eric!.top);
+      expect(whit!.left).toBeGreaterThan(eric!.right);
+    } else {
+      expect(whit!.top).toBeGreaterThan(eric!.bottom);
+    }
+    expect(measurements.portraits).toHaveLength(2);
+    for (const portrait of measurements.portraits) {
+      expect(portrait.width).toBe(portrait.height);
+      expect(portrait.width).toBeGreaterThanOrEqual(96);
+      expect(portrait.left).toBeGreaterThanOrEqual(0);
+      expect(portrait.right).toBeLessThanOrEqual(measurements.innerWidth);
+    }
+    expect(measurements.contributorLinks).toHaveLength(1);
+    for (const link of measurements.contributorLinks) {
       expect(link.left).toBeGreaterThanOrEqual(0);
       expect(link.right).toBeLessThanOrEqual(measurements.innerWidth);
       expect(link.height).toBeGreaterThanOrEqual(44);
@@ -584,7 +633,7 @@ for (const viewport of [
   });
 }
 
-test('about page keyboard order reaches the contributor, the credit, and the footer', async ({ page }) => {
+test('about page keyboard order skips the unlinked contributor and reaches the credit and footer', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 720 });
   await openAbout(page);
   await page.keyboard.press('Tab');
@@ -599,6 +648,8 @@ test('about page keyboard order reaches the contributor, the credit, and the foo
   await expect(primary.getByRole('link', { name: 'About' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Eric Anderson' })).toBeFocused();
+  const whit = page.locator('.about__person').filter({ hasText: 'Whit Anderson' });
+  await expect(whit.locator('a, button, input, [tabindex]')).toHaveCount(0);
   const credit = page.getByRole('link', { name: 'Math vs Vibes' });
   await page.keyboard.press('Tab');
   await expect(credit).toBeFocused();

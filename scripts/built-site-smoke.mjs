@@ -218,6 +218,13 @@ for (const [label, contents] of [['launcher', launcher], ['about', about]]) {
 check(about.includes('href="/about.css"'), 'about page lacks its site-owned stylesheet', failures);
 check(about.includes('src="/brand/mark.svg"'), 'about page does not show the ArcadeBench mark', failures);
 check(!/<script\b/iu.test(about), 'about page must not execute JavaScript', failures);
+check((about.match(/class="about__person"/gu) ?? []).length === 2,
+  'about page must credit both contributors', failures);
+check(about.includes('src="/contributors/whit-anderson.webp" alt="Caricature of Whit Anderson" width="512" height="512"')
+  && about.includes('<p class="about__person-name">Whit Anderson</p>')
+  && about.includes('Game designer &amp; playtester')
+  && about.includes("Helped shape Smilefall's central idea, levels, and game feel through design and playtesting."),
+  'about page lacks Whit’s portrait and unlinked design/playtesting credit', failures);
 const launcherScripts = launcher.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu) ?? [];
 check(launcherScripts.length === 1
   && /^<script\s+(?:type="module"\s+src="\/activity\.js"|src="\/activity\.js"\s+type="module")\s*>\s*<\/script\s*>$/u.test(launcherScripts[0]),
