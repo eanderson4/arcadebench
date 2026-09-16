@@ -374,6 +374,10 @@ body {
 }
 
 .topline:has(.sound-toggle:not([hidden])) .tagline {
+  margin-right: 95px;
+}
+
+.topline:has(.sound-toggle:not([hidden])):has(.competition-trigger:not([hidden])) .tagline {
   margin-right: 205px;
 }
 
@@ -387,6 +391,7 @@ body {
   .topline:has(.competition-trigger:not([hidden])) .tagline {
     display: none;
   }
+
 }
 
 .topline-actions {
