@@ -2,6 +2,7 @@
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "arcadebench",
   "main": "./deploy/worker.js",
+  "minify": true,
   "compatibility_date": "2026-08-17",
   "workers_dev": true,
   "preview_urls": true,

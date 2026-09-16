@@ -18,6 +18,11 @@ const requiredSources = [
   '../../games/partition/src/levels/campaign.ts',
   '../../games/maltline/src/core/authority.ts',
   '../../games/maltline/src/core/proof.ts',
+  '../../apps/platform/src/smilefall-platform-adapter.ts',
+  '../../games/smilefall/src/verifier.ts',
+  '../../games/smilefall/src/core/engine.ts',
+  '../../games/smilefall/src/core/version.ts',
+  '../../games/smilefall/src/levels/catalog.ts',
 ];
 
 afterEach(async () => {
@@ -46,7 +51,7 @@ test('accepts a bounded Worker graph containing only the verifier core', async (
   assert.ok(result.javascriptBytes > 0);
 });
 
-test('rejects every prohibited game production boundary and both root barrels', async () => {
+test('rejects every prohibited game production boundary and all root barrels', async () => {
   for (const source of [
     '../../games/maltline/src/telemetry/campaign-telemetry.ts',
     '../../games/maltline/src/experiments/p1-08-candidates.ts',
@@ -58,6 +63,9 @@ test('rejects every prohibited game production boundary and both root barrels', 
     '../../games/partition/src/testing/harness.ts',
     '../../games/partition/src/runtime/session.ts',
     '../../games/partition/src/index.ts',
+    '../../games/smilefall/src/viewer/main.ts',
+    '../../games/smilefall/src/runtime/session.ts',
+    '../../games/smilefall/src/index.ts',
   ]) {
     const directory = await fixture([...requiredSources, source]);
     await assert.rejects(() => auditWorkerBundle(directory), /prohibited game sources/u);

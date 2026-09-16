@@ -6,15 +6,17 @@ import { fileURLToPath } from 'node:url';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const defaultOutputDirectory = resolve(repositoryRoot, '.wrangler/dry-run');
 
-// This is a regression ceiling, not the provider limit. The reviewed shared
-// platform + cabinet bundle is 269,472 bytes; 320 KiB leaves about 20% headroom
-// while source checks continue to prohibit broad barrels and browser code.
+// This is a regression ceiling, not the provider limit. The reviewed minified
+// three-game platform bundle is 199,372 bytes, leaving about 128 KiB below this
+// ceiling while source checks continue to prohibit broad barrels and browser code.
 export const MAX_WORKER_JAVASCRIPT_BYTES = 320 * 1024;
 const MAX_SOURCE_MAP_BYTES = 2 * 1024 * 1024;
 const PROHIBITED_MALTLINE_SOURCE = /(?:^|\/)games\/maltline\/src\/(?:telemetry|experiments|viewer|testing)(?:\/|$)/u;
 const MALTLINE_ROOT_BARREL = /(?:^|\/)games\/maltline\/src\/index\.ts$/u;
 const PROHIBITED_PARTITION_SOURCE = /(?:^|\/)games\/partition\/src\/(?:benchmark|viewer|testing|runtime)(?:\/|$)/u;
 const PARTITION_ROOT_BARREL = /(?:^|\/)games\/partition\/src\/index\.ts$/u;
+const PROHIBITED_SMILEFALL_SOURCE = /(?:^|\/)games\/smilefall\/src\/(?:viewer|runtime)(?:\/|$)/u;
+const SMILEFALL_ROOT_BARREL = /(?:^|\/)games\/smilefall\/src\/index\.ts$/u;
 const PROHIBITED_NODE_BUILTIN = /["']node:(?:fs|path)(?:\/[^"']*)?["']/u;
 const REQUIRED_SOURCES = Object.freeze([
   'apps/platform/src/worker.ts',
@@ -28,6 +30,11 @@ const REQUIRED_SOURCES = Object.freeze([
   'games/partition/src/levels/campaign.ts',
   'games/maltline/src/core/authority.ts',
   'games/maltline/src/core/proof.ts',
+  'apps/platform/src/smilefall-platform-adapter.ts',
+  'games/smilefall/src/verifier.ts',
+  'games/smilefall/src/core/engine.ts',
+  'games/smilefall/src/core/version.ts',
+  'games/smilefall/src/levels/catalog.ts',
 ]);
 
 function fail(message) {
@@ -93,6 +100,8 @@ export async function auditWorkerBundle(outputDirectory = defaultOutputDirectory
     || MALTLINE_ROOT_BARREL.test(source)
     || PROHIBITED_PARTITION_SOURCE.test(source)
     || PARTITION_ROOT_BARREL.test(source)
+    || PROHIBITED_SMILEFALL_SOURCE.test(source)
+    || SMILEFALL_ROOT_BARREL.test(source)
   ));
   if (prohibited.length > 0) fail(`production graph contains prohibited game sources: ${prohibited.join(', ')}`);
   if (sourceMap.sourcesContent.some((content) => (
