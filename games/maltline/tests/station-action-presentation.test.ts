@@ -62,8 +62,8 @@ describe('Maltline station/action presentation model', () => {
       actionFlavor: 'strawberry',
       quantizedPercent: null,
       tone: 'ready',
-      canvasText: 'READY · F / ENTER',
-      semanticText: 'Strawberry shake ready. Press F or Enter to slide.',
+      canvasText: 'READY · RELEASE SPACE',
+      semanticText: 'Strawberry shake ready. Release button 1 (Space) to toss. Press button 2 (Enter) to replace it and switch flavor.',
     });
   });
 
@@ -91,7 +91,7 @@ describe('Maltline station/action presentation model', () => {
       tone: 'selected-flavor',
       selectedStation: { index: 0, flavor: 'vanilla' },
       actionFlavor: 'vanilla',
-      canvasText: 'SELECTED · HOLD SPACE',
+      canvasText: 'HOLD SPACE · FILL',
     });
   });
 
@@ -105,8 +105,8 @@ describe('Maltline station/action presentation model', () => {
 
     expect(deriveMaltlineStationActionPresentation(scenario, away)).toMatchObject({
       mode: 'return-to-mixer',
-      canvasText: 'SPACE · SNAP TO MIXER + POUR',
-      semanticText: 'Hold Space to return to the mixer and blend.',
+      canvasText: 'SPACE · RETURN + FILL',
+      semanticText: 'Hold button 1 (Space) to return to the mixer and fill.',
     });
   });
 

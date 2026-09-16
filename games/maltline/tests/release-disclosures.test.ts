@@ -13,7 +13,8 @@ const embeddedMediaPattern = /data:[A-Za-z][A-Za-z0-9!#$&^_.+-]*\/[A-Za-z0-9!#$&
 
 function packageModule(id: string): string | null {
   const path = id.split('?', 1)[0]!;
-  if (!path.startsWith(`${packageRoot}${sep}`)) return null;
+  if (!path.startsWith(`${packageRoot}${sep}`)
+    && !path.startsWith(`${resolve(repositoryRoot, 'packages/arcade-sdk/src')}${sep}`)) return null;
   return relative(packageRoot, path).replaceAll(sep, '/');
 }
 
@@ -66,7 +67,7 @@ describe('Maltline release asset and privacy disclosures', () => {
     expect(entry).toContain('<meta property="og:type" content="website" />');
     expect(entry).toContain('<meta property="og:site_name" content="ArcadeBench" />');
     expect(entry).toContain(
-      '<meta property="og:url" content="https://arcadebench.org/maltline/" />',
+      '<meta property="og:url" content="https://arcadebench.org/games/maltline/" />',
     );
     expect(entry).toContain('<meta name="twitter:card" content="summary" />');
     expect(entry).toContain('<meta name="twitter:title" content="Maltline — ArcadeBench" />');
@@ -74,7 +75,7 @@ describe('Maltline release asset and privacy disclosures', () => {
       '<meta name="twitter:description" content="A shake-counter arcade game for humans and machines. Match orders, slide shakes, and catch returning jars." />',
     );
     expect(entry.match(/<link rel="canonical" href="[^"]+" \/>/gu)).toEqual([
-      '<link rel="canonical" href="https://arcadebench.org/maltline/" />',
+      '<link rel="canonical" href="https://arcadebench.org/games/maltline/" />',
     ]);
   });
 
@@ -219,25 +220,36 @@ describe('Maltline release asset and privacy disclosures', () => {
     const policySource = normalizedText(readFileSync(resolve(repositoryRoot, 'docs/PRIVACY.md'), 'utf8'));
     const policyPage = normalizedText(readFileSync(resolve(repositoryRoot, 'deploy/privacy.html'), 'utf8'));
     for (const statement of [
-      'Ordinary gameplay',
-      'A complete replay',
       'five days',
       'signed anonymous cookie',
+      'Top 50',
+      'private',
+      'unchecked',
       'does not write IP addresses into its application database',
       'only the proposed callsign',
       'Cloudflare Workers AI',
     ]) {
-      expect(policySource, statement).toContain(statement);
-      expect(policyPage, statement).toContain(statement);
+      expect(policySource.toLowerCase(), statement).toContain(statement.toLowerCase());
+      expect(policyPage.toLowerCase(), statement).toContain(statement.toLowerCase());
     }
+
+    expect(policySource).toContain('Local gameplay and local replay inspection do not upload files.');
+    expect(policyPage).toContain('Ordinary gameplay and replay inspection run in your browser.');
+    expect(policySource).toContain('A replay is uploaded only for ranked verification');
+    expect(policyPage).toContain('A complete replay reaches ArcadeBench only when you submit a ranked score');
 
     const graph = await productionModules();
     for (const owner of [
       'src/viewer/main.ts',
-      'src/viewer/competition-client.ts',
-      'src/viewer/competition-controller.ts',
-      'src/viewer/ranked-proof-recorder.ts',
+      'src/viewer/cabinet-leaderboard.ts',
+      'src/core/cabinet-authority.ts',
+      'src/core/cabinet-proof.ts',
+      '../../packages/arcade-sdk/src/v2.ts',
+      '../../packages/arcade-sdk/src/transport.ts',
     ]) expect(graph.has(owner), owner).toBe(true);
+    // Generation 2 remains a separately tested retained verifier, not the live cabinet UI.
+    for (const legacy of ['src/viewer/competition-client.ts', 'src/viewer/competition-controller.ts',
+      'src/viewer/ranked-proof-recorder.ts']) expect(graph.has(legacy), legacy).toBe(false);
     const reachableSources = new Set(['src/viewer/index.html', ...graph]);
     const productionSources = [...reachableSources]
       .filter((path) => path.startsWith('src/') && /\.(?:css|html|ts)$/u.test(path))
@@ -246,6 +258,13 @@ describe('Maltline release asset and privacy disclosures', () => {
     expect(productionSources).not.toMatch(/\b(?:localStorage|sessionStorage|indexedDB)\b/u);
     expect(productionSources).not.toMatch(/\bdocument\s*\.\s*cookie\s*=/u);
 
+    const cabinet = readFileSync(resolve(packageRoot, 'src/viewer/cabinet-leaderboard.ts'), 'utf8');
+    expect(cabinet).toContain('createArcadeBenchGameClient');
+    expect(cabinet).toContain("policyVersion: 'top50-social-v1', socialMedia: socialMedia === true");
+    expect(cabinet).toContain('Saved replays are private. No AI training.');
+    expect(cabinet).toContain('Local preview · unranked. Scores are not submitted.');
+    expect(cabinet).toContain('MALTLINE · SECOND SHIFT');
+    // Retain the archived generation-2 client's privacy contract independently.
     const client = readFileSync(resolve(packageRoot, 'src/viewer/competition-client.ts'), 'utf8');
     expect(client).toContain("MALTLINE_COMPETITION_API_PREFIX = '/api/v1/games/maltline'");
     expect(client).toContain("credentials: 'same-origin'");

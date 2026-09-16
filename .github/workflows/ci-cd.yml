@@ -45,6 +45,9 @@ jobs:
       - name: Build and test every workspace
         run: npm run check
 
+      - name: Verify production migration subset and legacy API gate
+        run: node scripts/prepare-production-migrations.mjs --check && node --test scripts/prepare-production-migrations.test.mjs && npm test --workspace=@arcadebench/platform -- --config vitest.production.config.ts
+
       - name: Assemble production site
         run: npm run build:site
 
@@ -116,6 +119,10 @@ jobs:
         if: steps.cloudflare.outputs.ready == 'true'
         run: npm ci
 
+      - name: Prepare reviewed production migrations
+        if: steps.cloudflare.outputs.ready == 'true'
+        run: node scripts/prepare-production-migrations.mjs
+
       - name: Apply production D1 migrations
         if: steps.cloudflare.outputs.ready == 'true'
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
@@ -130,4 +137,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          command: deploy --keep-vars

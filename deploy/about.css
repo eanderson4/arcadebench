@@ -1,0 +1,225 @@
+/*
+ * ArcadeBench About page.
+ *
+ * Loaded after brand.css and arcade.css, and scoped to .about-* only: it
+ * lays out one short mission statement, one quiet promise note, two
+ * rule-separated closing sections (community support and the contributors
+ * list), and the closing attribution. Every token is read from the brand
+ * layer with a literal fallback, so the page still holds together if it is
+ * opened on its own. No animation, no imagery, no new colour.
+ */
+
+.about {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: clamp(16px, 2.6vh, 30px) 0 clamp(14px, 2.2vh, 26px);
+  outline: none;
+}
+
+.about__hero {
+  max-width: 760px;
+  margin-bottom: clamp(20px, 3.4vh, 36px);
+}
+
+.about__lede {
+  max-width: 620px;
+  margin: var(--ab-space-4, 16px) 0 0;
+  color: var(--ab-ink-soft, #45483f);
+  font-size: clamp(16px, 1.4vw, 18px);
+  line-height: 1.55;
+}
+
+/* Mission on the left, the one promise note on the right. */
+.about__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+  align-items: start;
+  gap: clamp(24px, 4vw, 56px);
+  margin-bottom: clamp(20px, 3.4vh, 36px);
+}
+
+.about h2 {
+  margin: 0 0 var(--ab-space-3, 12px);
+  font-size: clamp(19px, 1.7vw, 22px);
+  font-weight: var(--ab-weight-title, 800);
+  letter-spacing: -0.015em;
+  line-height: 1.18;
+}
+
+:where(.about__mission) p {
+  max-width: 640px;
+  margin: 0 0 var(--ab-space-4, 16px);
+  color: var(--ab-ink-soft, #45483f);
+  font-size: 16px;
+  line-height: 1.62;
+}
+
+.about__summary {
+  margin-bottom: var(--ab-space-5, 24px);
+  color: var(--ab-ink, #252824);
+}
+
+/* A single note, not a card wall. */
+.about__promise {
+  padding: var(--ab-space-5, 24px);
+  border: 1px solid var(--ab-rule, #d4d2c8);
+  border-radius: var(--ab-radius, 6px);
+  background: var(--ab-surface, #fffef9);
+}
+
+.about__promise h2 {
+  margin-bottom: var(--ab-space-3, 12px);
+  color: var(--ab-ink-muted, #5f625b);
+  font-size: 12px;
+  font-weight: var(--ab-weight-utility, 600);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.about__promise p {
+  margin: 0;
+  color: var(--ab-ink-soft, #45483f);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Community support and the contributors list: two quiet sections separated
+   by a hairline rather than a wall of cards. Both stay in the same readable
+   column as the mission above. */
+.about__community,
+.about__contributors {
+  max-width: 680px;
+  margin-bottom: clamp(20px, 3.4vh, 32px);
+  padding-top: clamp(18px, 3vh, 28px);
+  border-top: 1px solid var(--ab-rule, #d4d2c8);
+}
+
+:where(.about__community, .about__person) p {
+  max-width: 640px;
+  margin: 0 0 var(--ab-space-3, 12px);
+  color: var(--ab-ink-soft, #45483f);
+  font-size: 16px;
+  line-height: 1.62;
+}
+
+.about__community-note {
+  margin-bottom: 0;
+  color: var(--ab-ink-muted, #5f625b);
+  font-size: 15px;
+}
+
+.about__people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.about__person {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ab-space-5, 24px);
+}
+
+.about__portrait {
+  display: block;
+  flex: 0 0 auto;
+  width: 112px;
+  height: 112px;
+  border-radius: var(--ab-radius, 6px);
+}
+
+.about__person-details {
+  min-width: 0;
+}
+
+@media (max-width: 499px) {
+  .about__person { flex-direction: column; gap: var(--ab-space-4, 16px); }
+  .about__portrait { width: 96px; height: 96px; }
+}
+
+.about__person-name {
+  margin-bottom: var(--ab-space-1, 4px);
+  color: var(--ab-ink, #252824);
+  font-size: 17px;
+  font-weight: var(--ab-weight-utility, 600);
+}
+
+.about__person-role {
+  margin-bottom: var(--ab-space-2, 8px);
+  color: var(--ab-ink-muted, #5f625b);
+  font-size: 14px;
+  font-weight: var(--ab-weight-utility, 600);
+  letter-spacing: 0.02em;
+}
+
+/* One link out to the contributor's own work, at a real 44px target. */
+.about__person-name a {
+  display: inline-block;
+  padding: 11px 4px;
+  margin: -11px -4px;
+  color: var(--ab-blue, #2749a5);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color var(--ab-transition, 130ms ease);
+}
+
+.about__person-name a:hover {
+  color: var(--ab-blue-strong, #1e3a86);
+}
+
+/* The closing line sits at the foot of the page, above the shared footer. The
+   link stretches to a 44px target with padding, while the negative margin keeps
+   the sentence's own spacing intact. */
+.about__attribution {
+  margin: auto 0 0;
+  padding-top: clamp(16px, 3vh, 32px);
+  color: var(--ab-ink-muted, #5f625b);
+  font-size: 15px;
+}
+
+.about__attribution a {
+  display: inline-block;
+  padding: 11px 4px;
+  margin: -11px -4px;
+  color: var(--ab-ink, #252824);
+  font-weight: var(--ab-weight-utility, 600);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 4px;
+  transition: color var(--ab-transition, 130ms ease);
+}
+
+.about__attribution a:hover {
+  color: var(--ab-blue, #2749a5);
+}
+
+@media (max-width: 900px) {
+  .about__body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--ab-space-5, 24px);
+  }
+
+  .about__mission p,
+  .about__promise {
+    max-width: 640px;
+  }
+}
+
+@media (max-width: 699px) {
+  .about {
+    padding: 18px 0 20px;
+  }
+
+  .about__mission p {
+    line-height: 1.6;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .about__person-name a,
+  .about__attribution a {
+    transition: none;
+  }
+}

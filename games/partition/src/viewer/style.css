@@ -266,6 +266,29 @@ body[data-mode='leaderboard'] .workspace { display: none; }
 .catalog-votes button[aria-pressed='true'] { color: #061013; background: var(--cyan); }
 .catalog-votes button:disabled { opacity: 0.42; cursor: wait; }
 .catalog-votes b { min-width: 32px; color: #a4c6ca; font: 500 8px 'DM Mono', monospace; text-align: center; }
+/* One shared dialog serves all twenty fields; this is the way in to it. */
+.catalog-note { grid-column: 1 / -1; justify-self: start; padding: 6px 0; border: 0; background: transparent; color: #587178; font: 600 6px 'DM Mono', monospace; letter-spacing: 0.1em; cursor: pointer; text-align: left; }
+.catalog-note:hover { color: var(--cyan); }
+.catalog-note:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+.catalog-note:disabled { opacity: 0.42; cursor: wait; }
+.catalog-note[data-note='saved'] { color: var(--yellow); }
+
+/* Private note dialog. The note itself is never stored locally and never shown
+   outside this session; the dialog only reports what the platform accepted. */
+.note-dialog { width: min(560px, 92vw); max-height: min(86vh, 660px); overflow: auto; padding: 0; border: 1px solid rgba(110, 233, 245, 0.3); background: rgba(4, 10, 15, 0.98); color: #e8f8fb; }
+.note-dialog::backdrop { background: rgba(2, 5, 9, 0.74); backdrop-filter: blur(3px); }
+.note-dialog-card { display: grid; gap: 13px; padding: 22px; }
+.note-dialog-heading small { color: var(--yellow); font: 500 7px 'DM Mono', monospace; letter-spacing: 0.16em; }
+.note-dialog-heading h2 { margin: 7px 0 0; color: #f0feff; font: 900 clamp(20px, 4vw, 30px)/1.05 Inter, sans-serif; letter-spacing: -0.04em; }
+.note-dialog-subject:empty { display: none; }
+.note-dialog-subject { margin: 7px 0 0; color: var(--cyan); font: 500 8px 'DM Mono', monospace; letter-spacing: 0.12em; text-transform: uppercase; }
+.note-dialog-terms { margin: 0; color: #8aa2a8; font: 500 8px/1.65 'DM Mono', monospace; letter-spacing: 0.02em; text-transform: none; }
+.note-dialog-card label { color: var(--yellow); font: 600 7px 'DM Mono', monospace; letter-spacing: 0.13em; }
+.note-dialog-card textarea { width: 100%; min-height: 104px; padding: 11px 12px; border: 1px solid rgba(110, 233, 245, 0.32); border-radius: 0; background: rgba(3, 9, 14, 0.88); color: #ecfdff; font: 500 11px/1.65 'DM Mono', monospace; resize: vertical; text-transform: none; }
+.note-dialog-card textarea:focus { outline: 0; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(110, 233, 245, 0.08); }
+.note-dialog-status { min-height: 13px; margin: 0; color: #5b747b; font: 500 7px 'DM Mono', monospace; letter-spacing: 0.06em; text-transform: none; }
+.note-dialog-status[data-tone='error'] { color: #ff83b4; }
+.note-dialog-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 .leaderboard-nav {
   display: grid;
@@ -346,6 +369,10 @@ body[data-mode='leaderboard'] .workspace { display: none; }
   font: 600 10px/1 'DM Mono', ui-monospace, monospace;
   letter-spacing: 0.15em;
 }
+
+.arcade-home { color: inherit; text-decoration: none; }
+.arcade-home:hover { text-decoration: underline; text-underline-offset: 4px; }
+.arcade-home:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 
 .brand-line i { color: #3c565f; font-style: normal; }
 .brand-mark { width: 7px; height: 7px; border: 1px solid var(--cyan); transform: rotate(45deg); box-shadow: 0 0 10px rgba(110, 233, 245, 0.7); }
@@ -774,15 +801,19 @@ body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
   position: absolute;
   z-index: 10;
   inset: 0;
-  display: grid;
-  place-content: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   padding: 24px;
   overflow: auto;
   background: radial-gradient(circle at 50% 45%, rgba(18, 71, 80, 0.18), transparent 38%), rgba(2, 5, 9, 0.74);
   backdrop-filter: blur(6px);
 }
-.message-card { display: grid; justify-items: center; width: min(680px, 92vw); }
+/* Centred by an auto margin rather than by the container, so a tall result —
+   a full score form with its disclosure on a short screen — starts at the top
+   and scrolls instead of being clipped above the fold. */
+.message-card { display: grid; justify-items: center; width: min(680px, 92vw); margin: auto; }
 .message-kicker { margin-bottom: 17px; color: var(--yellow); font: 500 9px 'DM Mono', monospace; letter-spacing: 0.16em; }
 #message-title { color: #f0feff; font: 900 clamp(30px, 6vw, 68px)/1 Inter, sans-serif; letter-spacing: -0.055em; }
 #message-detail { margin-top: 13px; color: var(--cyan); font: 500 10px/1.6 'DM Mono', monospace; letter-spacing: 0.1em; text-transform: uppercase; }
@@ -807,6 +838,18 @@ body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
 .score-entry > p[data-tone='error'] { color: #ff83b4; }
 .score-entry > p[data-tone='success'] { color: #77e9c8; }
 .score-entry > .text-button { justify-self: end; margin-top: 6px; color: var(--cyan); font-size: 7px; }
+/* Retention disclosure and the run's one optional permission. Public ranked
+   runs only: an unranked or local run makes no public claim, so it asks for
+   nothing. The checkbox starts unchecked and is never remembered. */
+.score-retention { display: grid; gap: 10px; margin-top: 15px; padding-top: 14px; border-top: 1px solid rgba(110, 233, 245, 0.12); }
+.score-retention[hidden] { display: none; }
+.score-retention__terms { margin: 0; color: #8aa2a8; font: 500 8px/1.65 'DM Mono', monospace; letter-spacing: 0.02em; text-transform: none; }
+.score-retention__terms a { color: var(--cyan); text-underline-offset: 2px; }
+.score-consent { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; }
+.score-consent input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--cyan); cursor: pointer; }
+.score-consent input:disabled { opacity: 0.45; cursor: wait; }
+.score-consent label { color: #d7eef1; font: 500 8px/1.6 'DM Mono', monospace; letter-spacing: 0.02em; text-transform: none; cursor: pointer; }
+.score-consent__helper { margin: 0; color: #5b747b; font: 500 7px/1.5 'DM Mono', monospace; letter-spacing: 0.02em; text-transform: none; }
 .message.has-score-entry .message-kicker { margin-bottom: 11px; }
 .message.has-score-entry .message-next { min-height: 0; margin-top: 14px; }
 .hidden { display: none; }

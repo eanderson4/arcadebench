@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Root is omitted while it serves a copy of the Partition page (its canonical
-     points at /partition/). Re-add / when the cross-game catalog ships and the
-     root gets its own self-canonical. -->
+<!-- Root is omitted while it serves the cross-game catalog (its canonical points
+     at /). Re-add / when this package's own route needs to declare it. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://arcadebench.org/partition/</loc>
+    <loc>https://arcadebench.org/games/partition/</loc>
   </url>
 </urlset>

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>ArcadeBench brand guide (internal)</title>
+    <!--
+      Internal review artifact. Not part of the public site: it is not a route
+      in scripts/site-contract.mjs, it is never assembled into dist/site, and it
+      loads the shipping stylesheets from ../../deploy/ by relative path so the
+      specimens cannot drift from what is actually published.
+
+      Open it directly from disk or over any local static server rooted at the
+      repository. No JavaScript is required or present.
+    -->
+    <link rel="stylesheet" href="../../deploy/brand/brand.css" />
+    <link rel="stylesheet" href="../../deploy/arcade.css" />
+    <style>
+      /* Guide-only chrome. Nothing here ships; it exists so the specimens are
+         legible as specimens without inventing new brand surfaces. */
+      .guide-shell {
+        width: min(var(--ab-content), calc(100% - 32px));
+        margin: 0 auto;
+        padding: var(--ab-space-6) 0 var(--ab-space-7);
+      }
+
+      .guide-masthead {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        gap: var(--ab-space-2) var(--ab-space-4);
+        padding-bottom: var(--ab-space-3);
+        border-bottom: 1px solid var(--ab-rule);
+      }
+
+      .guide-masthead h1 {
+        font-size: clamp(26px, 4vw, 34px);
+      }
+
+      .guide-tag {
+        color: var(--ab-ink-muted);
+        font-size: 13px;
+      }
+
+      .guide-section {
+        margin-top: var(--ab-space-7);
+      }
+
+      .guide-section > h2 {
+        margin: 0 0 var(--ab-space-1);
+        font-size: 20px;
+        font-weight: var(--ab-weight-title);
+        letter-spacing: -0.02em;
+      }
+
+      .guide-section > p {
+        max-width: 68ch;
+        margin: 0 0 var(--ab-space-5);
+        color: var(--ab-ink-muted);
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .guide-section code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 0.92em;
+      }
+
+      .guide-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--ab-space-5);
+        align-items: flex-start;
+      }
+
+      .guide-tile {
+        flex: 1 1 240px;
+        min-width: 0;
+        padding: var(--ab-space-5);
+        border: 1px solid var(--ab-rule);
+        border-radius: var(--ab-radius);
+        background: var(--ab-surface);
+      }
+
+      .guide-tile--paper {
+        background: var(--ab-paper);
+      }
+
+      .guide-tile--dark {
+        border-color: var(--ab-plate);
+        background: var(--ab-plate);
+        color: var(--ab-paper);
+      }
+
+      .guide-tile__label {
+        margin: 0 0 var(--ab-space-4);
+        color: inherit;
+        font-size: 11px;
+        font-weight: var(--ab-weight-utility);
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        opacity: 0.72;
+      }
+
+      .guide-tile--dark .guide-tile__label {
+        opacity: 0.86;
+      }
+
+      .guide-tile--dark .ab-lockup {
+        color: var(--ab-paper);
+      }
+
+      .guide-tile--dark .ab-lockup__descriptor {
+        border-color: rgba(244, 241, 231, 0.34);
+        color: var(--ab-paper);
+      }
+
+      .guide-sizes {
+        display: flex;
+        align-items: flex-end;
+        gap: var(--ab-space-5);
+      }
+
+      .guide-sizes figure {
+        margin: 0;
+        text-align: center;
+      }
+
+      .guide-sizes figcaption {
+        margin-top: var(--ab-space-2);
+        color: var(--ab-ink-muted);
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .guide-construction {
+        display: block;
+        width: min(240px, 100%);
+        height: auto;
+      }
+
+      .guide-swatches {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: var(--ab-space-3);
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .guide-swatch {
+        border: 1px solid var(--ab-rule);
+        border-radius: var(--ab-radius);
+        overflow: hidden;
+        background: var(--ab-surface);
+      }
+
+      .guide-swatch__chip {
+        height: 64px;
+        border-bottom: 1px solid var(--ab-rule);
+      }
+
+      .guide-swatch__meta {
+        padding: 10px var(--ab-space-3) var(--ab-space-3);
+      }
+
+      .guide-swatch__name {
+        margin: 0;
+        font-size: 13px;
+        font-weight: var(--ab-weight-utility);
+      }
+
+      .guide-swatch__hex {
+        margin: 2px 0 0;
+        color: var(--ab-ink-muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .guide-swatch__use {
+        margin: var(--ab-space-2) 0 0;
+        color: var(--ab-ink-muted);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .guide-type {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border-top: 1px solid var(--ab-rule);
+      }
+
+      .guide-type > li {
+        display: grid;
+        gap: var(--ab-space-1) var(--ab-space-4);
+        padding: var(--ab-space-4) 0;
+        border-bottom: 1px solid var(--ab-rule);
+      }
+
+      @media (min-width: 720px) {
+        .guide-type > li {
+          grid-template-columns: minmax(0, 1fr) 220px;
+          align-items: baseline;
+        }
+      }
+
+      .guide-type__specimen {
+        min-width: 0;
+        margin: 0;
+      }
+
+      .guide-type__meta {
+        margin: 0;
+        color: var(--ab-ink-muted);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 11.5px;
+        line-height: 1.5;
+      }
+
+      /* Pinned states. These repeat the shipped declarations so a reviewer can
+         see hover and focus side by side; the live button below is real. */
+      .guide-pin-hover {
+        border-color: var(--ab-blue-strong) !important;
+        background: var(--ab-blue-strong) !important;
+      }
+
+      .guide-pin-focus {
+        outline: 3px solid var(--ab-focus);
+        outline-offset: 3px;
+      }
+
+      .guide-buttons {
+        display: grid;
+        gap: var(--ab-space-4);
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      }
+
+      .guide-buttons figure {
+        margin: 0;
+      }
+
+      .guide-buttons figcaption {
+        margin: 0 0 var(--ab-space-2);
+        color: var(--ab-ink-muted);
+        font-size: 11px;
+        font-weight: var(--ab-weight-utility);
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .guide-buttons .game-card__play,
+      .guide-buttons .error-action {
+        margin-top: 0;
+        width: 100%;
+      }
+
+      .guide-card-specimen {
+        max-width: 470px;
+      }
+
+      .guide-card-specimen ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .guide-note {
+        margin: var(--ab-space-4) 0 0;
+        padding: var(--ab-space-3) var(--ab-space-4);
+        border-left: 3px solid var(--ab-rule-strong);
+        color: var(--ab-ink-muted);
+        font-size: 13px;
+        line-height: 1.55;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="guide-shell">
+      <header class="guide-masthead">
+        <a class="ab-lockup" href="#" aria-label="ArcadeBench">
+          <img class="ab-mark" src="../../deploy/brand/mark.svg" alt="" width="32" height="32" />
+          <span class="ab-lockup__stack" aria-hidden="true">
+            <span class="ab-lockup__row">Arcade</span>
+            <span class="ab-lockup__row">Bench</span>
+          </span>
+          <span class="ab-lockup__descriptor" aria-hidden="true">Free play</span>
+        </a>
+        <h1>Brand guide</h1>
+        <p class="guide-tag">Internal review artifact — not published</p>
+      </header>
+
+      <main>
+        <section class="guide-section">
+          <h2>Mark</h2>
+          <p>
+            The bench A: a top slab, two legs, and an extended crossbar, on a
+            24&times;24 grid. One solid silhouette in
+            <code>--ab-blue</code>, with no badge box, no shadow, and no outline
+            stroke. The shipped file is
+            <code>deploy/brand/mark.svg</code>, which is also the catalog
+            favicon. Do not redraw it, add a container, or rotate it.
+          </p>
+          <div class="guide-row">
+            <div class="guide-tile guide-tile--paper">
+              <p class="guide-tile__label">Construction</p>
+              <svg class="guide-construction" viewBox="0 0 24 24" role="img" aria-label="The bench A on its 24 by 24 grid: top slab 4,2 16 by 4; legs 4,6 and 16,6 each 4 by 16; crossbar 2,12 20 by 4.">
+                <defs>
+                  <pattern id="guide-grid" width="2" height="2" patternUnits="userSpaceOnUse">
+                    <path d="M2 0H0V2" fill="none" stroke="#d4d2c8" stroke-width="0.12" />
+                  </pattern>
+                </defs>
+                <rect width="24" height="24" fill="url(#guide-grid)" />
+                <g fill="none" stroke="#bf432e" stroke-width="0.22" stroke-dasharray="1 0.7">
+                  <rect x="4" y="2" width="16" height="4" />
+                  <rect x="4" y="6" width="4" height="16" />
+                  <rect x="16" y="6" width="4" height="16" />
+                  <rect x="2" y="12" width="20" height="4" />
+                </g>
+                <path fill="#2749a5" d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" />
+              </svg>
+              <p class="guide-note">
+                Dashed outlines are the four source rectangles. The slab and both
+                legs are one closed path; the crossbar is a second subpath and
+                overlaps the legs, so the whole mark fills as a single union.
+              </p>
+            </div>
+            <div class="guide-tile">
+              <p class="guide-tile__label">Size ladder</p>
+              <div class="guide-sizes">
+                <figure>
+                  <img src="../../deploy/brand/mark.svg" width="16" height="16" alt="" />
+                  <figcaption>16 favicon</figcaption>
+                </figure>
+                <figure>
+                  <img src="../../deploy/brand/mark.svg" width="24" height="24" alt="" />
+                  <figcaption>24 authored</figcaption>
+                </figure>
+                <figure>
+                  <img src="../../deploy/brand/mark.svg" width="32" height="32" alt="" />
+                  <figcaption>32 masthead</figcaption>
+                </figure>
+                <figure>
+                  <img src="../../deploy/brand/mark.svg" width="64" height="64" alt="" />
+                  <figcaption>64 large</figcaption>
+                </figure>
+              </div>
+              <p class="guide-note">
+                32px is the masthead size and the smallest size the mark has to
+                be recognised at on its own. Below 24px it is a favicon, not a
+                graphic: keep it unlabelled and let the tab title carry meaning.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="guide-section">
+          <h2>Mark colourways</h2>
+          <p>
+            One colourway ships. The others are for the dark gameplay plate if
+            the mark ever needs to sit on artwork, and for single-colour
+            reproduction. Never recolour the mark toward a game's palette.
+          </p>
+          <div class="guide-row">
+            <div class="guide-tile guide-tile--paper">
+              <p class="guide-tile__label">Light — shipping</p>
+              <img src="../../deploy/brand/mark.svg" width="48" height="48" alt="" />
+            </div>
+            <div class="guide-tile guide-tile--dark">
+              <p class="guide-tile__label">On the plate</p>
+              <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#f4f1e7" d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" />
+              </svg>
+            </div>
+            <div class="guide-tile">
+              <p class="guide-tile__label">Monochrome</p>
+              <svg width="48" height="48" viewBox="0 0 24 24" aria-hidden="true" style="color: var(--ab-ink)">
+                <path fill="currentColor" d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" />
+              </svg>
+            </div>
+          </div>
+        </section>
+
+        <section class="guide-section">
+          <h2>Lockup</h2>
+          <p>
+            Mark, then ARCADE stacked over BENCH in 800 weight, then an optional
+            free-play descriptor that appears at 900px and above. The two rows
+            are balanced by tracking rather than size: ARCADE at 0.05em, BENCH
+            at 0.15em, so the block squares off. The anchor always carries
+            <code>aria-label="ArcadeBench"</code> and the mark is decorative, so
+            the link keeps one plain spoken name.
+          </p>
+          <div class="guide-row">
+            <div class="guide-tile guide-tile--paper">
+              <p class="guide-tile__label">Full, desktop</p>
+              <a class="ab-lockup" href="#" aria-label="ArcadeBench">
+                <img class="ab-mark" src="../../deploy/brand/mark.svg" alt="" width="32" height="32" />
+                <span class="ab-lockup__stack" aria-hidden="true">
+                  <span class="ab-lockup__row">Arcade</span>
+                  <span class="ab-lockup__row">Bench</span>
+                </span>
+                <span class="ab-lockup__descriptor" aria-hidden="true">Free play</span>
+              </a>
+            </div>
+            <div class="guide-tile">
+              <p class="guide-tile__label">Stacked only, narrow</p>
+              <span class="ab-lockup">
+                <img class="ab-mark" src="../../deploy/brand/mark.svg" alt="" width="32" height="32" />
+                <span class="ab-lockup__stack">
+                  <span class="ab-lockup__row">Arcade</span>
+                  <span class="ab-lockup__row">Bench</span>
+                </span>
+              </span>
+            </div>
+            <div class="guide-tile guide-tile--dark">
+              <p class="guide-tile__label">On the plate</p>
+              <span class="ab-lockup">
+                <svg class="ab-mark" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#f4f1e7" d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" />
+                </svg>
+                <span class="ab-lockup__stack">
+                  <span class="ab-lockup__row">Arcade</span>
+                  <span class="ab-lockup__row">Bench</span>
+                </span>
+              </span>
+            </div>
+          </div>
+          <p class="guide-note">
+            The double rule under the masthead is the mark's crossbar, reused
+            once per page: <code>.ab-crossbar-rule</code> draws a second
+            hairline 4px below the border. It is the only ornament in the
+            system. Do not add it to cards, panels, or the footer.
+          </p>
+        </section>
+
+        <section class="guide-section">
+          <h2>Palette</h2>
+          <p>
+            Paper and surface are the page. Ink carries every readable mark.
+            Blue is spent on the bench mark and the play actions and nowhere
+            else. Red is scarce — it marks a route that went wrong and nothing
+            else. Contrast figures below are against paper
+            <code>#F4F1E7</code>.
+          </p>
+          <ul class="guide-swatches">
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #f4f1e7"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Paper</p>
+                <p class="guide-swatch__hex">#F4F1E7</p>
+                <p class="guide-swatch__use"><code>--ab-paper</code> — page background</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #fffef9"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Surface</p>
+                <p class="guide-swatch__hex">#FFFEF9</p>
+                <p class="guide-swatch__use"><code>--ab-surface</code> — cards and panels</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #252824"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Ink</p>
+                <p class="guide-swatch__hex">#252824</p>
+                <p class="guide-swatch__use"><code>--ab-ink</code> — 13.2:1. Text, rules, focus ring</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #5f625b"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Ink muted</p>
+                <p class="guide-swatch__hex">#5F625B</p>
+                <p class="guide-swatch__use"><code>--ab-ink-muted</code> — 5.5:1. Secondary text</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #2749a5"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Arcade blue</p>
+                <p class="guide-swatch__hex">#2749A5</p>
+                <p class="guide-swatch__use"><code>--ab-blue</code> — 7.2:1. Mark, play actions</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #1e3a86"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Arcade blue deep</p>
+                <p class="guide-swatch__hex">#1E3A86</p>
+                <p class="guide-swatch__use"><code>--ab-blue-strong</code> — hover and press only</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #bf432e"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Warm red</p>
+                <p class="guide-swatch__hex">#BF432E</p>
+                <p class="guide-swatch__use"><code>--ab-red</code> — 4.6:1. Fault states only</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #d4d2c8"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Rule</p>
+                <p class="guide-swatch__hex">#D4D2C8</p>
+                <p class="guide-swatch__use"><code>--ab-rule</code> — 1.3:1. Dividers, never text</p>
+              </div>
+            </li>
+            <li class="guide-swatch">
+              <div class="guide-swatch__chip" style="background: #0d1417"></div>
+              <div class="guide-swatch__meta">
+                <p class="guide-swatch__name">Plate</p>
+                <p class="guide-swatch__hex">#0D1417</p>
+                <p class="guide-swatch__use"><code>--ab-plate</code> — letterbox behind 16:9 art</p>
+              </div>
+            </li>
+          </ul>
+          <p class="guide-note">
+            Red is the only colour with a thin margin at 4.6:1, so it is held to
+            fault labels at 13px/600 or larger and never used for body copy or
+            for an icon that carries meaning on its own. Rule and plate are
+            never used for text.
+          </p>
+        </section>
+
+        <section class="guide-section">
+          <h2>Type</h2>
+          <p>
+            One family, <code>ArcadeBench Sans</code>: self-hosted Noto Sans at
+            weights 400, 600, and 800, served from <code>/brand/fonts/</code>.
+            Only those three weights are shipped, and every one of them is a
+            real file — there is no synthetic bolding and no fallback to a
+            host-installed face. Body is 400, utility is 600, titles are 800.
+          </p>
+          <ul class="guide-type">
+            <li>
+              <p class="guide-type__specimen" style="font-size: clamp(32px, 3.6vw, 44px); font-weight: 800; letter-spacing: -0.035em; line-height: 1.04">
+                Choose your game.
+              </p>
+              <p class="guide-type__meta">Page title / 800<br />clamp(32–44px) / -0.035em / 1.04</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 26px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.12">
+                Partition
+              </p>
+              <p class="guide-type__meta">Game title / 800<br />clamp(22–26px) / -0.025em / 1.12</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 15px; font-weight: 600">
+                Play Partition
+              </p>
+              <p class="guide-type__meta">Action and utility / 600<br />15px / 1.5</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 16px">
+                A free browser arcade for everyone, inspired by the early arcade era.
+              </p>
+              <p class="guide-type__meta">Body / 400<br />16px / 1.5</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 15px; color: var(--ab-ink-soft)">
+                Draw boundaries, claim space, and dodge the anomalies.
+              </p>
+              <p class="guide-type__meta">Premise / 400<br />15px / 1.45</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 13px; color: var(--ab-ink-muted)">
+                Keyboard or touch &nbsp; 20 authored fields
+              </p>
+              <p class="guide-type__meta">Supporting detail / 400<br />13px / 1.4</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ab-ink-muted)">
+                Page not found
+              </p>
+              <p class="guide-type__meta">Label / 600<br />12px / 0.14em / uppercase</p>
+            </li>
+            <li>
+              <p class="guide-type__specimen" style="font-size: 13px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ab-red)">
+                Route 404 / No signal
+              </p>
+              <p class="guide-type__meta">Fault label / 600<br />13px / 0.08em / uppercase</p>
+            </li>
+          </ul>
+        </section>
+
+        <section class="guide-section">
+          <h2>Actions</h2>
+          <p>
+            Two button ranks. The primary action is arcade blue with paper text,
+            a 2px border, a 6px radius, and at least a 44px target. Secondary
+            actions stay on the surface with a fine border and ink text. Focus
+            is always a 3px ink ring at a 3px offset, so it reads against paper
+            and against blue.
+          </p>
+          <div class="guide-buttons">
+            <figure>
+              <figcaption>Primary, at rest</figcaption>
+              <a class="game-card__play" href="#">
+                <span>Play Partition</span>
+                <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+              </a>
+            </figure>
+            <figure>
+              <figcaption>Primary, hover pinned</figcaption>
+              <a class="game-card__play guide-pin-hover" href="#">
+                <span>Play Partition</span>
+                <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+              </a>
+            </figure>
+            <figure>
+              <figcaption>Primary, focus pinned</figcaption>
+              <a class="game-card__play guide-pin-focus" href="#">
+                <span>Play Partition</span>
+                <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+              </a>
+            </figure>
+            <figure>
+              <figcaption>Secondary, at rest</figcaption>
+              <a class="error-action" href="#">Partition</a>
+            </figure>
+          </div>
+          <p class="guide-note">
+            Hover and focus above are pinned specimens that repeat the shipped
+            declarations; hover the real specimen in the card below to see the
+            live behaviour.
+          </p>
+        </section>
+
+        <section class="guide-section">
+          <h2>Game card</h2>
+          <p>
+            The card is the catalog's one repeating component. The 16:9 artwork
+            window is the game's identity and is never restyled, recoloured, or
+            framed by the brand — the surrounding surface stays neutral and the
+            only brand colour on the card is the play action. This is the real
+            markup and the real shipped cover, not a mock.
+          </p>
+          <div class="guide-card-specimen">
+            <article class="game-card" aria-labelledby="guide-partition-title">
+              <p class="game-card__art">
+                <img
+                  src="../../deploy/covers/partition.png"
+                  width="960"
+                  height="540"
+                  decoding="async"
+                  alt="Partition gameplay: a cyan hatched region has claimed the lower-left of a dark grid playfield while a pink anomaly drifts above the claim."
+                />
+              </p>
+              <div class="game-card__body">
+                <h2 class="game-card__title" id="guide-partition-title">Partition</h2>
+                <p class="game-card__premise" id="guide-partition-premise">Draw boundaries, claim space, and dodge the anomalies.</p>
+                <ul class="game-card__meta" id="guide-partition-meta">
+                  <li>Keyboard or touch</li>
+                  <li>20 authored fields</li>
+                </ul>
+                <a class="game-card__play" href="#" aria-describedby="guide-partition-premise guide-partition-meta">
+                  <span>Play Partition</span>
+                  <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+                </a>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="guide-section">
+          <h2>Boundaries</h2>
+          <p>
+            The brand stops at the edge of the artwork. Gameplay previews are
+            real frames from the shipped games: they are not recoloured to match
+            the palette, not given a shared illustrated cabinet, not cropped
+            into a brand frame, and not replaced by a logo or a title card. A
+            game's own typography and colour belong inside its window.
+          </p>
+          <p>
+            There is no neon, no simulated cabinet, no scanlines, no glow, and
+            no game-specific skin anywhere in the shell. There are no invented
+            institutions, founding dates, or award claims — the only promise
+            the site makes is the one in the footer. Read the full rules in
+            <code>docs/BRAND-DESIGN-SYSTEM.md</code>.
+          </p>
+        </section>
+      </main>
+
+      <footer class="site-footer" style="margin-top: var(--ab-space-7)">
+        <p class="site-footer__promise">
+          <svg class="site-footer__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" /></svg>
+          No ads. No microtransactions. No loot boxes. Just games.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>

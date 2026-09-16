@@ -57,6 +57,7 @@ export type MaltlineViewerFlowEvent =
 
 export type MaltlineViewerFlowEffect =
   | Readonly<{ type: 'show-instructions' }>
+  | Readonly<{ type: 'show-intermission' }>
   | Readonly<{ type: 'start-fresh-run' }>
   | Readonly<{ type: 'show-stage-card'; constructStage: boolean; schedulerFailed: boolean }>
   | Readonly<{ type: 'show-countdown'; step: MaltlineCountdownStep }>
@@ -91,6 +92,9 @@ export interface MaltlineViewerFlowControllerOptions {
   readonly stageCount: number;
   readonly countdownStepMs: number;
   readonly countdownServeMs: number;
+  /** Optional presentation break after this completed stage (one-based). */
+  readonly intermissionAfterStage?: number;
+  readonly intermissionDurationMs?: number;
   readonly scheduler: MaltlineViewerFlowScheduler;
   readonly isPlayable: () => boolean;
   readonly onTransition: (transition: MaltlineViewerFlowTransition) => void;
@@ -172,6 +176,7 @@ export class MaltlineViewerFlowController {
   private timerSlot: TimerSlot | null = null;
   private lastAtomicTransition: MaltlineViewerFlowTransition | null = null;
   private disposed = false;
+  private intermissionElapsedMs = 0;
 
   constructor(options: MaltlineViewerFlowControllerOptions) {
     if (!Number.isSafeInteger(options.stageCount) || options.stageCount <= 0) {
@@ -181,12 +186,30 @@ export class MaltlineViewerFlowController {
       || !Number.isFinite(options.countdownServeMs) || options.countdownServeMs < 0) {
       throw new Error('Maltline viewer countdown delays must be finite and nonnegative.');
     }
+    if (options.intermissionAfterStage !== undefined
+      && (!Number.isSafeInteger(options.intermissionAfterStage) || options.intermissionAfterStage < 1
+        || options.intermissionAfterStage >= options.stageCount
+        || !Number.isFinite(options.intermissionDurationMs) || options.intermissionDurationMs! <= 0)) {
+      throw new Error('Maltline intermission requires an interior stage and a positive finite duration.');
+    }
     this.options = options;
     this.state = flowState(options.stageCount, 'title', 0, attemptIdentity());
   }
 
   snapshot(): MaltlineViewerFlowState {
     return this.state;
+  }
+
+  /** Presentation time never enters engine ticks or recorded inputs. Hidden/unplayable views pause. */
+  advancePresentation(dtMs: number): void {
+    if (!Number.isFinite(dtMs) || dtMs < 0) throw new Error('Presentation elapsed time must be finite and nonnegative.');
+    if (this.disposed || this.state.screen !== 'intermission' || !this.options.isPlayable()) return;
+    this.intermissionElapsedMs = Math.min(this.options.intermissionDurationMs!, this.intermissionElapsedMs + dtMs);
+    if (this.intermissionElapsedMs >= this.options.intermissionDurationMs!) this.dispatch({ type: 'advance' });
+  }
+
+  intermissionTime(): number {
+    return this.intermissionElapsedMs;
   }
 
   /**
@@ -306,13 +329,25 @@ export class MaltlineViewerFlowController {
             freezeEffect({ type: 'show-victory' }),
           );
         }
-        return this.commit(
-          flowState(previous.stageCount, 'stage-card', previous.stageIndex + 1, previous.attempt),
-          freezeEffect({ type: 'show-stage-card', constructStage: true, schedulerFailed: false }),
-        );
+        if (previous.stageIndex + 1 === this.options.intermissionAfterStage) {
+          return this.commit(
+            flowState(previous.stageCount, 'intermission', previous.stageIndex, previous.attempt),
+            freezeEffect({ type: 'show-intermission' }),
+          );
+        }
+        return this.nextStage(previous);
+      case 'intermission':
+        return this.nextStage(previous);
       default:
         return this.reject(previous);
     }
+  }
+
+  private nextStage(previous: MaltlineViewerFlowState): MaltlineViewerFlowTransition {
+    return this.commit(
+      flowState(previous.stageCount, 'stage-card', previous.stageIndex + 1, previous.attempt),
+      freezeEffect({ type: 'show-stage-card', constructStage: true, schedulerFailed: false }),
+    );
   }
 
   private startCountdown(previous: MaltlineViewerFlowState): MaltlineViewerFlowTransition {
@@ -386,6 +421,7 @@ export class MaltlineViewerFlowController {
     const oldSlot = this.timerSlot;
     this.timerSlot = null;
     this.state = current;
+    if (current.screen !== 'intermission' || previous.screen !== 'intermission') this.intermissionElapsedMs = 0;
 
     // State/token invalidation must happen before best-effort cancellation: a
     // hostile scheduler may invoke the retained callback from cancel().

@@ -3,43 +3,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#05070d" />
+    <meta name="theme-color" content="#f4f1e7" />
     <meta name="robots" content="noindex" />
-    <meta name="description" content="That ArcadeBench cabinet could not be found." />
-    <title>Cabinet not found — ArcadeBench</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="description" content="That ArcadeBench page could not be found." />
+    <title>Page not found — ArcadeBench</title>
+    <link rel="icon" href="/brand/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/brand/brand.css" />
     <link rel="stylesheet" href="/arcade.css" />
   </head>
   <body class="error-page">
     <a class="skip-link" href="#not-found">Skip to message</a>
-    <div class="arcade-glow arcade-glow--left" aria-hidden="true"></div>
-    <div class="arcade-glow arcade-glow--right" aria-hidden="true"></div>
     <div class="page-shell">
-      <header class="site-nav">
-        <a class="wordmark" href="/">
-          <span class="wordmark__mark" aria-hidden="true"></span>
-          <span>ARCADEBENCH</span>
+      <header class="site-nav ab-crossbar-rule">
+        <a class="ab-lockup wordmark" href="/" aria-label="ArcadeBench">
+          <img class="ab-mark" src="/brand/mark.svg" alt="" width="32" height="32" decoding="async" />
+          <span class="ab-lockup__stack" aria-hidden="true">
+            <span class="ab-lockup__row">Arcade</span>
+            <span class="ab-lockup__row">Bench</span>
+          </span>
+          <span class="ab-lockup__descriptor" aria-hidden="true">Free play</span>
         </a>
-        <p>ROUTE 404 <span aria-hidden="true">/</span> NO SIGNAL</p>
+        <p class="site-nav__route">Route 404 <span aria-hidden="true">/</span> No signal</p>
       </header>
 
       <main id="not-found" class="error-panel" tabindex="-1">
-        <p class="kicker"><span aria-hidden="true"></span> CABINET NOT FOUND</p>
+        <p class="kicker">Page not found</p>
         <h1>This route is out of play.</h1>
-        <p>The cabinet may have moved. Return to the arcade entrance or choose a game directly.</p>
+        <p>This page may have moved. Return to the arcade entrance or choose a game directly.</p>
         <nav class="error-actions" aria-label="Recovery links">
-          <a class="error-action error-action--primary" href="/">RETURN TO ARCADE</a>
-          <a class="error-action" href="/partition/">PARTITION</a>
-          <a class="error-action" href="/maltline/">MALTLINE</a>
+          <a class="error-action error-action--primary" href="/">Return to arcade</a>
+          <a class="error-action" href="/games/partition/">Partition</a>
+          <a class="error-action" href="/games/maltline/">Maltline</a>
         </nav>
       </main>
 
       <footer class="site-footer">
-        <p>DETERMINISTIC PLAY <span aria-hidden="true">/</span> INSPECTABLE RUNS</p>
+        <p class="site-footer__promise">
+          <svg class="site-footer__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" /></svg>
+          No ads. No microtransactions. No loot boxes. Just games.
+        </p>
         <nav aria-label="Site information">
-          <a href="/privacy/">PRIVACY</a>
-          <a href="/terms/">TERMS</a>
-          <a href="https://github.com/eanderson4/arcadebench">SOURCE</a>
+          <a href="/about/">About</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="/terms/">Terms</a>
+          <a href="https://github.com/eanderson4/arcadebench">Source</a>
         </nav>
       </footer>
     </div>

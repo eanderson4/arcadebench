@@ -232,7 +232,7 @@ describe('P1-10 DOM-free human-lab session core', () => {
     expect(state.phase).toBe('frozen');
     expect(state.artifact).toMatchObject({
       kind: 'maltline-human-lab-session', schemaVersion: 3, experimentId: 'EXP-049',
-      experimentRevision: 12,
+      experimentRevision: 13,
       policy: { rankEligibility: 'unranked', authorityRegistration: null, seasonId: null, submission: 'forbidden' },
       executionMode: 'human',
       studyAssignment: STUDY_ASSIGNMENT,

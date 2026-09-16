@@ -9,11 +9,13 @@ import { chromium } from '@playwright/test';
 const repositoryRoot = resolve(fileURLToPath(new URL('../../..', import.meta.url)));
 const siteRoot = resolve(repositoryRoot, 'dist/site');
 const maltlineRoot = resolve(siteRoot, 'maltline');
+const maltlineRouteRoot = resolve(siteRoot, 'games/maltline');
 const maltlinePackageDist = resolve(repositoryRoot, 'games/maltline/dist');
 const releaseAssets = JSON.parse(await readFile(
   resolve(repositoryRoot, 'games/maltline/release-assets.json'),
   'utf8',
 ));
+const noticeRelativePath = releaseAssets.fontBundle.notice.publicPath.replace(/^\/maltline\//u, '');
 const labArtifactName = /(?:^|\/)(?:human-lab|p1-08-candidates)(?:[./-]|$)/iu;
 const labTextSentinels = [
   'maltline-human-lab-session',
@@ -29,7 +31,7 @@ const contentTypes = new Map([
   ['.woff2', 'font/woff2'],
 ]);
 
-await access(resolve(maltlineRoot, 'index.html'));
+await access(resolve(maltlineRouteRoot, 'index.html'));
 
 async function filesUnder(root) {
   const files = [];
@@ -75,11 +77,17 @@ function auditEmbeddedMedia(contents, extension, path, label) {
     : [`${label} embeds unapproved data media: ${path}`];
 }
 
-async function auditMaltlineReleaseTree(root, entryPath, label) {
+// The assembled route keeps its entry at /games/maltline/ while its hashed
+// assets and license notice stay under the published /maltline/ prefix, so the
+// audited asset tree and the entry document are located independently.
+async function auditMaltlineReleaseTree(root, entryFile, label, noticeFile) {
   const failures = [];
   const expectedNotice = releaseAssets.fontBundle.notice;
-  const noticeRelativePath = expectedNotice.publicPath.replace(/^\/maltline\//u, '');
-  const expectedStatic = new Set([entryPath, noticeRelativePath]);
+  const entryInsideRoot = entryFile.startsWith(`${root}${sep}`);
+  const expectedStatic = new Set([
+    ...(entryInsideRoot ? [relative(root, entryFile).replaceAll(sep, '/')] : []),
+    noticeRelativePath,
+  ]);
   const fontByWeight = new Map(releaseAssets.fontBundle.files.map((file) => [String(file.weight), file]));
   const foundWeights = new Set();
   let scriptCount = 0;
@@ -121,11 +129,11 @@ async function auditMaltlineReleaseTree(root, entryPath, label) {
     failures.push(`${label} expected font weights ${[...fontByWeight.keys()].join(', ')}, found ${[...foundWeights].join(', ')}`);
   }
 
-  const notice = await readFile(resolve(root, noticeRelativePath));
+  const notice = await readFile(noticeFile);
   if (notice.byteLength !== expectedNotice.byteLength || sha256(notice) !== expectedNotice.sha256) {
     failures.push(`${label} license notice differs from manifest`);
   }
-  const entry = await readFile(resolve(root, entryPath), 'utf8');
+  const entry = await readFile(entryFile, 'utf8');
   if (!entry.includes(`rel="license" type="text/plain" href="${expectedNotice.publicPath}"`)) {
     failures.push(`${label} entry lacks the route-correct license relation`);
   }
@@ -135,14 +143,14 @@ async function auditMaltlineReleaseTree(root, entryPath, label) {
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1');
-    if (url.pathname === '/maltline') {
-      response.writeHead(308, { location: '/maltline/' });
+    if (url.pathname === '/maltline' || url.pathname === '/maltline/') {
+      response.writeHead(301, { location: `/games/maltline/${url.search}` });
       response.end();
       return;
     }
     const decodedPath = decodeURIComponent(url.pathname);
     const routeEntry = new Map([
-      ['/maltline/', 'maltline/index.html'],
+      ['/games/maltline/', 'games/maltline/index.html'],
       ['/privacy/', 'privacy/index.html'],
     ]).get(decodedPath);
     const relativePath = routeEntry ?? decodedPath.replace(/^\//u, '');
@@ -176,21 +184,33 @@ if (!address || typeof address === 'string') throw new Error('Built-site smoke s
 const origin = `http://127.0.0.1:${address.port}`;
 const failures = [
   ...await labLeaks(maltlinePackageDist, 'Maltline package dist'),
-  ...await labLeaks(maltlineRoot, 'assembled Maltline site'),
+  ...await labLeaks(maltlineRoot, 'assembled Maltline assets'),
+  ...await labLeaks(maltlineRouteRoot, 'assembled Maltline route'),
   ...await auditMaltlineReleaseTree(
     maltlinePackageDist,
-    'src/viewer/index.html',
+    resolve(maltlinePackageDist, 'src/viewer/index.html'),
     'Maltline package dist',
+    resolve(maltlinePackageDist, noticeRelativePath),
   ),
-  ...await auditMaltlineReleaseTree(maltlineRoot, 'index.html', 'assembled Maltline site'),
+  ...await auditMaltlineReleaseTree(
+    maltlineRoot,
+    resolve(maltlineRouteRoot, 'index.html'),
+    'assembled Maltline route',
+    resolve(maltlineRoot, noticeRelativePath),
+  ),
 ];
 let browser;
 try {
   const redirect = await fetch(`${origin}/maltline`, { redirect: 'manual' });
-  if (redirect.status !== 308 || redirect.headers.get('location') !== '/maltline/') {
-    failures.push(`route redirect was ${redirect.status} ${redirect.headers.get('location') ?? ''}`);
+  if (redirect.status !== 301 || redirect.headers.get('location') !== '/games/maltline/') {
+    failures.push(`legacy route redirect was ${redirect.status} ${redirect.headers.get('location') ?? ''}`);
   }
-  for (const path of ['/maltline/human-lab.html', '/maltline/src/viewer/human-lab.html']) {
+  for (const path of [
+    '/maltline/human-lab.html',
+    '/maltline/src/viewer/human-lab.html',
+    '/games/maltline/human-lab.html',
+    '/games/maltline/src/viewer/human-lab.html',
+  ]) {
     const response = await fetch(`${origin}${path}`);
     if (response.status !== 404) failures.push(`dev-only lab route ${path} returned ${response.status}`);
   }
@@ -228,7 +248,7 @@ try {
     if (response.status() >= 400) failures.push(`HTTP ${response.status()}: ${response.url()}`);
   });
 
-  const entry = await page.goto(`${origin}/maltline/`, { waitUntil: 'networkidle' });
+  const entry = await page.goto(`${origin}/games/maltline/`, { waitUntil: 'networkidle' });
   await page.waitForFunction(() => document.documentElement.dataset.maltlineViewerReady === 'true');
   const result = await page.evaluate(() => ({
     title: document.title,
@@ -265,7 +285,12 @@ try {
   for (const statement of [
     'Ordinary gameplay and replay inspection run in your browser.',
     'A complete replay reaches ArcadeBench only when you submit a ranked score',
-    'The full replay is scheduled for deletion five days after upload.',
+    'Shared replay links and ordinary score proofs expire after five days.',
+    'we keep its full replay without a scheduled expiration, even if later scores overtake it.',
+    'Saved replay files are private and are not available for public playback on ArcadeBench.',
+    'This checkbox starts unchecked for each run.',
+    'Social-media permission does not authorize AI training.',
+    'Notes expire 90 days after their latest explicit update.',
     'A signed anonymous cookie lasts up to 30 days',
     'ArcadeBench does not write IP addresses into its application database.',
     'only the proposed callsign—not gameplay, replay data, prompts, or controller code—is sent to Cloudflare Workers AI',

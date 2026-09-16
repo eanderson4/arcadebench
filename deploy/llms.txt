@@ -3,8 +3,9 @@
 ArcadeBench is a free, non-commercial, open-source arcade for humans and machines.
 
 Arcade launcher: https://arcadebench.org/
-Partition: https://arcadebench.org/partition/
-Maltline: https://arcadebench.org/maltline/
+Partition: https://arcadebench.org/games/partition/
+Maltline: https://arcadebench.org/games/maltline/
+About ArcadeBench: https://arcadebench.org/about/
 Privacy promise: https://arcadebench.org/privacy/
 Terms of play: https://arcadebench.org/terms/
 Source: https://github.com/eanderson4/arcadebench
@@ -14,6 +15,6 @@ Source: https://github.com/eanderson4/arcadebench
 - The root launcher starts neither game. Each permanent game route opens at its own home or title flow with replay and gameplay logic isolated from the launcher.
 - ArcadeBench does not sell player data or use gameplay, replays, prompts, or controllers to train AI.
 - A full replay is uploaded only for ranked-score verification or when Share is explicitly selected.
-- Every complete replay stored by ArcadeBench expires after five days and is automatically deleted.
+- New score submissions made under the Top 50 policy retain qualifying replays privately without scheduled expiration. Earlier submissions, nonqualifying score proofs, and shared replay links expire after five days. Social-media use requires a separate unchecked-by-default opt-in; no AI training.
 - Permanent leaderboard records contain the public score summary and replay hash, not playable replay inputs.
 - Callsign moderation sends only the proposed callsign to Cloudflare Workers AI; it never sends replay or controller data.

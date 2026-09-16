@@ -1,0 +1,22 @@
+.cabinet-rank-notice { margin: 0; text-align: center; color: var(--dim); font-size: 11px; line-height: 1.4; }
+.cabinet-board { width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; padding: 24px; border: 1px solid #729180; border-radius: 16px; background: #103c32; color: #f3e9d2; font: 14px/1.55 "Maltline UI", system-ui, sans-serif; }
+.cabinet-board::backdrop { background: #061c17bb; }
+.cabinet-board header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cabinet-board h2 { margin: 0; font: 700 30px Georgia, serif; }
+.cabinet-eyebrow { margin: 0 0 4px; color: #f5a5ba; font-size: 10px; letter-spacing: .15em; }
+.cabinet-board button, .cabinet-board input { font: inherit; }
+.cabinet-board button { min-height: 40px; padding: 8px 14px; border: 1px solid #90bda6; border-radius: 7px; background: #205947; color: #fff0d4; cursor: pointer; }
+.cabinet-board button:disabled { opacity: .6; cursor: default; }
+.cabinet-board :focus-visible { outline: 3px solid #f5a5ba; outline-offset: 3px; }
+.cabinet-board form { padding: 16px; border: 1px solid #729180; border-radius: 9px; }
+.cabinet-board form[hidden] { display: none; }
+.cabinet-board input[name= callsign] { display: block; width: min(100%, 260px); margin-top: 6px; padding: 9px; border: 1px solid #8daf9b; border-radius: 5px; background: #082b22; color: #fff0d4; }
+.cabinet-consent { display: flex; align-items: flex-start; gap: 10px; }
+.cabinet-consent input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: #f5a5ba; }
+.cabinet-help, .cabinet-policy { color: #c2dccf; font-size: 12px; }
+.cabinet-board a { color: #f5a5ba; }
+.cabinet-board-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+.cabinet-board ol { padding-left: 26px; }
+.cabinet-board li { padding: 9px 0; border-bottom: 1px solid #527c66; }
+.cabinet-board li span { display: block; color: #c2dccf; }
+@media (max-width: 420px) { .cabinet-board { padding: 16px; } }

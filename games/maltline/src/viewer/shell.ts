@@ -1,8 +1,10 @@
+import { MALTLINE_SPLASH_ART } from './splash-art';
+
 export const MALTLINE_SHELL_SOURCE = 'maltline-shell-v2';
 export const MALTLINE_MINIMUM_PLAYABLE_WIDTH = 700;
 
 export interface OverlayPresentation {
-  variant?: 'title' | 'instructions' | 'stage' | 'countdown' | 'terminal' | 'standard';
+  variant?: 'title' | 'instructions' | 'stage' | 'countdown' | 'intermission' | 'terminal' | 'standard';
   kicker?: string;
   title: string;
   body: string;
@@ -15,6 +17,7 @@ export interface OverlayPresentation {
 export interface MaltlineShell {
   root: HTMLElement;
   competitionButton: HTMLButtonElement;
+  startButton: HTMLButtonElement;
   canvas: HTMLCanvasElement;
   overlay: HTMLElement;
   overlayCard: HTMLElement;
@@ -47,10 +50,25 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
   template.innerHTML = `
     <main class="shell" data-maltline-shell="${MALTLINE_SHELL_SOURCE}" tabindex="0" aria-label="Maltline game">
       <header class="topline">
-        <span class="brand">ARCADEBENCH <i>/</i> MALTLINE <em>prototype</em></span>
+        <span class="brand"><a class="arcade-home" href="/" aria-label="Back to ArcadeBench homepage">← ARCADEBENCH</a> <i>/</i> MALTLINE <em>prototype</em></span>
         <span class="tagline">slide shakes · catch jars · keep the line moving</span>
         <button class="competition-trigger" type="button" hidden>SHIFT BOARD</button>
       </header>
+      <section class="splash" aria-labelledby="splash-title">
+        <div class="splash-copy">
+          <p class="splash-kicker">THE COUNTER IS YOURS</p>
+          <h1 id="splash-title">Maltline<span>A little shop. A big rush.</span></h1>
+          <p class="splash-description">Blend the right shake, slide it down the counter, and catch the returning jars. Keep your customers smiling through eight increasingly busy shifts.</p>
+          <button class="start-game" type="button" aria-describedby="splash-device-note">Start Game <span aria-hidden="true">→</span></button>
+          <p class="splash-device-note" id="splash-device-note">Keyboard required · window at least 700px wide</p>
+          <div class="splash-controls" aria-label="Game controls">
+            <span><b>↔ ↕</b> Move</span>
+            <span><b>1 <small>SPACE</small></b> Hold to fill · release to toss</span>
+            <span><b>2 <small>ENTER</small></b> Switch flavor · replace shake</span>
+          </div>
+        </div>
+        <div class="splash-art">${MALTLINE_SPLASH_ART}<p>MADE FRESH. SERVED FAST.</p></div>
+      </section>
       <div class="stage-wrap">
         <canvas id="game" width="960" height="540" aria-label="Maltline play field" aria-describedby="game-status"></canvas>
         <div id="overlay" class="overlay" aria-hidden="false">
@@ -73,9 +91,8 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
       <footer class="controls" aria-label="Keyboard controls">
         <span><kbd>← →</kbd> run counter</span>
         <span><kbd>↑ ↓</kbd> lane</span>
-        <span><kbd>A D</kbd> flavor</span>
-        <span><kbd>SPACE hold</kbd> blend</span>
-        <span><kbd>F / ENTER</kbd> slide held shake</span>
+        <span><kbd>SPACE</kbd> hold to fill · release to toss</span>
+        <span><kbd>ENTER</kbd> switch flavor / replace shake</span>
         <span><kbd>R</kbd> restart</span>
       </footer>
       <div id="game-flow-status" class="visually-hidden" role="status" aria-live="polite" aria-atomic="true"></div>
@@ -87,6 +104,9 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
 
   const root = requiredElement<HTMLElement>(documentRef, '[data-maltline-shell]');
   const competitionButton = requiredElement<HTMLButtonElement>(root, '.competition-trigger');
+  const startButton = requiredElement<HTMLButtonElement>(root, '.start-game');
+  const splash = requiredElement<HTMLElement>(root, '.splash');
+  const stageWrap = requiredElement<HTMLElement>(root, '.stage-wrap');
   const canvas = requiredElement<HTMLCanvasElement>(root, '#game');
   const overlay = requiredElement<HTMLElement>(root, '#overlay');
   const overlayCard = requiredElement<HTMLElement>(root, '#overlay-card');
@@ -100,26 +120,58 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
   const flowStatus = requiredElement<HTMLElement>(root, '#game-flow-status');
   const semanticStatus = requiredElement<HTMLElement>(root, '#game-status');
   const liveEvents = requiredElement<HTMLElement>(root, '#game-live-events');
+  const syncControlsHeight = (): void => {
+    const height = Math.ceil(controls.getBoundingClientRect().height);
+    const value = `${height}px`;
+    if (height > 0 && root.style.getPropertyValue('--maltline-controls-height') !== value) {
+      root.style.setProperty('--maltline-controls-height', value);
+    }
+  };
+  let controlsResizePending = false;
+  const scheduleControlsHeightSync = (): void => {
+    if (controlsResizePending) return;
+    controlsResizePending = true;
+    documentRef.defaultView?.setTimeout(() => {
+      controlsResizePending = false;
+      syncControlsHeight();
+    }, 0);
+  };
+  const controlsResizeObserver = typeof ResizeObserver === 'undefined'
+    ? null
+    : new ResizeObserver(scheduleControlsHeightSync);
+  controlsResizeObserver?.observe(controls);
   const supportedDeviceListeners = new Set<(supported: boolean) => void>();
   let supportedDevice = false;
   let overlayVisible = true;
+  let splashVisible = true;
   let lastFlowAnnouncement: string | null = null;
 
   const focusCurrentSurface = (): void => {
-    const target = !supportedDevice ? unsupportedDevice : overlayVisible ? overlayCard : root;
+    const target = splashVisible ? (supportedDevice ? startButton : splash)
+      : !supportedDevice ? unsupportedDevice : overlayVisible ? overlayCard : root;
     target.focus({ preventScroll: true });
   };
 
   const syncAccessibleSurfaces = (): void => {
+    root.dataset.surface = splashVisible ? 'splash' : 'game';
+    root.tabIndex = splashVisible ? -1 : 0;
+    splash.hidden = !splashVisible;
+    splash.inert = !splashVisible;
+    splash.tabIndex = -1;
+    startButton.disabled = !supportedDevice;
+    stageWrap.hidden = splashVisible;
+    stageWrap.inert = splashVisible;
+    controls.hidden = splashVisible;
+    if (!splashVisible) syncControlsHeight();
     const playSurfaceAccessible = supportedDevice && !overlayVisible;
     canvas.setAttribute('aria-hidden', String(!playSurfaceAccessible));
     controls.setAttribute('aria-hidden', String(!playSurfaceAccessible));
     controls.inert = !playSurfaceAccessible;
-    const overlayAccessible = supportedDevice && overlayVisible;
-    flowStatus.setAttribute('aria-hidden', String(!overlayAccessible));
+    const overlayAccessible = supportedDevice && overlayVisible && !splashVisible;
+    flowStatus.setAttribute('aria-hidden', String(!overlayVisible));
     semanticStatus.setAttribute('aria-hidden', String(!playSurfaceAccessible));
     liveEvents.setAttribute('aria-hidden', String(!playSurfaceAccessible));
-    unsupportedDevice.setAttribute('aria-hidden', String(supportedDevice));
+    unsupportedDevice.setAttribute('aria-hidden', String(supportedDevice || splashVisible));
     overlay.setAttribute('aria-hidden', String(!overlayAccessible));
     overlay.inert = !overlayAccessible;
   };
@@ -140,6 +192,7 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
   return {
     root,
     competitionButton,
+    startButton,
     canvas,
     overlay,
     overlayCard,
@@ -159,6 +212,7 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
       return () => supportedDeviceListeners.delete(listener);
     },
     showOverlay(presentation, focus = false) {
+      splashVisible = presentation.variant === 'title';
       overlayCard.dataset.overlayVariant = presentation.variant ?? 'standard';
       overlayKicker.textContent = presentation.kicker ?? '';
       overlayKicker.hidden = !presentation.kicker;
@@ -178,7 +232,7 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
       );
       overlayHint.textContent = presentation.hint;
       overlayVisible = true;
-      overlay.classList.remove('hidden');
+      overlay.classList.toggle('hidden', splashVisible);
       syncAccessibleSurfaces();
       if (presentation.announcement !== undefined
         && presentation.announcement !== lastFlowAnnouncement) {
@@ -188,6 +242,7 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
       if (focus) focusCurrentSurface();
     },
     hideOverlay(focusGame = false) {
+      splashVisible = false;
       overlayVisible = false;
       lastFlowAnnouncement = null;
       overlay.classList.add('hidden');

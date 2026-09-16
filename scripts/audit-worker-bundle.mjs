@@ -6,10 +6,10 @@ import { fileURLToPath } from 'node:url';
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const defaultOutputDirectory = resolve(repositoryRoot, '.wrangler/dry-run');
 
-// This is a regression ceiling, not the provider limit. It leaves roughly 30%
-// headroom above the reviewed post-extraction bundle while catching accidental
-// reintroduction of broad runtime barrels and other large dependency growth.
-export const MAX_WORKER_JAVASCRIPT_BYTES = 256 * 1024;
+// This is a regression ceiling, not the provider limit. The reviewed shared
+// platform + cabinet bundle is 269,472 bytes; 320 KiB leaves about 20% headroom
+// while source checks continue to prohibit broad barrels and browser code.
+export const MAX_WORKER_JAVASCRIPT_BYTES = 320 * 1024;
 const MAX_SOURCE_MAP_BYTES = 2 * 1024 * 1024;
 const PROHIBITED_MALTLINE_SOURCE = /(?:^|\/)games\/maltline\/src\/(?:telemetry|experiments|viewer|testing)(?:\/|$)/u;
 const MALTLINE_ROOT_BARREL = /(?:^|\/)games\/maltline\/src\/index\.ts$/u;
@@ -18,6 +18,10 @@ const PARTITION_ROOT_BARREL = /(?:^|\/)games\/partition\/src\/index\.ts$/u;
 const PROHIBITED_NODE_BUILTIN = /["']node:(?:fs|path)(?:\/[^"']*)?["']/u;
 const REQUIRED_SOURCES = Object.freeze([
   'apps/platform/src/worker.ts',
+  'apps/platform/src/production.ts',
+  'apps/platform/src/v2-api.ts',
+  'games/maltline/src/core/cabinet-authority.ts',
+  'games/maltline/src/core/cabinet-proof.ts',
   'apps/platform/src/partition-verifier.ts',
   'games/partition/src/core/engine.ts',
   'games/partition/src/core/version.ts',

@@ -10,11 +10,20 @@ interface BrowserFailures {
 const failuresByPage = new WeakMap<Page, BrowserFailures>();
 const apiRequestsByPage = new WeakMap<Page, string[]>();
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
   const failures: BrowserFailures = { console: [], page: [], requests: [], responses: [] };
   failuresByPage.set(page, failures);
   const apiRequests: string[] = [];
   apiRequestsByPage.set(page, apiRequests);
+  const activityUrl = new URL('/api/v2/activity', testInfo.project.use.baseURL).href;
+  await page.route(activityUrl, async (route) => {
+    expect(route.request().method()).toBe('GET');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '{"protocolVersion":1,"entries":[]}',
+    });
+  });
   page.on('console', (message) => {
     if (message.type() === 'error') failures.console.push(message.text());
   });
@@ -40,15 +49,17 @@ test.afterEach(async ({ page }) => {
     requests: [],
     responses: [],
   });
+  expect(apiRequestsByPage.get(page)).toEqual(['GET /api/v2/activity']);
 });
 
 async function openLauncher(page: Page): Promise<void> {
   const response = await page.goto('/', { waitUntil: 'networkidle' });
   expect(response?.status()).toBe(200);
   expect(response?.headers()['content-security-policy']).toContain("default-src 'self'");
-  await expect(page.getByRole('heading', { level: 1, name: 'Choose your cabinet.' }))
+  await expect(page.getByRole('heading', { level: 1, name: 'Choose your game.' }))
     .toBeVisible();
-  expect(apiRequestsByPage.get(page)).toEqual([]);
+  await expect(page.getByText('New high scores will appear here.')).toBeVisible();
+  expect(apiRequestsByPage.get(page)).toEqual(['GET /api/v2/activity']);
 }
 
 async function storageLengths(page: Page): Promise<{
@@ -61,14 +72,14 @@ async function storageLengths(page: Page): Promise<{
   }));
 }
 
-async function activateCabinet(page: Page, pathname: string): Promise<void> {
+async function activateGame(page: Page, pathname: string): Promise<void> {
   const navigation = page.waitForResponse((response) => {
     const url = new URL(response.url());
     return response.request().isNavigationRequest() && url.pathname === pathname;
   });
-  const cabinet = page.locator(`a.cabinet[href="${pathname}"]`);
-  await expect(cabinet).toHaveCount(1);
-  await cabinet.click();
+  const play = page.locator(`a.game-card__play[href="${pathname}"]`);
+  await expect(play).toHaveCount(1);
+  await play.click();
   const response = await navigation;
   expect(response.status()).toBe(200);
   expect(response.headers()['content-security-policy']).toContain("default-src 'self'");
@@ -80,10 +91,18 @@ test('Partition launcher entry stays on a fresh, unstarted home screen', async (
   expect(await page.evaluate(() => ({
     localStorage: localStorage.length,
     sessionStorage: sessionStorage.length,
-    scripts: document.scripts.length,
-  }))).toEqual({ localStorage: 0, sessionStorage: 0, scripts: 0 });
+    scripts: [...document.scripts].map((script) => ({
+      src: new URL(script.src).pathname,
+      type: script.type,
+      text: script.textContent,
+    })),
+  }))).toEqual({
+    localStorage: 0,
+    sessionStorage: 0,
+    scripts: [{ src: '/activity.js', type: 'module', text: '' }],
+  });
 
-  await activateCabinet(page, '/partition/');
+  await activateGame(page, '/games/partition/');
   await expect(page.locator('body')).toHaveAttribute('data-mode', 'home');
   await expect(page.locator('#home-screen')).toBeVisible();
   await expect(page.locator('#tick')).toHaveText('0000');
@@ -119,7 +138,7 @@ test('Partition launcher entry stays on a fresh, unstarted home screen', async (
     return samples;
   });
   expect(frames).toEqual(Array.from({ length: 5 }, () => ({
-    pathname: '/partition/',
+    pathname: '/games/partition/',
     title: 'Partition — ArcadeBench',
     mode: 'home',
     homeVisible: true,
@@ -129,7 +148,7 @@ test('Partition launcher entry stays on a fresh, unstarted home screen', async (
 
 test('Maltline launcher entry stays on a fresh title with no recorded input', async ({ page }) => {
   await openLauncher(page);
-  await activateCabinet(page, '/maltline/');
+  await activateGame(page, '/games/maltline/');
   await page.waitForFunction(() => (
     document.documentElement.dataset.maltlineViewerReady === 'true'
   ));
@@ -191,7 +210,7 @@ test('Maltline launcher entry stays on a fresh title with no recorded input', as
     return samples;
   });
   expect(frames).toEqual(Array.from({ length: 5 }, () => ({
-    pathname: '/maltline/',
+    pathname: '/games/maltline/',
     title: 'Maltline — ArcadeBench',
     overlayTitle: 'MALTLINE',
     screen: 'title',

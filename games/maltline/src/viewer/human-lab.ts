@@ -38,7 +38,7 @@ import { MaltlineRenderer } from './renderer';
 import { MaltlineEventAnnouncer, semanticPlayStatus } from './semantic-status';
 import { mountMaltlineShell, type OverlayPresentation } from './shell';
 import { isEditableOrInteractiveTarget, isRepeatedPresentationAction } from './viewer-session';
-import { MaltlineViewerInputAdapter } from './viewer-input-adapter';
+import { MaltlineCabinetInputAdapter } from './cabinet-input-adapter';
 
 type AssignmentOrder = readonly [P108CanonicalLabCandidateId, P108CanonicalLabCandidateId];
 interface AssignmentRecord {
@@ -249,7 +249,7 @@ let state = createP108HumanLabState({
   },
 });
 let timing = createP108HumanLabTiming({ nowMs: performance.now(), active: false });
-let engine = new MaltlineEngine(controlPackage.campaign[0]!);
+let engine = new MaltlineEngine(controlPackage.campaign[0]!, undefined, 'two-button-v1');
 let rendererNowMs = 0;
 const renderer = new MaltlineRenderer({
   random: mulberry32(0x5041_3130),
@@ -258,7 +258,7 @@ const renderer = new MaltlineRenderer({
 });
 renderer.setScenario(engine.scenario);
 let clock = new FixedStepClock(engine.scenario.ticksPerSecond, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS);
-let inputAdapter = new MaltlineViewerInputAdapter(engine.scenario);
+let inputAdapter = new MaltlineCabinetInputAdapter(engine.scenario);
 let observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
 const announcer = new MaltlineEventAnnouncer(shell.liveEvents);
 let surface: LabSurface = 'welcome';
@@ -432,6 +432,9 @@ function showLabOverlay(
 ): void {
   cleanActions();
   shell.showOverlay(presentation, false);
+  // Each survey is a new reading surface; do not inherit the previous form's
+  // internal scroll position when its contents are replaced.
+  shell.overlayCard.scrollTop = 0;
   const host = document.createElement('div');
   host.className = 'human-lab__actions human-lab__actions--centered';
   const focusTarget = buildActions?.(host) ?? null;
@@ -574,9 +577,9 @@ function beginCurrentEngine(): void {
     throw new Error('A lab engine can begin only for an active stage');
   }
   const scenario = stagePackage().campaign[state.activeStage - 1]!;
-  engine = new MaltlineEngine(scenario, state.activeRun);
+  engine = new MaltlineEngine(scenario, state.activeRun, 'two-button-v1');
   clock = new FixedStepClock(scenario.ticksPerSecond, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS);
-  inputAdapter = new MaltlineViewerInputAdapter(scenario);
+  inputAdapter = new MaltlineCabinetInputAdapter(scenario);
   observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
   renderer.resetPresentation();
   renderer.setScenario(engine.scenario);
@@ -637,7 +640,7 @@ function showStageCard(): void {
     kicker: `${label} · STAGE ${labStage} / ${stageCount}`,
     title: engine.scenario.name.toUpperCase(),
     body: phase === 'practice'
-      ? 'Learn the real counter: match each order, hold Space until READY, slide with F or Enter, and face returning jars to catch them.'
+      ? 'Learn the real counter: hold Space until READY and release to toss. Press Enter to switch flavor or replace a held shake. Run to catch returning jars.'
       : 'Keep the line moving. This round starts fresh and its setup remains hidden until debrief.',
     steps: phase === 'practice'
       ? [`${engine.scenario.lanes} windows · ${engine.scenario.customerCount} orders · neutral control setup`]
@@ -1217,7 +1220,7 @@ shell.root.addEventListener('keydown', (event) => {
     }
     return;
   }
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(event.code)) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Enter', 'KeyX'].includes(event.code)) {
     event.preventDefault();
   }
   inputAdapter.keyDown(event.code);

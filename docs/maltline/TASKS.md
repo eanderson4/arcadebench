@@ -5,6 +5,16 @@ quality bar set by Partition. Statuses are `queued`, `active`, `blocked`, or
 `done`. Tasks should point to experiment-log entries when tuning evidence
 changes a decision.
 
+## Current local playtest — 2026-09-15
+
+The current viewer is an unranked `two-button-v1` control experiment: A/Space
+fills and tosses on release; B/X cycles flavors and replaces held shakes into
+the wash. It has a dedicated Start Game splash page and one flavor display
+beside the bartender. Existing ranked generation-2 behavior stays separate;
+local cabinet replay artifacts identify version 3. The human lab uses revision
+13. Older balance and visual evidence must not be described as validation of
+this new interaction. P1-03 and P2-02 remain active pending playtest feedback.
+
 ## Success criteria
 
 - A complete human arcade run normally lasts 5–15 minutes, starts fresh, and

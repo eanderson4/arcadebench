@@ -1,1 +1,1 @@
-export { default } from '../apps/platform/src/worker';
+export { default } from '../apps/platform/src/production';

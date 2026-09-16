@@ -9,9 +9,12 @@ export type MaltlineFlowScreen =
   | 'countdown'
   | 'playing'
   | 'interrupted'
+  | 'intermission'
   | 'cleared'
   | 'gameover'
   | 'victory';
+
+export const MALTLINE_INTERMISSION_MS = 6_000;
 
 export const MALTLINE_COUNTDOWN_STEP_MS = 650;
 export const MALTLINE_COUNTDOWN_SERVE_MS = 350;
@@ -36,7 +39,7 @@ const STAGE_BRIEFS: Readonly<Record<string, StageBrief>> = {
   },
   'maltline-04-lunch-rush': {
     kicker: 'TRIAGE THE LINE',
-    pressure: 'Orders arrive faster. Serve the customers nearest the counter first.',
+    pressure: 'Strawberry joins the menu. Orders arrive faster; serve the customers nearest the counter first.',
   },
   'maltline-05-jar-shortage': {
     kicker: 'MANAGE THE JARS',
@@ -67,8 +70,8 @@ export function titlePresentation(fontFallbackCopy = ''): OverlayPresentation {
     kicker: 'ARCADE SHIFT',
     title: 'MALTLINE',
     body,
-    hint: 'Press Enter to learn the counter',
-    announcement: `Maltline. ${body} Press Enter to learn the counter.`,
+    hint: 'Choose Start Game or press Space / Enter',
+    announcement: `Maltline. ${body} Choose Start Game or press Space / Enter.`,
   };
 }
 
@@ -76,9 +79,9 @@ export function instructionPresentation(): OverlayPresentation {
   const steps = [
     '← →  run along the active counter · intercept returns',
     '↑ ↓  choose lane',
-    'A D  choose flavor station',
-    'Hold SPACE until READY',
-    'F / ENTER  slide held shake',
+    'BUTTON 1 / SPACE  hold to fill until READY · release to toss',
+    'BUTTON 2 / ENTER  next flavor · replaces a held shake',
+    'Replacing a shake sends its jar to the wash. No life lost.',
   ] as const;
   return {
     variant: 'instructions',
@@ -86,8 +89,8 @@ export function instructionPresentation(): OverlayPresentation {
     title: 'MATCH · BLEND · SLIDE · CATCH',
     body: 'Serve every order before the customer reaches the counter. A walkout, missed shake, or missed return costs one of four lives.',
     steps,
-    hint: 'Press Enter for Stage 1',
-    announcement: 'Counter instructions. Match, blend, slide, and run along the lane to catch returns. Press Enter for Stage 1.',
+    hint: 'Press Space / Enter for Stage 1',
+    announcement: 'Counter instructions. Match, blend, slide, and run along the lane to catch returns. Press Space / Enter for Stage 1.',
   };
 }
 
@@ -108,8 +111,19 @@ export function stageCardPresentation(
     steps: [
       `${scenario.lanes} windows · ${scenario.customerCount} orders · ${flavorSummary(scenario)}`,
     ],
-    hint: 'Press Enter when ready',
-    announcement: `Stage ${stageIndex + 1} of ${stageCount}, ${scenario.name}. ${brief.pressure} Press Enter when ready.`,
+    hint: 'Press Space / Enter when ready',
+    announcement: `Stage ${stageIndex + 1} of ${stageCount}, ${scenario.name}. ${brief.pressure} Press Space / Enter when ready.`,
+  };
+}
+
+export function intermissionPresentation(): OverlayPresentation {
+  return {
+    variant: 'intermission',
+    kicker: 'INTERMISSION · HALFWAY THROUGH THE SHIFT',
+    title: 'THE GREAT SHAKE CHASE',
+    body: 'A runaway shake leads the crew across the diner. The server catches it—and the customers chase them back!',
+    hint: 'Stage 5 next · Space / Enter to skip',
+    announcement: 'Intermission. Four stages cleared. A runaway shake leads the crew across the diner; the server catches it and the customers chase them back. Stage 5 follows. Press Space or Enter to skip.',
   };
 }
 

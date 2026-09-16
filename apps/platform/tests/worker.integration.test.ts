@@ -36,7 +36,7 @@ describe('ArcadeBench public platform Worker', () => {
       'SELECT COUNT(*) AS count FROM anonymous_sessions',
     ).first<{ count: number }>();
     const cases = [
-      { method: 'GET', path: '/partition/?mode=replay&tick=7' },
+      { method: 'GET', path: '/games/partition/?mode=replay&tick=7' },
       { method: 'HEAD', path: '/api/v1/games/partition/runs?probe=1' },
     ] as const;
     for (const entry of cases) {
@@ -53,6 +53,37 @@ describe('ArcadeBench public platform Worker', () => {
       'SELECT COUNT(*) AS count FROM anonymous_sessions',
     ).first<{ count: number }>();
     expect(after?.count).toBe(before?.count);
+  });
+
+  it('forwards root Partition query links to the permanent game route', async () => {
+    // Every key a shared root Partition link could carry still resolves: the
+    // catalog keeps serving an unrelated query, and a game query forwards.
+    for (const key of [
+      'mode', 'seed', 'tier', 'level', 'difficulty', 'autostart',
+      'board', 'field', 'replay', 'tick', 'autoplay',
+    ]) {
+      const query = `?${key}=probe%2Fvalue&extra=1`;
+      for (const method of ['GET', 'HEAD'] as const) {
+        const response = await exports.default.fetch(`${origin}/${query}`, {
+          method,
+          redirect: 'manual',
+        });
+        expect(response.status, `${method} /${query}`).toBe(302);
+        expect(response.headers.get('location'), `${method} /${query}`)
+          .toBe(`${origin}/games/partition/${query}`);
+        expect(response.headers.get('cache-control')).toBe('no-store');
+        expect(response.headers.has('set-cookie')).toBe(false);
+        expect((await response.arrayBuffer()).byteLength).toBe(0);
+      }
+    }
+
+    // A root request without a game query key is still the launcher, not a
+    // game: the redirect must be keyed, not blanket.
+    for (const path of ['/', '/?utm_source=probe', '/?probe=1']) {
+      const response = await exports.default.fetch(`${origin}${path}`, { redirect: 'manual' });
+      expect(response.status, path).toBe(200);
+      expect(response.headers.get('location')).toBeNull();
+    }
   });
 
   it('keeps Partition API errors on the legacy exact uncoded envelope', async () => {
@@ -152,7 +183,7 @@ describe('ArcadeBench public platform Worker', () => {
     const replayViewerResponse = await exports.default.fetch(published.url, {
       redirect: 'manual',
     });
-    const expectedViewer = new URL('/partition/', origin);
+    const expectedViewer = new URL('/games/partition/', origin);
     expectedViewer.searchParams.set('mode', 'replay');
     expectedViewer.searchParams.set('replay', `/api/v1/games/partition/replays/${published.id}`);
     expect(replayViewerResponse.status).toBe(302);

@@ -1,0 +1,179 @@
+/*
+ * ArcadeBench information pages (privacy and terms).
+ *
+ * Loaded after brand.css and arcade.css, and scoped to .information-* only: it
+ * sets one readable document column, an optional strip of short promise notes,
+ * and nothing else. The masthead, skip link, and footer come from the shared
+ * shell; the wording of every policy stays in the HTML.
+ *
+ * Every token is read from the brand layer with a literal fallback, so the page
+ * still holds together if it is opened on its own. No animation, no imagery, no
+ * new colour: the pages are text, and the text is the point.
+ */
+
+.information {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: clamp(16px, 2.6vh, 30px) 0 clamp(14px, 2.2vh, 26px);
+  outline: none;
+}
+
+/* A modest title and one lead paragraph, closed by the page's first rule. */
+.information__hero {
+  max-width: 680px;
+  margin-bottom: clamp(18px, 3vh, 30px);
+  padding-bottom: clamp(16px, 2.6vh, 26px);
+  border-bottom: 1px solid var(--ab-rule, #d4d2c8);
+}
+
+.information__kicker {
+  margin: 0 0 var(--ab-space-3, 12px);
+  color: var(--ab-ink-muted, #5f625b);
+  font-size: 12px;
+  font-weight: var(--ab-weight-utility, 600);
+  letter-spacing: 0.14em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+/* Deliberately smaller than the catalog's title: a policy page should read as
+   a document, not as a poster. */
+.information h1 {
+  font-size: clamp(28px, 3.4vw, 40px);
+  letter-spacing: -0.028em;
+}
+
+.information__lede {
+  max-width: 620px;
+  margin: var(--ab-space-4, 16px) 0 0;
+  color: var(--ab-ink-soft, #45483f);
+  font-size: clamp(16px, 1.4vw, 18px);
+  line-height: 1.55;
+}
+
+.information__lede strong {
+  color: var(--ab-ink, #252824);
+  font-weight: var(--ab-weight-utility, 600);
+}
+
+
+/* The promises, as short notes under a brand rule. Three columns when there is
+   room, one on a phone; no boxes, no icons. */
+.information__notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--ab-space-4, 16px) var(--ab-space-5, 24px);
+  max-width: 680px;
+  margin: 0 0 clamp(20px, 3.4vh, 36px);
+  padding: 0;
+  list-style: none;
+}
+
+.information__notes li {
+  padding-top: var(--ab-space-3, 12px);
+  border-top: 2px solid var(--ab-rule-strong, #b0aea4);
+}
+
+.information__notes strong {
+  display: block;
+  margin-bottom: var(--ab-space-2, 8px);
+  color: var(--ab-ink, #252824);
+  font-size: 12px;
+  font-weight: var(--ab-weight-utility, 600);
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.information__notes span {
+  display: block;
+  color: var(--ab-ink-soft, #45483f);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+/* The document itself: one column, comfortably short lines. */
+.information__document {
+  max-width: 680px;
+}
+
+.information__document section {
+  padding-bottom: clamp(22px, 3.4vh, 32px);
+}
+
+.information__document h2 {
+  margin: 0 0 var(--ab-space-3, 12px);
+  font-size: clamp(18px, 1.6vw, 21px);
+  font-weight: var(--ab-weight-title, 800);
+  letter-spacing: -0.012em;
+  line-height: 1.2;
+}
+
+.information__document p,
+.information__document li {
+  max-width: 66ch;
+  color: var(--ab-ink-soft, #45483f);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.information__document p {
+  margin: 0 0 var(--ab-space-3, 12px);
+}
+
+.information__document ul {
+  margin: 0 0 var(--ab-space-3, 12px);
+  padding-left: 20px;
+}
+
+.information__document li {
+  margin-bottom: var(--ab-space-2, 8px);
+}
+
+.information__document li:last-child {
+  margin-bottom: 0;
+}
+
+.information__document strong {
+  color: var(--ab-ink, #252824);
+  font-weight: var(--ab-weight-utility, 600);
+}
+
+/* Blue is spent on the few links that leave the page. */
+.information__document a {
+  color: var(--ab-blue, #2749a5);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color var(--ab-transition, 130ms ease);
+}
+
+.information__document a:hover {
+  color: var(--ab-blue-strong, #1e3a86);
+}
+
+/* The closing panel: one highlighted section, the same quiet surface the
+   promise note uses on the About page. */
+.information__document .information__panel {
+  padding: var(--ab-space-5, 24px);
+  border: 1px solid var(--ab-rule, #d4d2c8);
+  border-radius: var(--ab-radius, 6px);
+  background: var(--ab-surface, #fffef9);
+}
+
+@media (max-width: 699px) {
+  .information {
+    padding: 18px 0 20px;
+  }
+
+  .information__notes {
+    gap: var(--ab-space-3, 12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .information__document a {
+    transition: none;
+  }
+}

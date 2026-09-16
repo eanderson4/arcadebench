@@ -1,25 +1,29 @@
-import {
-  createArcadeBenchClient,
-  type ArcadeBenchClient,
-  type VoteSummary,
-  type VoteValue,
-} from '@arcadebench/sdk';
 import { PartitionEngine } from '../core/engine';
 import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
 import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
 import { PARTITION_GAME_ID, PARTITION_GAME_VERSION } from '../core/version';
 import { createPartitionCampaign, resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
+import { FeedbackNoteDialog, type NoteTarget } from './feedback-note';
+import {
+  createPartitionGameClient,
+  type FeedbackSummary,
+  type GameVote,
+  type PartitionGameClient,
+} from './game-client';
 import {
   elapsedMilliseconds,
   LeaderboardService,
   LocalLeaderboardStore,
   reviewPlayerName,
+  RunConsent,
+  submissionOutcomeMessage,
   type LeaderboardDraft,
   type LeaderboardEntry,
   type LeaderboardQuery,
   type LeaderboardStageResult,
   type LeaderboardSubmitProof,
+  type SubmissionResult,
 } from './leaderboard';
 import { PartitionRenderer } from './renderer';
 import { ReplayTransport } from './replay-transport';
@@ -39,7 +43,6 @@ function query<T extends Element>(selector: string): T {
 
 const canvas = query<HTMLCanvasElement>('#game');
 const stage = query<HTMLElement>('.stage');
-const stageHomeButton = query<HTMLButtonElement>('#stage-home');
 const renderer = new PartitionRenderer(canvas);
 const captureEl = query<HTMLElement>('#capture');
 const integrityEl = query<HTMLElement>('#integrity');
@@ -136,6 +139,8 @@ const scoreEntryStatus = query<HTMLElement>('#score-entry-status');
 const scoreBoardLink = query<HTMLButtonElement>('#score-board-link');
 const launchFieldButton = query<HTMLButtonElement>('#launch-field');
 const shareReplayButton = query<HTMLButtonElement>('#share-replay');
+const scoreRetention = query<HTMLElement>('#score-retention');
+const scoreSocialConsent = query<HTMLInputElement>('#score-social-consent');
 
 const params = new URLSearchParams(location.search);
 let seed = Number(params.get('seed') ?? 11);
@@ -207,6 +212,8 @@ let runStageReplays: PartitionReplay[] = [];
 let pendingLeaderboardSubmission: { draft: LeaderboardDraft; proof: LeaderboardSubmitProof } | null = null;
 let rankedRunId: string | null = null;
 let startingRankedRun = false;
+let scoreSubmitted = false;
+let leavingForArcade = false;
 let leaderboardScope: LeaderboardScope = params.get('board') === 'level' ? 'level' : 'arcade';
 const requestedBoardLevel = params.get('field');
 let leaderboardLevelId = levelCatalog.some((level) => level.metadata.slug === requestedBoardLevel)
@@ -218,29 +225,65 @@ const localDevelopment = location.hostname === 'localhost' || location.hostname 
 const publicServicesEnabled = configuredApiBaseUrl === 'local'
   ? false
   : Boolean(configuredApiBaseUrl) || !localDevelopment;
-const arcadeClient: ArcadeBenchClient | undefined = publicServicesEnabled
-  ? createArcadeBenchClient({
+const gameClient: PartitionGameClient | undefined = publicServicesEnabled
+  ? createPartitionGameClient({
       gameId: PARTITION_GAME_ID,
       gameVersion: PARTITION_GAME_VERSION,
-      baseUrl: configuredApiBaseUrl || '/api/v1',
+      baseUrl: configuredApiBaseUrl || '/api/v2',
     })
   : undefined;
 const leaderboardService = new LeaderboardService(
   new LocalLeaderboardStore(localStorage),
-  arcadeClient,
+  gameClient,
 );
+
+/** The social-media permission for the run in progress, or the next one. */
+const runConsent = new RunConsent();
 
 interface CatalogVoteWidget {
   root: HTMLElement;
   up: HTMLButtonElement;
   down: HTMLButtonElement;
+  note: HTMLButtonElement;
   score: HTMLElement;
   detail: HTMLElement;
 }
 
 const catalogVoteWidgets = new Map<string, CatalogVoteWidget>();
-const catalogVotes = new Map<string, VoteSummary>();
+const catalogVotes = new Map<string, FeedbackSummary>();
+/** Fields with a vote or note request in flight; one request per field. */
+const pendingFeedback = new Set<string>();
 let catalogVoteRenderVersion = 0;
+
+const feedbackNoteDialog = new FeedbackNoteDialog({
+  dialog: query<HTMLDialogElement>('#feedback-note'),
+  form: query<HTMLFormElement>('#feedback-note-form'),
+  subject: query<HTMLElement>('#feedback-note-subject'),
+  textarea: query<HTMLTextAreaElement>('#feedback-note-text'),
+  status: query<HTMLElement>('#feedback-note-status'),
+  save: query<HTMLButtonElement>('#feedback-note-save'),
+  clear: query<HTMLButtonElement>('#feedback-note-clear'),
+  cancel: query<HTMLButtonElement>('#feedback-note-cancel'),
+}, {
+  currentSummary: (levelId) => catalogVotes.get(levelId),
+  isPending: (levelId) => pendingFeedback.has(levelId),
+  set: async (request) => {
+    if (!gameClient) throw new Error('Private notes are available on arcadebench.org');
+    const levelId = request.subject.id;
+    if (pendingFeedback.has(levelId)) throw new Error('Please wait for the current feedback to save.');
+    setFeedbackPending(levelId, true);
+    try {
+      return await gameClient.feedback.set(request);
+    } finally {
+      setFeedbackPending(levelId, false);
+    }
+  },
+  onSaved: (levelId, summary) => {
+    catalogVotes.set(levelId, summary);
+    renderCatalogVote(levelId, summary);
+  },
+  announce: (message) => showNotice(message),
+});
 
 const AUTO_ADVANCE_SECONDS = 5;
 
@@ -282,6 +325,7 @@ function formatLeaderboardTime(elapsedMs: number): string {
 }
 
 function resetRunRecord(): void {
+  scoreSubmitted = false;
   runStageResults = [];
   runStageReplays = [];
   pendingLeaderboardSubmission = null;
@@ -370,19 +414,25 @@ function createCatalogCard(level: PartitionCampaignLevel): HTMLElement {
   up.textContent = '↑';
   up.setAttribute('aria-label', `Vote up ${level.metadata.title}`);
   const score = document.createElement('b');
-  score.textContent = arcadeClient ? '…' : '—';
+  score.textContent = gameClient ? '…' : '—';
   const down = document.createElement('button');
   down.type = 'button';
   down.textContent = '↓';
   down.setAttribute('aria-label', `Vote down ${level.metadata.title}`);
   const detail = document.createElement('small');
-  detail.textContent = arcadeClient ? 'LOADING VOTES' : 'PUBLIC BOARD ONLY';
+  detail.textContent = gameClient ? 'LOADING VOTES' : 'PUBLIC BOARD ONLY';
+  const note = document.createElement('button');
+  note.type = 'button';
+  note.className = 'catalog-note';
+  note.textContent = 'LEAVE A PRIVATE NOTE';
+  note.setAttribute('aria-label', `Leave a private note about ${level.metadata.title}`);
   voteControls.append(up, score, down);
-  community.append(communityLabel, voteControls, detail);
-  const widget = { root: community, up, down, score, detail };
+  community.append(communityLabel, voteControls, detail, note);
+  const widget = { root: community, up, down, note, score, detail };
   catalogVoteWidgets.set(level.metadata.slug, widget);
   up.addEventListener('click', () => void castCatalogVote(level.metadata.slug, 1));
   down.addEventListener('click', () => void castCatalogVote(level.metadata.slug, -1));
+  note.addEventListener('click', () => openFeedbackNote(level.metadata.slug, level.metadata.title, note));
 
   const launch = document.createElement('button');
   launch.className = 'catalog-play';
@@ -421,13 +471,17 @@ function renderCatalogCards(): void {
   void refreshCatalogVotes(visible);
 }
 
-function renderCatalogVote(levelId: string, summary: VoteSummary): void {
+function renderCatalogVote(levelId: string, summary: FeedbackSummary): void {
   const widget = catalogVoteWidgets.get(levelId);
   if (!widget) return;
   widget.score.textContent = summary.score > 0 ? `+${summary.score}` : String(summary.score);
   widget.detail.textContent = `${summary.up} UP · ${summary.down} DOWN`;
   widget.up.setAttribute('aria-pressed', String(summary.viewerVote === 1));
   widget.down.setAttribute('aria-pressed', String(summary.viewerVote === -1));
+  // The platform returns this session's own note text and nobody else's, so a
+  // note marker here is the viewer's own, and the text is never rendered.
+  widget.note.dataset.note = summary.note ? 'saved' : 'none';
+  widget.note.textContent = summary.note ? 'EDIT PRIVATE NOTE' : 'LEAVE A PRIVATE NOTE';
   widget.root.dataset.state = 'ready';
 }
 
@@ -439,9 +493,31 @@ function renderCatalogVoteFailure(levelId: string, message = 'VOTES OFFLINE'): v
   widget.root.dataset.state = 'error';
 }
 
+/** One request at a time per field, for votes and notes alike. */
+function setFeedbackPending(levelId: string, pending: boolean): void {
+  const widget = catalogVoteWidgets.get(levelId);
+  if (pending) pendingFeedback.add(levelId);
+  else pendingFeedback.delete(levelId);
+  if (!widget) return;
+  widget.up.disabled = pending;
+  widget.down.disabled = pending;
+  widget.note.disabled = pending;
+}
+
+function openFeedbackNote(levelId: string, title: string, trigger: HTMLElement): void {
+  if (!gameClient) {
+    // Local preview has no platform to write to, so it says so rather than
+    // accepting a note it cannot send.
+    showNotice('Private notes are available on arcadebench.org', 'error');
+    return;
+  }
+  const target: NoteTarget = { subject: { kind: 'level', id: levelId }, label: title };
+  feedbackNoteDialog.open(target, trigger);
+}
+
 async function refreshCatalogVotes(levels: readonly PartitionCampaignLevel[]): Promise<void> {
   const renderVersion = ++catalogVoteRenderVersion;
-  if (!arcadeClient || levels.length === 0) return;
+  if (!gameClient || levels.length === 0) return;
   const load = async (level: PartitionCampaignLevel): Promise<void> => {
     const cached = catalogVotes.get(level.metadata.slug);
     if (cached) {
@@ -449,7 +525,10 @@ async function refreshCatalogVotes(levels: readonly PartitionCampaignLevel[]): P
       return;
     }
     try {
-      const summary = await arcadeClient.social.get({ kind: 'level', id: level.metadata.slug });
+      const summary = await gameClient.feedback.get({
+        subject: { kind: 'level', id: level.metadata.slug },
+        channel: 'overall',
+      });
       catalogVotes.set(level.metadata.slug, summary);
       if (renderVersion === catalogVoteRenderVersion) renderCatalogVote(level.metadata.slug, summary);
     } catch {
@@ -462,19 +541,25 @@ async function refreshCatalogVotes(levels: readonly PartitionCampaignLevel[]): P
   await Promise.all(levels.slice(1).map(load));
 }
 
-async function castCatalogVote(levelId: string, value: Exclude<VoteValue, 0>): Promise<void> {
+async function castCatalogVote(levelId: string, value: Exclude<GameVote, 0>): Promise<void> {
+  if (pendingFeedback.has(levelId)) return;
   const widget = catalogVoteWidgets.get(levelId);
-  if (!arcadeClient || !widget) {
+  if (!gameClient || !widget) {
     showNotice('Community voting is available on arcadebench.org', 'error');
     return;
   }
   const previous = catalogVotes.get(levelId);
-  const nextValue: VoteValue = previous?.viewerVote === value ? 0 : value;
-  widget.up.disabled = true;
-  widget.down.disabled = true;
+  const nextValue: GameVote = previous?.viewerVote === value ? 0 : value;
+  setFeedbackPending(levelId, true);
   widget.detail.textContent = nextValue === 0 ? 'CLEARING VOTE…' : 'SENDING SIGNAL…';
   try {
-    const summary = await arcadeClient.social.vote({ kind: 'level', id: levelId }, nextValue);
+    // No note field: a vote leaves whatever private note the player wrote
+    // exactly where it is, including its ninety-day expiry.
+    const summary = await gameClient.feedback.set({
+      subject: { kind: 'level', id: levelId },
+      channel: 'overall',
+      vote: nextValue,
+    });
     catalogVotes.set(levelId, summary);
     renderCatalogVote(levelId, summary);
     showNotice(nextValue === 0 ? 'Community vote cleared' : 'Community signal recorded');
@@ -483,8 +568,7 @@ async function castCatalogVote(levelId: string, value: Exclude<VoteValue, 0>): P
     else renderCatalogVoteFailure(levelId);
     showNotice(error instanceof Error ? error.message : 'Could not record vote', 'error');
   } finally {
-    widget.up.disabled = false;
-    widget.down.disabled = false;
+    setFeedbackPending(levelId, false);
   }
 }
 
@@ -508,6 +592,7 @@ function updateHomeSelection(): void {
 }
 
 function resetLiveSession(): void {
+  scoreSubmitted = false;
   cancelAutoAdvance();
   clearTimeout(captureFeedbackTimer);
   clearHumanControls();
@@ -523,6 +608,12 @@ function resetLiveSession(): void {
   scoreBoardLink.hidden = true;
   submitScoreButton.disabled = false;
   playerNameInput.disabled = false;
+  // The social-media permission belongs to one run. Every run starts over from
+  // an unchecked box, and nothing about the last run is carried into this one.
+  runConsent.reset();
+  scoreSocialConsent.checked = false;
+  scoreSocialConsent.disabled = false;
+  scoreRetention.hidden = true;
   scoreEntryStatus.dataset.tone = 'normal';
   scoreEntryStatus.textContent = rankedRunId || leaderboardService.mode === 'local'
     ? 'PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY'
@@ -557,8 +648,8 @@ async function beginRankedAttempt(
   levelId?: string,
 ): Promise<void> {
   rankedRunId = null;
-  if (!arcadeClient) return;
-  const challenge = await arcadeClient.runs.begin({
+  if (!gameClient) return;
+  const challenge = await gameClient.runs.begin({
     boardId,
     context: {
       difficulty: selectedDifficulty,
@@ -580,7 +671,7 @@ async function launchCatalogField(
   const priorLabel = launchButton?.innerHTML;
   if (launchButton) {
     launchButton.disabled = true;
-    launchButton.textContent = arcadeClient ? 'OPENING RANKED FIELD…' : 'OPENING FIELD…';
+    launchButton.textContent = gameClient ? 'OPENING RANKED FIELD…' : 'OPENING FIELD…';
   }
   try {
     try {
@@ -612,7 +703,7 @@ async function startArcadeRun(): Promise<void> {
   resetRunRecord();
   const priorLabel = launchFieldButton.innerHTML;
   launchFieldButton.disabled = true;
-  launchFieldButton.innerHTML = arcadeClient
+  launchFieldButton.innerHTML = gameClient
     ? '<span>OPENING RANKED RUN…</span><b>⌁</b>'
     : '<span>OPENING ARCADE…</span><b>⌁</b>';
   try {
@@ -800,6 +891,13 @@ function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubm
   const unrankedPublicRun = leaderboardService.mode === 'public' && !rankedRunId;
   submitScoreButton.innerHTML = unrankedPublicRun ? 'UNRANKED RUN' : 'ENTER SCORE <b>→</b>';
   submitScoreButton.disabled = unrankedPublicRun;
+  // The retention disclosure and its one optional permission belong to a public
+  // ranked submission. An unranked or local run makes no public claim, so it is
+  // asked for no permission either.
+  const publicRankedRun = leaderboardService.mode === 'public' && Boolean(rankedRunId);
+  scoreRetention.hidden = !publicRankedRun;
+  scoreSocialConsent.disabled = !publicRankedRun;
+  scoreSocialConsent.checked = runConsent.allowed;
   // Keep the callsign field usable even when a public challenge could not be
   // established. A disabled text box looks like a pointer/focus bug and keeps
   // players from preparing their callsign for the next ranked attempt.
@@ -1401,6 +1499,17 @@ function openLevelLeaderboard(level: PartitionCampaignLevel): void {
   setMode('leaderboard');
 }
 
+/**
+ * The mode tabs are buttons. The body carries the same `data-mode` attribute as
+ * a state flag, so a bare `[data-mode]` lookup would also return the body — and
+ * a click listener there would re-enter the current mode on every click
+ * anywhere on the page, rebuilding the catalog grid under whatever the player
+ * was using.
+ */
+function modeTabs(): NodeListOf<HTMLButtonElement> {
+  return document.querySelectorAll<HTMLButtonElement>('button[data-mode]');
+}
+
 function setMode(nextMode: ViewMode): void {
   if (nextMode !== 'live') cancelAutoAdvance();
   mode = nextMode;
@@ -1422,8 +1531,8 @@ function setMode(nextMode: ViewMode): void {
   }
   document.body.dataset.mode = mode;
   setImmersive(mode === 'live' && liveStarted);
-  for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
-    button.setAttribute('aria-selected', String(button.dataset.mode === mode));
+  for (const tab of modeTabs()) {
+    tab.setAttribute('aria-selected', String(tab.dataset.mode === mode));
   }
   const queryParams = new URLSearchParams(location.search);
   queryParams.set('mode', mode);
@@ -1570,14 +1679,42 @@ for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
   });
 }
 
-for (const button of document.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
-  button.addEventListener('click', () => setMode(button.dataset.mode as ViewMode));
+for (const tab of modeTabs()) {
+  tab.addEventListener('click', () => setMode(tab.dataset.mode as ViewMode));
 }
 
 startPlayButton.addEventListener('click', startHumanPlay);
 howToPlayButton.addEventListener('click', showHowToPlay);
 returnHomeButton.addEventListener('click', () => setMode('home'));
-stageHomeButton.addEventListener('click', () => setMode('home'));
+function hasUnsavedGame(): boolean {
+  return !scoreSubmitted && (liveStarted || liveReplayTicks.length > 0 || runStageResults.length > 0);
+}
+
+for (const link of document.querySelectorAll<HTMLAnchorElement>('a.arcade-home')) {
+  link.addEventListener('click', (event) => {
+    // Opening the catalog in another tab does not abandon this run.
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (hasUnsavedGame()) {
+      clearHumanControls();
+      const leave = window.confirm('Leave this game? Your current run and any unsubmitted score will be lost.');
+      lastAnimationTime = performance.now();
+      if (!leave) {
+        event.preventDefault();
+        if (mode === 'live' && liveStarted) canvas.focus({ preventScroll: true });
+        return;
+      }
+    }
+    // The explicit confirmation above already covers this navigation.
+    leavingForArcade = true;
+  });
+}
+window.addEventListener('beforeunload', (event) => {
+  if (!leavingForArcade && hasUnsavedGame()) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
+});
+window.addEventListener('pageshow', () => { leavingForArcade = false; });
 homeReplayButton.addEventListener('click', () => setMode('replay'));
 openCatalogButton.addEventListener('click', () => setMode('catalog'));
 openLeaderboardButton.addEventListener('click', () => {
@@ -1638,34 +1775,42 @@ scoreEntry.addEventListener('submit', async (event) => {
   }
   submitScoreButton.disabled = true;
   playerNameInput.disabled = true;
+  // The permission is read once, at submit, and frozen while the request runs:
+  // a retry after a failure re-reads whatever the player chose in the meantime.
+  runConsent.set(scoreSocialConsent.checked);
+  scoreSocialConsent.disabled = true;
   scoreEntryStatus.dataset.tone = 'normal';
   scoreEntryStatus.textContent = leaderboardService.mode === 'public'
     ? 'MODERATING CALLSIGN · VERIFYING REPLAY…'
     : 'RECORDING VERIFIED LOCAL SCORE…';
   try {
-    const entry = await leaderboardService.submit(
+    const result: SubmissionResult = await leaderboardService.submit(
       review.normalizedName,
       submission.draft,
       submission.proof,
-      rankedRunId ?? undefined,
+      { runId: rankedRunId ?? undefined, consent: runConsent },
     );
-    localStorage.setItem('arcadebench.partition.player-name', entry.name);
-    leaderboardScope = entry.scope;
-    selectedDifficulty = entry.difficulty;
-    if (entry.scope === 'level') leaderboardLevelId = entry.levelId;
+    // A previous run may finish submitting after the player starts another.
+    if (pendingLeaderboardSubmission !== submission) return;
+    scoreSubmitted = true;
+    localStorage.setItem('arcadebench.partition.player-name', result.entry.name);
+    leaderboardScope = result.entry.scope;
+    selectedDifficulty = result.entry.difficulty;
+    if (result.entry.scope === 'level') leaderboardLevelId = result.entry.levelId;
     scoreEntryStatus.dataset.tone = 'success';
-    scoreEntryStatus.textContent = leaderboardService.mode === 'public'
-      ? 'SCORE VERIFIED · CALLSIGN ACCEPTED'
-      : 'SCORE SAVED ON THIS DEVICE';
+    scoreEntryStatus.textContent = submissionOutcomeMessage(result, leaderboardService.mode);
     submitScoreButton.innerHTML = 'SCORE ENTERED <b>✓</b>';
     scoreBoardLink.hidden = false;
   } catch (error) {
+    if (pendingLeaderboardSubmission !== submission) return;
     submitScoreButton.disabled = false;
     playerNameInput.disabled = false;
+    scoreSocialConsent.disabled = false;
     scoreEntryStatus.dataset.tone = 'error';
     scoreEntryStatus.textContent = error instanceof Error ? error.message : 'Could not enter score.';
   }
 });
+scoreSocialConsent.addEventListener('change', () => runConsent.set(scoreSocialConsent.checked));
 scoreEntry.addEventListener('focusin', clearHumanControls);
 scoreEntry.addEventListener('keydown', (event) => event.stopPropagation());
 scoreEntry.addEventListener('keyup', (event) => event.stopPropagation());
@@ -1794,7 +1939,7 @@ query<HTMLButtonElement>('#download-replay').addEventListener('click', () => {
 });
 
 shareReplayButton.addEventListener('click', async () => {
-  if (!arcadeClient) {
+  if (!gameClient) {
     showNotice('Replay sharing is available on arcadebench.org', 'error');
     return;
   }
@@ -1802,7 +1947,7 @@ shareReplayButton.addEventListener('click', async () => {
   shareReplayButton.disabled = true;
   shareReplayButton.textContent = 'VALIDATING + PUBLISHING…';
   try {
-    const published = await arcadeClient.replays.publish({ replay: loadedReplay, expiresInDays: 5 });
+    const published = await gameClient.replays.publish({ replay: loadedReplay, expiresInDays: 5 });
     const shareUrl = new URL(published.url, location.origin).toString();
     try {
       await navigator.clipboard.writeText(shareUrl);

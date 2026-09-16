@@ -1,40 +1,48 @@
 # ArcadeBench privacy promise
 
-ArcadeBench is a free, non-commercial, open-source arcade. We are here to make
-games, not to turn players into a dataset.
+Effective September 15, 2026 (v2).
 
-- We do not sell player data, build advertising profiles, or run ads.
-- We do not use gameplay, replays, prompts, or controllers to train AI.
-- Complete replay payloads expire after five days and are automatically
-  deleted. This includes ranked-score verification proofs and opt-in shares.
-- Permanent leaderboard records contain the public callsign and score summary,
-  game metadata, verification state, and replay SHA-256 hash—not playable replay
-  inputs.
+ArcadeBench is a free, non-commercial, open-source arcade.
 
-Ordinary gameplay, downloaded replay files, and Replay Lab inspection happen
-on the player's device. A complete replay is uploaded only when a ranked score
-is submitted for verification or when the player explicitly selects **Share
-for 5 days**.
+- No ads, player-data sales, advertising profiles, or AI training using
+  gameplay, replays, prompts, or controllers.
+- Earlier ranked submissions and explicit replay shares keep their original
+  five-day deletion deadline.
+- The new score form explains that qualifying Top 50 replays are saved
+  privately without scheduled expiration, even after later displacement.
+  Nonqualifying proofs expire after five days.
+- The separate social-media checkbox starts unchecked for every run. It does
+  not affect ranking, qualification, retention, or appearance of the public
+  score summary in the activity feed. It never authorizes AI training.
 
-The accountless service uses a signed anonymous cookie for up to 30 days so
-one-time score challenges, voting, and rate limits work. ArcadeBench does not
+A replay is uploaded only for ranked verification or when a player explicitly
+shares it. Local gameplay and local replay inspection do not upload files.
+Saved replay files have no public playback endpoint. Their public records
+contain a moderated callsign, verified result, game/board metadata, date,
+placement when submitted, verification state, and replay hash.
+
+## Community feedback
+
+Players may vote up/down on supported game items and optionally send a private
+note to ArcadeBench maintainers. Notes are never public comments, never included
+in activity events or vote totals, and never sent to an AI model. Notes expire
+90 days after their last explicit update. Updating only a vote does not extend
+note retention. Clearing a vote does not delete a note; notes can be cleared
+separately while the same anonymous browser session remains available.
+
+There are no player accounts. Signed anonymous cookies last up to 30 days and
+support one-time challenges, votes, feedback editing, and rate limits. Losing
+the cookie loses access to that anonymous session's editing controls.
+Accountless voting is not proof of one unique human. ArcadeBench does not
 write IP addresses into its application database. Cloudflare may process
-ordinary network and security metadata as the infrastructure provider.
+ordinary network/security metadata needed to operate the service.
 
 Public callsigns receive deterministic checks first. On a cache miss, only the
-proposed callsign is sent to Cloudflare Workers AI for a safety category. The
-model never receives gameplay, replay data, prompts, controller code, or score
-values. Accepted callsigns are stored with public scores. Rejected raw
-callsigns are not stored; the cache retains a hash of the normalized value and
-policy version.
+proposed callsign is sent to Cloudflare Workers AI for a safety category.
+Gameplay, replays, scores, controller code, and private notes are not sent.
+Accepted names appear with scores; rejected raw names are not retained in the
+moderation cache, which uses a hash and policy version.
 
-The operator runs a Twilio number for personal operational SMS alerts
-(experiment status, service health); the only recipient is the operator.
-Mobile phone numbers are never shared, sold, rented, or used for marketing.
-Message frequency varies with alert settings, up to roughly 50 messages per
-day. Message and data rates may apply. Reply STOP to opt out and HELP for
-help.
-
-The production promise is published at <https://arcadebench.org/privacy/>. The
-retention migration, cleanup job, public copy, and tests live in this repository
-so changes to policy and behavior can be reviewed together.
+D1 stores public summaries, permission records, and private feedback separately.
+R2 holds temporary proof/share objects and private Top 50 archives.
+The production promise is at https://arcadebench.org/privacy/.

@@ -19,7 +19,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5185',
     browserName: 'chromium',
-    colorScheme: 'dark',
+    colorScheme: 'light',
     deviceScaleFactor: 1,
     locale: 'en-US',
     reducedMotion: 'reduce',

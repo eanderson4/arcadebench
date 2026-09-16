@@ -14,3 +14,12 @@ export {
   type HashedMaltlineProof,
   type MaltlineServerChallenge,
 } from './core/proof';
+export { MALTLINE_CABINET_AUTHORITY, MALTLINE_CABINET_GAME_VERSION, MALTLINE_CABINET_SEASON_ID } from './core/cabinet-authority';
+export {
+  MaltlineCabinetProofError,
+  verifyMaltlineCabinetProof,
+  type MaltlineCabinetChallenge,
+  type MaltlineCabinetSummary,
+} from './core/cabinet-proof';
+
+export { MALTLINE_CURRENT_CABINET_AUTHORITY, MALTLINE_CABINET_2_AUTHORITY, resolveMaltlineCabinetAuthority } from './core/cabinet-authorities';

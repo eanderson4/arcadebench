@@ -1,24 +1,21 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import maltlinePackage from '../../package.json' with { type: 'json' };
-import { MALTLINE_GENERATION_2_AUTHORITY } from '../../src/core/authority';
 import { MALTLINE_CAMPAIGN } from '../../src/core/campaign';
-import { MaltlineEngine } from '../../src/core/engine';
+import { MALTLINE_GENERATION_2_AUTHORITY } from '../../src/core/authority';
 import {
-  verifyAndHashMaltlineProof,
-  type MaltlineInputRun,
-  type MaltlineRunProof,
-} from '../../src/core/proof';
-import type { MaltlineInput, RunContext } from '../../src/core/types';
+  MALTLINE_CURRENT_CABINET_AUTHORITY as MALTLINE_CABINET_AUTHORITY,
+} from '../../src/core/cabinet-authorities';
+import { buildMaltlineCabinetProof, verifyMaltlineCabinetProof } from '../../src/core/cabinet-proof';
+import { MaltlineCabinetInputAdapter } from '../../src/viewer/cabinet-input-adapter';
+import type { MaltlineCabinetReplay } from '../../src/core/replay';
+import { MaltlineEngine } from '../../src/core/engine';
 import { reactiveMaltlineController } from '../../src/telemetry/reactive-controller';
 import {
   deriveMaltlineRendererLayout,
   MALTLINE_RENDERER_FRAME,
 } from '../../src/viewer/renderer-layout';
 import { MALTLINE_VISUAL_THEME } from '../../src/viewer/visual-theme';
-import {
-  GENERATION_2_LOSS_PROOF,
-} from '../fixtures/generation-2-proofs';
 import baselineManifestJson from './baseline-manifest.json' with { type: 'json' };
 import { verifyMaltlineVisualBaselineFiles } from './baseline-contract';
 
@@ -77,48 +74,45 @@ const MINIMUM_WIDTH_GAMEPLAY_FIXTURES = [
   'return-window',
 ] as const;
 
-function sameInput(left: MaltlineInputRun, right: MaltlineInput): boolean {
-  return left.stationDir === right.stationDir
-    && left.laneDir === right.laneDir
-    && left.blend === right.blend
-    && left.serve === right.serve;
-}
-
-/** A generation-2 win routed through the shipped, non-wrapping lane layout. */
-function buildViewerWinProof(): MaltlineRunProof {
-  let run: RunContext = { ...MALTLINE_GENERATION_2_AUTHORITY.initialRun };
-  const stages = MALTLINE_CAMPAIGN.map((scenario) => {
-    const engine = new MaltlineEngine(scenario, run);
-    const inputRuns: MaltlineInputRun[] = [];
+interface CabinetTape { codes: string[][]; replay: MaltlineCabinetReplay }
+/** Generate a winning physical two-button tape through the actual input adapter. */
+function buildViewerWinTapes(): CabinetTape[] {
+  let run = { ...MALTLINE_CABINET_AUTHORITY.initialRun };
+  return MALTLINE_CABINET_AUTHORITY.campaign.map((scenario) => {
+    const engine = new MaltlineEngine(scenario, run, MALTLINE_CABINET_AUTHORITY.controlMode);
+    const adapter = new MaltlineCabinetInputAdapter(scenario);
+    const ticks: MaltlineCabinetReplay['ticks'] = [];
+    const codes: string[][] = [];
+    let held = new Set<string>();
     while (engine.snapshot().status === 'running') {
       const state = engine.snapshot();
+      if (state.tick > 60_000) throw new Error(`Viewer tape exceeded limit in ${scenario.id}`);
       const intended = reactiveMaltlineController(state, scenario);
-      const laneDir = state.player.lane === 0 && intended.laneDir < 0
-        ? 1
-        : state.player.lane === scenario.lanes - 1 && intended.laneDir > 0
-          ? -1
-          : intended.laneDir;
-      const input = { ...intended, laneDir } as MaltlineInput;
-      const previous = inputRuns.at(-1);
-      if (previous !== undefined && sameInput(previous, input)) previous.ticks++;
-      else inputRuns.push({ ticks: 1, ...input });
+      const desired = new Set<string>();
+      if ((state.tick + 1) % scenario.laneRepeatTicks === 0) {
+        if (intended.laneDir < 0) desired.add(state.player.lane === 0 ? 'ArrowDown' : 'ArrowUp');
+        if (intended.laneDir > 0) desired.add(state.player.lane === scenario.lanes - 1 ? 'ArrowUp' : 'ArrowDown');
+      }
+      if ((state.tick + 1) % scenario.stationRepeatTicks === 0 && intended.stationDir !== 0) desired.add('Enter');
+      if ((intended.blend || state.player.holding !== null) && !intended.serve) desired.add('Space');
+      for (const code of held) if (!desired.has(code)) adapter.keyUp(code);
+      for (const code of desired) if (!held.has(code)) adapter.keyDown(code);
+      held = desired;
+      codes.push([...desired]);
+      const input = adapter.inputForTick(state.tick + 1, state);
       engine.setInput(input);
-      engine.step();
+      const result = engine.step();
+      ticks.push({ tick: result.state.tick, input, events: result.events });
     }
     const finalState = engine.snapshot();
-    if (finalState.status !== 'won') throw new Error(`bounded viewer route lost ${scenario.id}`);
+    if (finalState.status !== 'won') throw new Error(`Two-button viewer route lost ${scenario.id}`);
+    const replay: MaltlineCabinetReplay = { version: 3, controlMode: MALTLINE_CABINET_AUTHORITY.controlMode,
+      scenario: structuredClone(scenario), run, ticks, finalState };
     run = { score: finalState.score, lives: finalState.lives };
-    return { stageId: scenario.id, inputRuns };
+    return { codes, replay };
   });
-  return {
-    version: 1,
-    rulesetVersion: MALTLINE_GENERATION_2_AUTHORITY.identity.rulesetVersion,
-    campaignGeneration: MALTLINE_GENERATION_2_AUTHORITY.identity.campaignGeneration,
-    stages,
-  };
 }
-
-const VIEWER_WIN_PROOF = buildViewerWinProof();
+const VIEWER_WIN_TAPES = buildViewerWinTapes();
 
 interface PressureFixtureMetadata {
   provenance: 'authored-static' | 'synthetic-pressure-envelope' | 'synthetic-isolated-event';
@@ -305,65 +299,29 @@ async function advanceManualFrame(page: Page, now: number): Promise<void> {
   }, now);
 }
 
-async function playProofStage(
-  page: Page,
-  inputRuns: readonly MaltlineInputRun[],
-  options: { holdEnterFromFinalServe?: boolean } = {},
-): Promise<void> {
-  await page.evaluate(({ runs, holdEnterFromFinalServe }) => {
+async function playCabinetTape(page: Page, codes: readonly string[][], holdEnter = false): Promise<void> {
+  await page.evaluate(({ codes, holdEnter }) => {
     const root = document.querySelector<HTMLElement>('[data-maltline-shell]')!;
-    const advance = (window as typeof window & { __maltlineAdvanceFrame?: (time: number) => void })
-      .__maltlineAdvanceFrame;
-    if (!advance) throw new Error('manual animation-frame clock was not installed');
-    let now = 0;
-    advance(now);
-    const heldCodes = new Set<string>();
-    const setHeldCodes = (desiredCodes: Set<string>): void => {
-      for (const code of heldCodes) {
-        if (!desiredCodes.has(code)) {
-          root.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code }));
-          heldCodes.delete(code);
-        }
+    const advance = (window as typeof window & { __maltlineAdvanceFrame?: (time: number) => void }).__maltlineAdvanceFrame!;
+    const held = new Set<string>();
+    const setKeys = (desired: Set<string>) => {
+      for (const code of held) if (!desired.has(code)) {
+        root.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code })); held.delete(code);
       }
-      for (const code of desiredCodes) {
-        if (!heldCodes.has(code)) {
-          root.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code }));
-          heldCodes.add(code);
-        }
+      for (const code of desired) if (!held.has(code)) {
+        root.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code })); held.add(code);
       }
     };
-
-    let finalServeRun = -1;
-    for (const [runIndex, run] of runs.entries()) {
-      if (run.serve) finalServeRun = runIndex;
-    }
-    let simulationTick = 0;
-    for (const [runIndex, run] of runs.entries()) {
-      for (let tick = 0; tick < run.ticks; tick++) {
-        simulationTick++;
-        const desiredCodes = new Set<string>();
-        // Proof directions are levels, but the engine observes them only on
-        // authored cadence ticks. Re-pressing at those exact ticks exercises
-        // the physical-key adapter while preserving the proof's engine path.
-        if (simulationTick % 5 === 0) {
-          if (run.stationDir < 0) desiredCodes.add('KeyA');
-          if (run.stationDir > 0) desiredCodes.add('KeyD');
-          if (run.laneDir < 0) desiredCodes.add('ArrowUp');
-          if (run.laneDir > 0) desiredCodes.add('ArrowDown');
-        }
-        if (run.blend) desiredCodes.add('Space');
-        if (holdEnterFromFinalServe && finalServeRun >= 0 && runIndex >= finalServeRun) {
-          desiredCodes.add('Enter');
-        } else if (run.serve) {
-          desiredCodes.add('KeyF');
-        }
-        setHeldCodes(desiredCodes);
-        now += 1000 / 60;
-        advance(now);
-      }
-    }
-    setHeldCodes(holdEnterFromFinalServe ? new Set(['Enter']) : new Set());
-  }, { runs: inputRuns, holdEnterFromFinalServe: options.holdEnterFromFinalServe ?? false });
+    advance(0);
+    codes.forEach((keys, index) => {
+      setKeys(new Set([...keys, ...(holdEnter ? ['Enter'] : [])]));
+      advance((index + 1) * 1000 / 60);
+    });
+    setKeys(new Set(holdEnter ? ['Enter'] : []));
+  }, { codes, holdEnter });
+}
+async function playIdleLoss(page: Page): Promise<void> {
+  await playCabinetTape(page, Array.from({ length: 1854 }, () => []));
 }
 
 async function openFixture(page: Page, name: string): Promise<void> {
@@ -397,8 +355,10 @@ test('production entry loads and paints without browser failures', async ({ page
   await openProduction(page);
   await expect(page.locator('html')).toHaveAttribute('data-maltline-fonts-ready', 'true');
   await expect(page.locator('#overlay-title')).toHaveText('MALTLINE');
-  await expect(page.locator('#game')).toHaveAttribute('width', '1114');
-  await expect(page.locator('#game')).toHaveAttribute('height', '627');
+  await expect(page.locator('#game')).toHaveAttribute('width', '960');
+  await expect(page.locator('#game')).toHaveAttribute('height', '540');
+  await expect(page.locator('.splash')).toBeVisible();
+  await page.getByRole('button', { name: 'Start Game' }).click();
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 
   const paintedPixels = await page.locator('#game').evaluate((canvas: HTMLCanvasElement) => {
@@ -476,401 +436,156 @@ test('live renderer follows mid-session reduced-motion changes without touching 
   expect(await invariant()).toEqual(before);
 });
 
+const challenge = { id: 'run_browser_full_cabinet', seed: 8,
+  gameVersion: MALTLINE_CABINET_AUTHORITY.gameVersion,
+  expiresAt: '2099-09-10T20:30:00.000Z' };
+async function mockCabinetApi(page: Page, options: { rejectFirst?: boolean; unavailable?: boolean } = {}) {
+  const submissions: Record<string, unknown>[] = [];
+  let acceptedEntry: Record<string, unknown> | undefined;
+  await page.route('**/api/v2/games/maltline/**', async route => {
+    const request = route.request();
+    if (new URL(request.url()).pathname.endsWith('/runs')) return route.fulfill({
+      status: options.unavailable ? 503 : 201, json: options.unavailable ? { error: 'Ranked line unavailable.' } : challenge,
+    });
+    if (request.method() === 'GET') return route.fulfill({ json: { entries: acceptedEntry ? [acceptedEntry] : [] } });
+    const body = request.postDataJSON() as Record<string, unknown>;
+    submissions.push(body);
+    const verified = verifyMaltlineCabinetProof(body.proof,
+      { runId: challenge.id, nonce: challenge.seed }, MALTLINE_CABINET_AUTHORITY.gameVersion);
+    expect(body.score).toEqual(verified.summary);
+    expect(body).toMatchObject({ gameVersion: MALTLINE_CABINET_AUTHORITY.gameVersion, runId: challenge.id,
+      publication: { policyVersion: 'top50-social-v1', socialMedia: false } });
+    if (options.rejectFirst && submissions.length === 1) return route.fulfill({ status: 400, json: { error: 'Choose another callsign.' } });
+    acceptedEntry = { id: 'entry_verified_cabinet', gameId: 'maltline',
+      gameVersion: MALTLINE_CABINET_AUTHORITY.gameVersion,
+      board: { id: 'arcade', label: 'Second Shift', context: {} }, playerName: body.playerName,
+      result: verified.summary, createdAt: '2026-09-15T18:00:00.000Z' };
+    return route.fulfill({ status: 201, json: { entry: acceptedEntry,
+      publication: { rankAtSubmission: 1, replaySaved: true, expiresAt: null } } });
+  });
+  return submissions;
+}
+async function startRankedPlay(page: Page): Promise<void> {
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  await expect(page.locator('#overlay-hint')).toContainText('start ranked');
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
+    screen: 'playing', rankEligible: true, competition: { challenge: 'ready', proof: 'recording' },
+  });
+}
+
 test('ranked public trigger has a reviewed live-shell visual', async ({ page }) => {
-  await page.route('**/api/v1/games/maltline/**', (route) =>
-    route.fulfill({ json: { entries: [] } }));
-  await openProduction(page, '?ranked=preview');
-  const trigger = page.getByRole('button', { name: 'Open Shift Board leaderboard' });
-  await expect(trigger).toBeVisible();
-  await expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+  await mockCabinetApi(page); await openProduction(page, '?ranked=preview');
+  const trigger = page.getByRole('button', { name: 'SHIFT BOARD', exact: true });
+  await expect(trigger).toBeVisible(); await expect(trigger).toBeEnabled();
   await expect(page).toHaveScreenshot('ranked-title-trigger.png');
 });
 
 test('the ranked board remains browseable below the gameplay width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 720 });
-  await page.route('**/api/v1/games/maltline/**', (route) =>
-    route.fulfill({ json: { entries: [] } }));
-  await openProduction(page, '?ranked=preview');
+  await mockCabinetApi(page); await openProduction(page, '?ranked=preview');
   await expect(page.locator('html')).toHaveAttribute('data-supported-device', 'false');
-  await page.getByRole('button', { name: 'Open Shift Board leaderboard' }).click();
-  const sheet = page.locator('.maltline-competition__sheet');
-  await expect(sheet).toContainText('FIRST SHIFT IS OPEN');
-  const bounds = await sheet.evaluate((element) => element.getBoundingClientRect().toJSON());
-  expect(bounds.left).toBeGreaterThanOrEqual(0);
-  expect(bounds.right).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Shift Board' });
+  await expect(sheet).toContainText('No ranked runs yet. Set the first high score.');
+  const bounds = await sheet.evaluate(element => element.getBoundingClientRect().toJSON());
+  expect(bounds.left).toBeGreaterThanOrEqual(0); expect(bounds.right).toBeLessThanOrEqual(390);
   await expect(page).toHaveScreenshot('competition-live-empty-390.png');
 });
 
-test('terminal proof submits through the live competition panel without trusting browser score', async ({ page }) => {
+test('terminal cabinet proof submits through the live SDK panel with server verification and callsign retry', async ({ page }) => {
   await installManualAnimationFrames(page);
   browserFailures.get(page)!.allowedConsole.push(/Failed to load resource: the server responded with a status of 400/u);
-  browserFailures.get(page)!.allowedResponses.push(/400 POST .*\/api\/v1\/games\/maltline\/leaderboards\/arcade/u);
-  const challenge = {
-    id: 'run_ABCDEFGHIJKLMNOP',
-    nonce: 0x1234_5678,
-    seasonId: 'maltline-generation-2',
-    boardId: 'arcade',
-    gameVersion: '0.1.0',
-    authority: MALTLINE_GENERATION_2_AUTHORITY.identity,
-    proofSchemaVersion: 1,
-    envelopeVersion: 3,
-    expiresAt: '2099-09-10T20:30:00.000Z',
-  } as const;
-  const pendingEntry = {
-    id: 'score_ABCDEFGHIJKLMNOP',
-    name: 'MALT TEST',
-    score: 0,
-    lives: 0,
-    stageReached: 1,
-    stagesCleared: 0,
-    completed: false,
-    totalTicks: 1_854,
-    fulfilled: 0,
-    serviceActions: 0,
-    walkouts: 4,
-    resolved: 4,
-    exited: 4,
-    createdAt: '2026-09-10T18:00:00.000Z',
-    proofAvailable: true,
-  } as const;
-  const acceptedEntry = {
-    ...pendingEntry,
-    name: 'MALT JUDGE',
-    score: 25,
-  } as const;
-  const submittedBodies: Record<string, unknown>[] = [];
-  let submissionAttempt = 0;
-  let accepted = false;
-  let releaseFirstBoard!: () => void;
-  const firstBoardGate = new Promise<void>((resolve) => {
-    releaseFirstBoard = resolve;
-  });
-  let boardRequests = 0;
-  await page.route('**/api/v1/games/maltline/**', async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (request.method() === 'POST' && path.endsWith('/runs')) {
-      await route.fulfill({ status: 201, json: challenge });
-      return;
-    }
-    if (request.method() === 'GET') {
-      boardRequests++;
-      if (boardRequests === 1) await firstBoardGate;
-      await route.fulfill({ json: { entries: accepted ? [acceptedEntry] : [] } });
-      return;
-    }
-    submittedBodies.push(request.postDataJSON() as Record<string, unknown>);
-    submissionAttempt++;
-    if (submissionAttempt === 1) {
-      await route.fulfill({
-        status: 400,
-        json: {
-          error: 'Choose another callsign.',
-          code: 'maltline_callsign_rejected',
-        },
-      });
-      return;
-    }
-    if (submissionAttempt === 2) {
-      await route.fulfill({
-        status: 202,
-        json: { entry: pendingEntry, proofState: 'pending' },
-      });
-      return;
-    }
-    accepted = true;
-    await route.fulfill({
-      status: 200,
-      json: { entry: acceptedEntry, proofState: 'ready' },
-    });
-  });
-
-  await openProduction(page, '?ranked=preview');
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-enabled', 'true');
-  await advanceFirstRunToPlaying(page);
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-challenge', 'ready');
-  await playProofStage(page, GENERATION_2_LOSS_PROOF.stages[0]!.inputRuns);
-
+  browserFailures.get(page)!.allowedResponses.push(/400 POST .*\/api\/v2\/games\/maltline\/leaderboards\/arcade/u);
+  const submissions = await mockCabinetApi(page, { rejectFirst: true });
+  await openProduction(page, '?ranked=preview'); await startRankedPlay(page); await playIdleLoss(page);
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
-    screen: 'gameover',
-    engineTick: 1_854,
+    screen: 'gameover', engineTick: 1854, competition: { proof: 'eligible' },
   });
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-proof', 'eligible');
-  const gameOverBody = await page.locator('#overlay-body').innerText();
-  await expect(page.locator('#overlay-hint')).toHaveText(
-    'Press Enter / R to review this ranked result · discard is inside Shift Board',
-  );
-  await expect(page.locator('#game-flow-status')).toHaveText(
-    `${gameOverBody} Press Enter or R to review this ranked result. Discard is inside Shift Board.`,
-  );
-  await expect(page.locator('#game-flow-status')).not.toContainText(/restart|run it again/iu);
-  const trigger = page.getByRole('button', { name: 'Open Shift Board leaderboard' });
-  await expect(trigger).toBeVisible();
+  await expect(page.locator('#overlay-hint')).toContainText('review this ranked result');
   await page.keyboard.press('r');
-  await expect(page.locator('[data-maltline-shell]')).toHaveAttribute('inert', '');
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('POST THIS RUN');
-  const callsign = page.getByRole('textbox', { name: 'Callsign' });
-  await callsign.fill('BAD CALLSIGN');
-  releaseFirstBoard();
-  await expect(page.getByText('FIRST SHIFT IS OPEN')).toBeVisible();
-  await expect(callsign).toHaveValue('BAD CALLSIGN');
-  await page.getByRole('button', { name: 'Submit verified run' }).click();
-  await expect(page.getByText('That callsign was not accepted. Edit it and try again.')).toBeVisible();
-  await expect(callsign).toHaveValue('BAD CALLSIGN');
-  await callsign.fill('MALT TEST');
-  await page.getByRole('button', { name: 'Submit verified run' }).click();
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('VERIFYING RUN');
-  await page.evaluate((expiredAt) => {
-    Date.now = () => expiredAt;
-  }, Date.parse(challenge.expiresAt) + 1);
-  await page.getByRole('button', { name: 'Retry verification' }).click();
-
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('RUN ACCEPTED');
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('#1');
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('MALT JUDGE');
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('25');
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-proof', 'submitted');
-  expect(submittedBodies).toHaveLength(3);
-  expect(submittedBodies.map((body) => body.playerName)).toEqual([
-    'BAD CALLSIGN',
-    'MALT TEST',
-    'MALT TEST',
-  ]);
-  for (const body of submittedBodies) {
-    expect(body).toMatchObject({
-      gameVersion: '0.1.0',
-      runId: challenge.id,
-      proof: GENERATION_2_LOSS_PROOF,
-    });
-    expect(body).not.toHaveProperty('score');
-    expect(body).not.toHaveProperty('summary');
-  }
-
-  await page.getByRole('button', { name: 'Close competition panel' }).click();
-  await expect(page.locator('[data-maltline-shell]')).not.toHaveAttribute('inert', '');
-  await expect(page.locator('#overlay-card')).toBeFocused();
+  const dialog = page.getByRole('dialog', { name: 'Shift Board' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+  const frozen = await page.evaluate(() => window.__maltlineViewerStatus?.engineTick);
+  await page.getByLabel('Callsign', { exact: true }).fill('BAD CALLSIGN');
+  await page.getByRole('button', { name: 'Submit score', exact: true }).click();
+  await expect(dialog).toContainText('Choose another callsign.');
+  await expect(page.getByLabel('Callsign', { exact: true })).toHaveValue('BAD CALLSIGN');
+  await page.getByLabel('Callsign', { exact: true }).fill('MALT TEST');
+  await page.getByRole('button', { name: 'Submit score', exact: true }).click();
+  await expect(dialog).toContainText('Score saved at #1. Your Top 50 replay is saved privately.');
+  await expect(dialog).toContainText('MALT TEST');
+  expect(submissions).toHaveLength(2);
+  expect(submissions.map(body => body.playerName)).toEqual(['BAD CALLSIGN', 'MALT TEST']);
+  const replays = await page.evaluate(() => window.__maltlineReplays!);
+  expect(submissions[1]!.proof).toEqual(buildMaltlineCabinetProof(
+    replays,
+    { runId: challenge.id, nonce: challenge.seed },
+    MALTLINE_CABINET_AUTHORITY.gameVersion,
+  ));
+  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ engineTick: frozen, competition: { proof: 'submitted' } });
+  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(page.locator('[data-maltline-shell]')).toBeFocused();
 });
 
-test('losing window focus preserves ranked proof, local play, and replay', async ({ page }) => {
-  await installManualAnimationFrames(page);
-  const challenge = {
-    id: 'run_QRSTUVWXYZabcdef',
-    nonce: 7,
-    seasonId: 'maltline-generation-2',
-    boardId: 'arcade',
-    gameVersion: '0.1.0',
-    authority: MALTLINE_GENERATION_2_AUTHORITY.identity,
-    proofSchemaVersion: 1,
-    envelopeVersion: 3,
-    expiresAt: '2099-09-10T20:30:00.000Z',
-  } as const;
-  await page.route('**/api/v1/games/maltline/**', async (route) => {
-    const request = route.request();
-    if (request.method() === 'POST' && new URL(request.url()).pathname.endsWith('/runs')) {
-      await route.fulfill({ status: 201, json: challenge });
-    } else if (request.method() === 'GET') {
-      await route.fulfill({ json: { entries: [] } });
-    } else {
-      await route.fulfill({ status: 500, json: { error: 'Unexpected submission.' } });
-    }
-  });
-
-  await openProduction(page, '?ranked=preview');
-  await advanceFirstRunToPlaying(page);
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-challenge', 'ready');
+test('losing window focus preserves the local replay while making the cabinet result unranked', async ({ page }) => {
+  await installManualAnimationFrames(page); await mockCabinetApi(page);
+  await openProduction(page, '?ranked=preview'); await startRankedPlay(page);
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
-    screen: 'playing',
-    rankEligible: true,
-    interruptionReason: null,
-  });
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-proof', 'recording');
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-  await playProofStage(page, GENERATION_2_LOSS_PROOF.stages[0]!.inputRuns);
-  expect(await page.evaluate(() => {
-    const replay = window.__maltlineReplays?.at(-1);
-    return {
-      count: window.__maltlineReplays?.length,
-      status: replay?.finalState.status,
-      ticks: replay?.ticks.length,
-      finalTick: replay?.finalState.tick,
-    };
-  })).toEqual({ count: 1, status: 'lost', ticks: 1_854, finalTick: 1_854 });
-  await page.getByRole('button', { name: 'Open Shift Board leaderboard' }).click();
-
-  const dialog = page.getByRole('dialog', { name: 'SHIFT BOARD' });
-  await expect(dialog.getByRole('button', { name: 'Submit verified run' })).toBeVisible();
+  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ screen: 'playing', rankEligible: false });
+  await page.evaluate(() => window.dispatchEvent(new Event('focus'))); await playIdleLoss(page);
+  expect(await page.evaluate(() => window.__maltlineReplays?.map(replay => ({ status: replay.finalState.status, ticks: replay.ticks.length }))))
+    .toEqual([{ status: 'lost', ticks: 1854 }]);
+  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('continues unranked');
+  await expect(page.getByRole('button', { name: 'Submit score', exact: true })).not.toBeVisible();
 });
 
-test('ranked preflight failure stops recording and visibly marks the live run as practice', async ({ page }) => {
-  await installManualAnimationFrames(page);
-  await page.setViewportSize({ width: 700, height: 720 });
+test('ranked preflight failure explicitly permits an unranked local replay', async ({ page }) => {
+  await installManualAnimationFrames(page); await page.setViewportSize({ width: 700, height: 720 });
   browserFailures.get(page)!.allowedConsole.push(/Failed to load resource: the server responded with a status of 503/u);
-  browserFailures.get(page)!.allowedResponses.push(/503 POST .*\/api\/v1\/games\/maltline\/runs/u);
-  let releasePreflight!: () => void;
-  const preflightGate = new Promise<void>((resolve) => {
-    releasePreflight = resolve;
-  });
-  await page.route('**/api/v1/games/maltline/**', async (route) => {
-    const request = route.request();
-    if (request.method() === 'POST') {
-      await preflightGate;
-      await route.fulfill({ status: 503, json: { error: 'Ranked line unavailable.' } });
-    } else {
-      await route.fulfill({ json: { entries: [] } });
-    }
-  });
-
-  await openProduction(page, '?ranked=preview');
-  await advanceFirstRunToPlaying(page);
-  const playfieldTop = await page.locator('.stage-wrap').evaluate((element) =>
-    element.getBoundingClientRect().top);
-  releasePreflight();
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-proof', 'ineligible');
-  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
-    rankEligible: false,
-    competition: { proof: 'ineligible' },
-  });
-  const practice = page.getByRole('button', { name: 'Ranking unavailable; this is a practice run' });
-  await expect(practice).toBeVisible();
-  await expect(practice).toBeDisabled();
-  expect(await page.locator('.stage-wrap').evaluate((element) =>
-    element.getBoundingClientRect().top)).toBe(playfieldTop);
-  await playProofStage(page, GENERATION_2_LOSS_PROOF.stages[0]!.inputRuns);
-  expect(await page.evaluate(() => {
-    const replay = window.__maltlineReplays?.at(-1);
-    return {
-      count: window.__maltlineReplays?.length,
-      status: replay?.finalState.status,
-      ticks: replay?.ticks.length,
-      finalTick: replay?.finalState.tick,
-    };
-  })).toEqual({ count: 1, status: 'lost', ticks: 1_854, finalTick: 1_854 });
-  await expect(practice).toBeEnabled();
-  await practice.click();
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('PRACTICE RESULT');
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('could not be prepared');
+  browserFailures.get(page)!.allowedResponses.push(/503 POST .*\/api\/v2\/games\/maltline\/runs/u);
+  await mockCabinetApi(page, { unavailable: true }); await openProduction(page, '?ranked=preview');
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  await expect(page.locator('.cabinet-rank-notice')).toContainText('Ranked service unavailable. Start unranked to play.');
+  await expect(page.locator('#overlay-hint')).toContainText('start unranked');
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); await playIdleLoss(page);
+  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ screen: 'gameover', rankEligible: false });
+  expect(await page.evaluate(() => window.__maltlineReplays?.[0]?.ticks.length)).toBe(1854);
+  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Submit score', exact: true })).not.toBeVisible();
 });
 
-test('the complete eight-stage viewer campaign emits a verifier-accepted winning proof', async ({ page }) => {
-  await installManualAnimationFrames(page);
-  const challenge = {
-    id: 'run_fullcampaign1234',
-    nonce: 8,
-    seasonId: 'maltline-generation-2',
-    boardId: 'arcade',
-    gameVersion: '0.1.0',
-    authority: MALTLINE_GENERATION_2_AUTHORITY.identity,
-    proofSchemaVersion: 1,
-    envelopeVersion: 3,
-    expiresAt: '2099-09-10T20:30:00.000Z',
-  } as const;
-  const winningEntry = {
-    id: 'score_fullcampaign1234',
-    name: 'CLOSER',
-    score: 36_255,
-    lives: 4,
-    stageReached: 8,
-    stagesCleared: 8,
-    completed: true,
-    totalTicks: 21_666,
-    fulfilled: 145,
-    serviceActions: 145,
-    walkouts: 0,
-    resolved: 145,
-    exited: 145,
-    createdAt: '2026-09-10T18:00:00.000Z',
-    proofAvailable: true,
-  } as const;
-  let submittedProof: unknown;
-  let verifiedSummary: Awaited<ReturnType<typeof verifyAndHashMaltlineProof>>['envelope']['summary'] | undefined;
-  await page.route('**/api/v1/games/maltline/**', async (route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    if (request.method() === 'POST' && path.endsWith('/runs')) {
-      await route.fulfill({ status: 201, json: challenge });
-    } else if (request.method() === 'GET') {
-      await route.fulfill({ json: { entries: [] } });
-    } else {
-      submittedProof = (request.postDataJSON() as { proof?: unknown }).proof;
-      const verified = await verifyAndHashMaltlineProof(submittedProof, {
-        runId: challenge.id,
-        seasonId: challenge.seasonId,
-        boardId: challenge.boardId,
-        nonce: challenge.nonce,
-        authority: challenge.authority,
-      });
-      verifiedSummary = verified.envelope.summary;
-      await route.fulfill({
-        status: 201,
-        json: { entry: winningEntry, proofState: 'ready' },
-      });
-    }
-  });
-
-  await openProduction(page, '?ranked=preview');
-  await advanceFirstRunToPlaying(page);
-  await expect(page.locator('html')).toHaveAttribute('data-maltline-competition-challenge', 'ready');
-  for (const [index, stage] of VIEWER_WIN_PROOF.stages.entries()) {
-    await playProofStage(page, stage.inputRuns);
-    await expect.poll(async () => (await page.evaluate(() => window.__maltlineViewerStatus))?.screen)
-      .toBe('cleared');
-    if (index + 1 === VIEWER_WIN_PROOF.stages.length) {
-      await page.keyboard.press('r');
-      await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('POST THIS RUN');
-      await page.getByRole('button', { name: 'Close competition panel' }).click();
-      expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
-        screen: 'cleared',
-        competition: { proof: 'eligible' },
-      });
-    }
+test('the complete two-button viewer campaign emits a verifier-accepted cabinet winning proof', async ({ page }) => {
+  await installManualAnimationFrames(page); const submissions = await mockCabinetApi(page);
+  await openProduction(page, '?ranked=preview'); await startRankedPlay(page);
+  for (const [index, tape] of VIEWER_WIN_TAPES.entries()) {
+    await playCabinetTape(page, tape.codes);
+    expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ screen: 'cleared', engineTick: tape.replay.finalState.tick });
     await page.keyboard.press('Enter');
-    if (index + 1 < VIEWER_WIN_PROOF.stages.length) {
+    if (index === 3) {
       await expect.poll(async () => (await page.evaluate(() => window.__maltlineViewerStatus))?.screen)
-        .toBe('stage-card');
+        .toBe('intermission');
       await page.keyboard.press('Enter');
-      await page.keyboard.press('Enter');
-      await expect.poll(async () => (await page.evaluate(() => window.__maltlineViewerStatus))?.screen)
-        .toBe('playing');
     }
+    if (index + 1 < VIEWER_WIN_TAPES.length) { await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); }
   }
-
-  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
-    screen: 'victory',
-    competition: { proof: 'eligible' },
-  });
-  const victoryBody = await page.locator('#overlay-body').innerText();
-  await expect(page.locator('#overlay-hint')).toHaveText(
-    'Press Enter / R to review this ranked result · discard is inside Shift Board',
-  );
-  await expect(page.locator('#game-flow-status')).toHaveText(
-    `${victoryBody} Press Enter or R to review this ranked result. Discard is inside Shift Board.`,
-  );
-  await expect(page.locator('#game-flow-status')).not.toContainText(/restart|run it again/iu);
-  await page.getByRole('button', { name: 'Open Shift Board leaderboard' }).click();
-  await page.getByRole('textbox', { name: 'Callsign' }).fill('CLOSER');
-  await page.getByRole('button', { name: 'Submit verified run' }).click();
-  await expect(page.getByRole('dialog', { name: 'SHIFT BOARD' })).toContainText('RUN ACCEPTED');
-  expect(submittedProof).toMatchObject({
-    version: VIEWER_WIN_PROOF.version,
-    rulesetVersion: VIEWER_WIN_PROOF.rulesetVersion,
-    campaignGeneration: VIEWER_WIN_PROOF.campaignGeneration,
-    stages: VIEWER_WIN_PROOF.stages.map((stage) => ({ stageId: stage.stageId })),
-  });
-  expect(verifiedSummary).toEqual({
-    score: 36_255,
-    lives: 4,
-    stageReached: 8,
-    stagesCleared: 8,
-    completed: true,
-    totalTicks: 21_666,
-    fulfilled: 145,
-    serviceActions: 145,
-    walkouts: 0,
-    resolved: 145,
-    exited: 145,
-  });
+  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ screen: 'victory', competition: { proof: 'eligible' } });
+  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await page.getByLabel('Callsign', { exact: true }).fill('CLOSER');
+  await page.getByRole('button', { name: 'Submit score', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('Score saved at #1.');
+  const proof = submissions[0]!.proof;
+  const verified = verifyMaltlineCabinetProof(proof,
+    { runId: challenge.id, nonce: challenge.seed }, MALTLINE_CABINET_AUTHORITY.gameVersion);
+  const expected = verifyMaltlineCabinetProof(buildMaltlineCabinetProof(
+    VIEWER_WIN_TAPES.map(tape => tape.replay),
+    { runId: challenge.id, nonce: challenge.seed },
+    MALTLINE_CABINET_AUTHORITY.gameVersion,
+  ), { runId: challenge.id, nonce: challenge.seed }, MALTLINE_CABINET_AUTHORITY.gameVersion);
+  expect(verified).toEqual(expected);
+  expect(verified.summary).toMatchObject({ completed: true, stagesCleared: 8, fulfilled: 145, walkouts: 0, lives: 4, score: 36255 });
 });
 
 test('a held presentation key cannot cascade across first-run screens', async ({ page }) => {
@@ -974,7 +689,7 @@ test('first-run overlays gate simulation and restart returns to a clean Stage 1 
       screen: 'stage-card',
       engineTick: 0,
       recordedInputs: 0,
-      rankEligible: true,
+      rankEligible: false,
     },
     replayCount: 0,
   });
@@ -1178,7 +893,7 @@ test('stale presentation timers cannot take ownership of a replacement countdown
   expect(beforeStaleCallback).toMatchObject({
     status: {
       screen: 'countdown',
-      rankEligible: true,
+      rankEligible: false,
       engineTick: 0,
       recordedInputs: 0,
     },
@@ -1216,7 +931,7 @@ test('stale presentation timers cannot take ownership of a replacement countdown
   await page.keyboard.press('Enter');
   const afterManualSkip = await flowSnapshot();
   expect(afterManualSkip).toMatchObject({
-    status: { screen: 'playing', rankEligible: true, engineTick: 0, recordedInputs: 0 },
+    status: { screen: 'playing', rankEligible: false, engineTick: 0, recordedInputs: 0 },
     screenDataset: 'playing',
     focusId: '',
     replayCount: 0,
@@ -1233,7 +948,7 @@ test('flow announcements are meaningful, countdown is throttled, and overlays ow
   const flowStatus = page.locator('#game-flow-status');
   const controls = page.locator('.controls');
 
-  await expect(flowStatus).toHaveText(/Maltline\. .*Press Enter to learn the counter/);
+  await expect(flowStatus).toHaveText(/Maltline\. .*Choose Start Game or press Space \/ Enter/);
   await expect(flowStatus).toHaveAttribute('aria-hidden', 'false');
   await expect(controls).toHaveAttribute('aria-hidden', 'true');
   await expect(controls).toHaveAttribute('inert', '');
@@ -1243,10 +958,10 @@ test('flow announcements are meaningful, countdown is throttled, and overlays ow
     'aria-describedby',
     'overlay-body overlay-steps overlay-hint',
   );
-  await expect(dialog).toHaveAccessibleDescription(/choose flavor station/);
-  await expect(dialog).toHaveAccessibleDescription(/face return to auto-catch/);
-  await expect(dialog).toHaveAccessibleDescription(/Hold SPACE until READY/);
-  await expect(dialog).toHaveAccessibleDescription(/slide held shake/);
+  await expect(dialog).toHaveAccessibleDescription(/BUTTON 2 \/ ENTER.*next flavor/);
+  await expect(dialog).toHaveAccessibleDescription(/intercept returns/);
+  await expect(dialog).toHaveAccessibleDescription(/hold to fill until READY/);
+  await expect(dialog).toHaveAccessibleDescription(/release to toss/);
   await expect(flowStatus).toHaveText(/Counter instructions/);
 
   await page.keyboard.press('Enter');
@@ -1284,7 +999,7 @@ test('stage clear stays frozen until the player advances it', async ({ page }) =
   await installManualAnimationFrames(page);
   await openProduction(page);
   await advanceFirstRunToPlaying(page);
-  await playProofStage(page, VIEWER_WIN_PROOF.stages[0]!.inputRuns);
+  await playCabinetTape(page, VIEWER_WIN_TAPES[0]!.codes);
 
   const cleared = await page.evaluate(() => window.__maltlineViewerStatus);
   expect(cleared).toMatchObject({ screen: 'cleared', engineTick: 1558, recordedInputs: 1558 });
@@ -1304,13 +1019,11 @@ test('stage clear stays frozen until the player advances it', async ({ page }) =
   await expect(page.locator('#overlay-title')).toHaveText('TWO-TAP');
 });
 
-test('holding Enter to serve cannot also advance the stage clear', async ({ page }) => {
+test('holding Enter during two-button play cannot advance the stage clear', async ({ page }) => {
   await installManualAnimationFrames(page);
   await openProduction(page);
   await advanceFirstRunToPlaying(page);
-  await playProofStage(page, VIEWER_WIN_PROOF.stages[0]!.inputRuns, {
-    holdEnterFromFinalServe: true,
-  });
+  await playCabinetTape(page, VIEWER_WIN_TAPES[0]!.codes, true);
 
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
     screen: 'cleared',
@@ -1361,7 +1074,7 @@ test('holding Enter to serve cannot also advance the stage clear', async ({ page
   await expect(page.locator('#overlay-title')).toHaveText('TWO-TAP');
 });
 
-test('ordinary jitter and long-hitch recovery preserve local play and replay eligibility', async ({ page }) => {
+test('ordinary jitter and long-hitch recovery preserve local replay and mark dropped time unranked', async ({ page }) => {
   await installManualAnimationFrames(page);
   await openProduction(page);
   await advanceFirstRunToPlaying(page);
@@ -1372,7 +1085,7 @@ test('ordinary jitter and long-hitch recovery preserve local play and replay eli
     screen: 'playing',
     engineTick: 1,
     recordedInputs: 1,
-    rankEligible: true,
+    rankEligible: false,
   });
 
   await advanceManualFrame(page, 267);
@@ -1381,7 +1094,7 @@ test('ordinary jitter and long-hitch recovery preserve local play and replay eli
     screen: 'playing',
     engineTick: 16,
     recordedInputs: 16,
-    rankEligible: true,
+    rankEligible: false,
     interruptionReason: null,
     droppedMs: 0,
   });
@@ -1392,16 +1105,16 @@ test('ordinary jitter and long-hitch recovery preserve local play and replay eli
     screen: 'playing',
     engineTick: afterOrdinaryJitter!.engineTick + 18,
     recordedInputs: afterOrdinaryJitter!.recordedInputs + 18,
-    rankEligible: true,
-    interruptionReason: null,
-    droppedMs: 0,
+    rankEligible: false,
+    interruptionReason: 'clock_backlog_dropped',
   });
+  expect(recovered!.droppedMs).toBeCloseTo(700.3333333333);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await advanceManualFrame(page, 1_284);
   expect((await page.evaluate(() => window.__maltlineViewerStatus))!.engineTick)
     .toBe(recovered!.engineTick + 1);
 
-  await playProofStage(page, GENERATION_2_LOSS_PROOF.stages[0]!.inputRuns);
+  await playIdleLoss(page);
   expect(await page.evaluate(() => {
     const replay = window.__maltlineReplays?.at(-1);
     return {
@@ -1412,7 +1125,7 @@ test('ordinary jitter and long-hitch recovery preserve local play and replay eli
       replayFinalTick: replay?.finalState.tick,
     };
   })).toMatchObject({
-    viewer: { screen: 'gameover', rankEligible: true, interruptionReason: null },
+    viewer: { screen: 'gameover', rankEligible: false, interruptionReason: 'clock_backlog_dropped' },
     replayCount: 1,
     replayStatus: 'lost',
     replayTicks: 1_854,
@@ -1443,7 +1156,7 @@ test('left and right arrows run the bartender along the active counter', async (
   expect((await page.evaluate(() => window.__maltlineViewerStatus))!.playerX).toBe(0);
 });
 
-test('window blur clears held input and auto-resumes the same eligible run', async ({ page }) => {
+test('window blur clears held input and auto-resumes the same local run', async ({ page }) => {
   await installManualAnimationFrames(page);
   await openProduction(page);
   await advanceFirstRunToPlaying(page);
@@ -1456,8 +1169,8 @@ test('window blur clears held input and auto-resumes the same eligible run', asy
   await page.evaluate(() => window.dispatchEvent(new Event('blur')));
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
     screen: 'playing',
-    rankEligible: true,
-    interruptionReason: null,
+    rankEligible: false,
+    interruptionReason: 'window_blur',
     playerLane: beforeBlur!.playerLane,
   });
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -1491,8 +1204,8 @@ test('backgrounding silently freezes ticks and auto-resumes without clock catch-
     screen: 'playing',
     engineTick: beforeBackground!.engineTick,
     recordedInputs: beforeBackground!.recordedInputs,
-    rankEligible: true,
-    interruptionReason: null,
+    rankEligible: false,
+    interruptionReason: 'document_hidden',
   });
 
   await page.evaluate(() => {
@@ -1579,24 +1292,24 @@ test('699/700 transitions stop hidden ticks and draws, clear input, and resume f
 
 test('overlay, semantic status, focus, and keyboard ownership form one accessible contract', async ({ page }) => {
   await openProduction(page);
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
-  await expect(dialog).toHaveAccessibleName('MALTLINE');
-  await expect(dialog).toBeFocused();
-  const titleAria = await dialog.ariaSnapshot();
-  expect(titleAria).toContain('- dialog "MALTLINE"');
-  expect(titleAria).toContain('- heading "MALTLINE" [level=1]');
-  expect(titleAria).toContain('Press Enter to learn the counter');
+  const splash = page.locator('.splash');
+  await expect(splash).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(splash).toHaveAccessibleName('Maltline A little shop. A big rush.');
+  await expect(page.getByRole('button', { name: 'Start Game' })).toBeFocused();
+  const titleAria = await splash.ariaSnapshot();
+  expect(titleAria).toContain('heading "Maltline A little shop. A big rush." [level=1]');
+  expect(titleAria).toContain('Start Game');
   await expect(page.locator('#game-status')).toContainText('Stage 1 of 8, First Pour.');
   await expect(page.locator('#game')).toHaveAttribute('aria-describedby', 'game-status');
 
   const titleStatus = await page.evaluate(() => window.__maltlineViewerStatus);
   await page.keyboard.press('Enter');
   await expect(page.locator('#overlay-title')).toHaveText('MATCH · BLEND · SLIDE · CATCH');
-  await expect(page.locator('#overlay-steps li')).toHaveCount(4);
+  await expect(page.locator('#overlay-steps li')).toHaveCount(5);
   await expect(page.getByRole('dialog')).toContainText('four lives');
-  await expect(page.getByRole('dialog')).toContainText('face return to auto-catch');
-  await expect(page.getByRole('dialog')).toContainText('slide held shake');
+  await expect(page.getByRole('dialog')).toContainText('intercept returns');
+  await expect(page.getByRole('dialog')).toContainText('release to toss');
   await expect(page.getByRole('dialog')).not.toContainText('slide shake · catch jar');
   await page.keyboard.press('ArrowDown');
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
@@ -1625,7 +1338,7 @@ test('overlay, semantic status, focus, and keyboard ownership form one accessibl
   expect(playingAria).toContain('- region "Current game status"');
   expect(playingAria).toContain('Score 0. 4 lives. 8 orders left.');
   const playingRootAria = await page.locator('[data-maltline-shell]').ariaSnapshot();
-  expect(playingRootAria).not.toContain('Press Enter to learn the counter');
+  expect(playingRootAria).not.toContain('Choose Start Game or press Space / Enter');
   expect(playingRootAria).not.toContain('Give the shop a little more room');
 
   const keyboardResult = await page.evaluate(() => {
@@ -1704,8 +1417,8 @@ test('font request failure reaches a diagnosed and playable fallback title', asy
   await expect(page.locator('html')).toHaveAttribute('data-maltline-fonts-ready', 'fallback');
   await expect(page.locator('html')).toHaveAttribute('data-maltline-font-diagnostic', /.+/);
   await expect(page.locator('[data-maltline-font-definitions]')).toHaveCount(0);
-  await expect(page.getByRole('dialog')).toContainText('Display font unavailable');
-  await expect(page.getByRole('dialog')).toBeFocused();
+  await expect(page.locator('#overlay-body')).toContainText('Display font unavailable');
+  await expect(page.getByRole('button', { name: 'Start Game' })).toBeFocused();
   await advanceFirstRunToPlaying(page);
 });
 
@@ -1723,7 +1436,7 @@ async function paritySignature(page: Page): Promise<unknown> {
       fontsLoaded: [400, 600, 700, 800].map((weight) =>
         document.fonts.check(`${weight} 16px "Maltline UI"`)),
       bodyFont: bodyStyle.fontFamily,
-      structure: [...root.children].map((element) => `${element.tagName}.${element.className}`),
+      structure: [...root.children].filter((element) => !element.classList.contains('cabinet-rank-notice')).map((element) => `${element.tagName}.${element.className}`),
       layout: {
         width: root.getBoundingClientRect().width,
         gap: rootStyle.gap,
@@ -1790,6 +1503,48 @@ test('live cabinet fills desktop while overlays stay crisp and minimum width rem
   expect(minimum.controlsBottom).toBeLessThanOrEqual(720);
   expect(minimum.transitionDuration).toBe('0s');
   expect(minimum.scrollWidth).toBe(700);
+
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await openFixture(page, 'rush-three-lane');
+  const shortViewport = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.shell')!.getBoundingClientRect();
+    const controls = document.querySelector<HTMLElement>('.controls')!.getBoundingClientRect();
+    return {
+      shellBottom: shell.bottom,
+      controlsHeight: controls.height,
+      controlsBottom: controls.bottom,
+      scrollWidth: document.documentElement.scrollWidth,
+      scrollHeight: document.documentElement.scrollHeight,
+    };
+  });
+  expect(shortViewport.controlsHeight).toBeGreaterThan(32);
+  expect(shortViewport.shellBottom).toBeLessThanOrEqual(600);
+  expect(shortViewport.controlsBottom).toBeLessThanOrEqual(600);
+  expect(shortViewport.scrollWidth).toBe(1024);
+  expect(shortViewport.scrollHeight).toBe(600);
+});
+
+test('short desktop keeps the splash inside the viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 600 });
+  await page.goto('/src/viewer/');
+  await expect(page.getByRole('button', { name: 'Start Game' })).toBeVisible();
+
+  const geometry = await page.evaluate(() => {
+    const shell = document.querySelector<HTMLElement>('.shell')!.getBoundingClientRect();
+    const splash = document.querySelector<HTMLElement>('.splash')!.getBoundingClientRect();
+    return {
+      shell: { top: shell.top, bottom: shell.bottom },
+      splash: { top: splash.top, bottom: splash.bottom },
+      scrollWidth: document.documentElement.scrollWidth,
+      scrollHeight: document.documentElement.scrollHeight,
+    };
+  });
+  expect(geometry.shell.top).toBeGreaterThanOrEqual(0);
+  expect(geometry.shell.bottom).toBeLessThanOrEqual(600);
+  expect(geometry.splash.top).toBeGreaterThanOrEqual(0);
+  expect(geometry.splash.bottom).toBeLessThanOrEqual(600);
+  expect(geometry.scrollWidth).toBe(1024);
+  expect(geometry.scrollHeight).toBe(600);
 });
 
 test('shell exposes keyboard semantics and fixture status copy stays honest', async ({ page }) => {
@@ -1802,12 +1557,12 @@ test('shell exposes keyboard semantics and fixture status copy stays honest', as
 
 test('teaching and terminal fixtures expose complete readable semantics', async ({ page }) => {
   await openFixture(page, 'instructions');
-  await expect(page.getByRole('listitem')).toHaveCount(4);
+  await expect(page.getByRole('listitem')).toHaveCount(5);
   const instructions = await page.getByRole('dialog').ariaSnapshot();
-  expect(instructions).toContain('Hold SPACE until READY');
-  expect(instructions).toContain('F / ENTER');
-  expect(instructions).toContain('slide held shake');
-  expect(instructions).toContain('face return to auto-catch');
+  expect(instructions).toContain('hold to fill until READY');
+  expect(instructions).toContain('BUTTON 2 / ENTER');
+  expect(instructions).toContain('release to toss');
+  expect(instructions).toContain('intercept returns');
 
   await openFixture(page, 'game-over');
   await expect(page.getByRole('dialog')).toContainText('Last life: return jar was missed');
@@ -1879,7 +1634,7 @@ test('numeric lives role stays separated and exact across critical HUD states', 
     const geometry = await page.locator('canvas').evaluate((canvas, evidence) => {
       const gameCanvas = canvas as HTMLCanvasElement;
       const bounds = gameCanvas.getBoundingClientRect();
-      const scale = bounds.width / gameCanvas.width;
+      const scale = bounds.width / 960;
       const { region, hudOrders } = evidence;
       return {
         cssWidth: region.width * scale,
@@ -1888,10 +1643,11 @@ test('numeric lives role stays separated and exact across critical HUD states', 
         orderGap: (region.x - (hudOrders.x + hudOrders.width)) * scale,
       };
     }, { region: lives!, hudOrders: orders! });
-    expect(geometry.cssWidth).toBeGreaterThanOrEqual(expected.width === 700 ? 83.99 : 120);
-    expect(geometry.cssHeight).toBeGreaterThanOrEqual(expected.width === 700 ? 16.79 : 24);
-    expect(geometry.orderGap).toBeGreaterThanOrEqual(expected.width === 700 ? 5.59 : 8);
-    expect(geometry.rightGap).toBeGreaterThanOrEqual(expected.width === 700 ? 8.39 : 12);
+    // The supported 700px viewport leaves a 670px logical canvas after shell padding and border.
+    expect(geometry.cssWidth).toBeGreaterThanOrEqual(expected.width === 700 ? 83.7 : 120);
+    expect(geometry.cssHeight).toBeGreaterThanOrEqual(expected.width === 700 ? 16.7 : 24);
+    expect(geometry.orderGap).toBeGreaterThanOrEqual(expected.width === 700 ? 5.58 : 8);
+    expect(geometry.rightGap).toBeGreaterThanOrEqual(expected.width === 700 ? 8.37 : 12);
   }
 });
 
@@ -1939,9 +1695,6 @@ for (const expected of PRESSURE_FIXTURES) {
     expect(regionLabels.filter((label) => label.startsWith('slide-trail-'))).toHaveLength(
       metadata.counts.slides,
     );
-    expect(regionLabels.filter((label) => label.startsWith('ticket-leader-'))).toHaveLength(
-      metadata.counts.openOrders,
-    );
     for (const order of metadata.visibleRegions.filter((region) => region.label.startsWith('order-'))) {
       expect(order.y, `${order.label} must remain below the HUD`).toBeGreaterThanOrEqual(46);
     }
@@ -1985,10 +1738,10 @@ for (const expected of PRESSURE_FIXTURES) {
         if (!context) throw new Error('Pressure visibility check requires canvas pixels.');
         const channel = (hex: string, start: number): number => Number.parseInt(hex.slice(start, start + 2), 16);
         return regions.map((region) => {
-          const left = Math.max(0, Math.floor(region.x));
-          const top = Math.max(0, Math.floor(region.y));
-          const right = Math.min(canvas.width, Math.ceil(region.x + region.width));
-          const bottom = Math.min(canvas.height, Math.ceil(region.y + region.height));
+          const left = Math.max(0, Math.floor(region.x * canvas.width / 960));
+          const top = Math.max(0, Math.floor(region.y * canvas.height / 540));
+          const right = Math.min(canvas.width, Math.ceil((region.x + region.width) * canvas.width / 960));
+          const bottom = Math.min(canvas.height, Math.ceil((region.y + region.height) * canvas.height / 540));
           const pixels = context.getImageData(left, top, right - left, bottom - top).data;
           let tokenPixels = 0;
           for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -2002,8 +1755,8 @@ for (const expected of PRESSURE_FIXTURES) {
           return {
             label: region.label,
             inside: region.x >= 0 && region.y >= 0
-              && region.x + region.width <= canvas.width
-              && region.y + region.height <= canvas.height,
+              && region.x + region.width <= 960
+              && region.y + region.height <= 540,
             tokenPixels,
           };
         });
@@ -2144,28 +1897,29 @@ test('Stage 6 split fixtures keep selected Chocolate separate from processing St
     for (const id of ids) expect(Number.isSafeInteger(id) && id > 0).toBe(true);
 
     const regions = metadata.visibleRegions.filter(({ label }) =>
-      label === 'selected-station-tab-1-chocolate'
-      || label === 'processing-station-2-strawberry'
-      || label === 'processing-meter-2-50'
-      || label === 'action-status-blending'
-      || label === 'action-badge-blending-strawberry');
+      label === 'selected-station-1'
+      || label === 'processing-cup-strawberry'
+      || label === 'action-status-blending');
     expect(regions.map(({ label }) => label)).toEqual([
-      'selected-station-tab-1-chocolate',
-      'processing-station-2-strawberry',
-      'processing-meter-2-50',
+      'selected-station-1',
+      'processing-cup-strawberry',
       'action-status-blending',
-      'action-badge-blending-strawberry',
     ]);
-    expect(regions.find(({ label }) => label.startsWith('selected-station-tab')))
-      .toMatchObject({ ...layout.stations[1]!.selectionTab });
-    expect(regions.find(({ label }) => label.startsWith('processing-station')))
-      .toMatchObject({ ...layout.stations[2]!.processingFrame });
-    expect(regions.find(({ label }) => label.startsWith('processing-meter')))
-      .toMatchObject({ ...layout.stations[2]!.processingMeter });
+    expect(regions.find(({ label }) => label === 'selected-station-1'))
+      .toMatchObject({ ...layout.workstation(1, 1).pitchers.find(pitcher => pitcher.stationIndex === 1)!.bounds });
+    expect(regions.find(({ label }) => label === 'processing-cup-strawberry'))
+      .toMatchObject({ ...layout.workstation(1, 1).pitchers.find(pitcher => pitcher.stationIndex === 2)!.bounds });
     expect(regions.find(({ label }) => label === 'action-status-blending'))
-      .toMatchObject({ ...MALTLINE_RENDERER_FRAME.actionStatus });
-    expect(metadata.visibleRegions.find(({ label }) => label === 'jar-gauge'))
-      .toMatchObject({ ...layout.jarGauge });
+      .toMatchObject({ ...layout.workstation(1, 1).status.bounds });
+    expect(metadata.visibleRegions.find(({ label }) => label === 'clean-cup-rack'))
+      .toMatchObject({
+        x: Math.max(0, layout.cleanRack.bounds.x),
+        y: Math.max(0, layout.cleanRack.bounds.y),
+        width: Math.min(960, layout.cleanRack.bounds.x + layout.cleanRack.bounds.width)
+          - Math.max(0, layout.cleanRack.bounds.x),
+        height: Math.min(540, layout.cleanRack.bounds.y + layout.cleanRack.bounds.height)
+          - Math.max(0, layout.cleanRack.bounds.y),
+      });
 
     const evidence = await page.locator('#game').evaluate(
       (canvas: HTMLCanvasElement, targetRegions) => {
@@ -2175,10 +1929,10 @@ test('Stage 6 split fixtures keep selected Chocolate separate from processing St
         const channel = (hex: string, start: number): number => Number.parseInt(hex.slice(start, start + 2), 16);
         return targetRegions.map((region) => {
           const pixels = context.getImageData(
-            Math.floor(region.x),
-            Math.floor(region.y),
-            Math.ceil(region.width),
-            Math.ceil(region.height),
+            Math.floor(region.x * canvas.width / 960),
+            Math.floor(region.y * canvas.height / 540),
+            Math.ceil(region.width * canvas.width / 960),
+            Math.ceil(region.height * canvas.height / 540),
           ).data;
           let tokenPixels = 0;
           for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -2200,15 +1954,15 @@ test('Stage 6 split fixtures keep selected Chocolate separate from processing St
     for (const region of evidence) {
       expect(region.tokenPixels, `${region.label} retains semantic theme pixels`).toBeGreaterThan(20);
     }
-    const selectedTab = evidence.find(({ label }) => label.startsWith('selected-station-tab'))!;
-    const processingMeter = evidence.find(({ label }) => label.startsWith('processing-meter'))!;
+    const selectedFlavor = evidence.find(({ label }) => label === 'selected-station-1')!;
+    const processingCup = evidence.find(({ label }) => label === 'processing-cup-strawberry')!;
     const actionStatus = evidence.find(({ label }) => label === 'action-status-blending')!;
-    expect(selectedTab.cssWidth).toBeGreaterThanOrEqual(18);
-    expect(selectedTab.cssHeight).toBeGreaterThanOrEqual(23);
-    expect(processingMeter.cssWidth).toBeGreaterThanOrEqual(8);
-    expect(processingMeter.cssHeight).toBeGreaterThanOrEqual(43);
-    expect(actionStatus.cssWidth).toBeGreaterThanOrEqual(190);
-    expect(actionStatus.cssHeight).toBeGreaterThanOrEqual(21);
+    expect(selectedFlavor.cssWidth).toBeGreaterThanOrEqual(18);
+    expect(selectedFlavor.cssHeight).toBeGreaterThanOrEqual(23);
+    expect(processingCup.cssWidth).toBeGreaterThanOrEqual(8);
+    expect(processingCup.cssHeight).toBeGreaterThanOrEqual(24);
+    expect(actionStatus.cssWidth).toBeGreaterThanOrEqual(65);
+    expect(actionStatus.cssHeight).toBeGreaterThanOrEqual(15);
     snapshots.push({
       entityIds: metadata.entityIds,
       counts: metadata.counts,
@@ -2267,8 +2021,9 @@ for (const fixture of EVENT_FIXTURES) {
         'return-target-0-catch',
         'return-target-1-move',
       ]);
-      expect(targets[0]).toMatchObject({ x: 107, y: 89, width: 70, height: 19 });
-      expect(targets[1]).toMatchObject({ x: 107, y: 181, width: 70, height: 19 });
+      const layout = deriveMaltlineRendererLayout(MALTLINE_CAMPAIGN[metadata.scenarioIndex]!);
+      expect(targets[0]).toMatchObject({ ...layout.projectReturningJar(0, 0).catchCue! });
+      expect(targets[1]).toMatchObject({ ...layout.projectReturningJar(0, 1).catchCue! });
     }
   });
 }

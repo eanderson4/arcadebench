@@ -1,3 +1,9 @@
-/src/viewer /partition/ 301
-/src/viewer/ /partition/ 301
-/src/viewer/index.html /partition/ 301
+/partition /games/partition/ 301
+/partition/ /games/partition/ 301
+/partition/index.html /games/partition/ 301
+/maltline /games/maltline/ 301
+/maltline/ /games/maltline/ 301
+/maltline/index.html /games/maltline/ 301
+/src/viewer /games/partition/ 301
+/src/viewer/ /games/partition/ 301
+/src/viewer/index.html /games/partition/ 301

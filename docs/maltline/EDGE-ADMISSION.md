@@ -3,7 +3,34 @@
 Date: 2026-09-11
 
 Status: the in-Worker admission layer is implemented and locally verified.
-Public ranked launch still requires the deployment checks and capacity run below.
+The shared leaderboard release uses this protection; the additional WAF and
+production-equivalent capacity evidence below remain operational follow-up.
+
+## Current cabinet release scope (2026-09-15)
+
+The maintained production entry is `apps/platform/src/production.ts`, reached
+through `deploy/worker.js`. It rejects the entire `/api/v1/games/maltline`
+prefix before backend work. The generation-2 route classes and proof-read
+capacity example documented below describe retained legacy implementation;
+those routes are inactive in this production entry.
+
+The current Second Shift season uses the shared v2 API and protocol version
+`cabinet-2`. Only `POST /api/v2/games/maltline/runs` and
+`POST /api/v2/games/maltline/leaderboards/arcade` use Maltline's network
+`ranked-write` admission hook, before sessions, body parsing, and ranked
+storage. `GET /api/v2/games/maltline/leaderboards/arcade` is a public cached
+read and does not use the legacy `board-read` network limiter. There is no
+public Maltline replay-read or replay-publication surface in this release;
+retained ranked replays are private.
+
+Local verification covers the production route gate, cabinet write admission,
+and scheduled cleanup with production migrations 0001, 0002, 0004, 0005, and 0006
+(without the legacy 0003 schema). It does not establish deployed WAF coverage
+or capacity. The WAF inspection and production-equivalent capacity run below
+have **not been performed**. Adapt their route matrix and proof workload to
+the current cabinet API before running them, and record release-specific
+evidence. These implementation changes do not deploy a Worker, apply remote
+migrations, or change production WAF rules.
 
 ## What this layer guarantees
 

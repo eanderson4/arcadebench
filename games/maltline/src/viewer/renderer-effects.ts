@@ -1,8 +1,8 @@
+import { FIXED_SCALE } from '../core/engine';
 import type { GameEvent, LifeLossReason, MaltlineState } from '../core/types';
-import { MALTLINE_RENDERER_FRAME, type MaltlineRendererLayout } from './renderer-layout';
+import type { MaltlineRendererLayout } from './renderer-layout';
 import { MALTLINE_VISUAL_THEME } from './visual-theme';
 
-const { counterX: COUNTER_X, doorX: DOOR_X } = MALTLINE_RENDERER_FRAME;
 const { cream: CREAM, creamDim: CREAM_DIM } = MALTLINE_VISUAL_THEME.scene;
 const FLAVOR_ART = MALTLINE_VISUAL_THEME.flavors;
 const FEEDBACK = MALTLINE_VISUAL_THEME.feedback;
@@ -145,41 +145,100 @@ export class MaltlineRendererEffects {
     let failureLane: number | undefined;
     for (const event of events) {
       switch (event.type) {
-        case 'shake_smashed':
-          this.burst(DOOR_X - 18, layout.laneCenterY(event.lane), FLAVOR_ART[event.flavor].base, 14);
-          this.burst(DOOR_X - 18, layout.laneCenterY(event.lane), FLAVOR_ART[event.flavor].light, 8);
+        case 'shake_smashed': {
+          const point = layout.project(
+            layout.scenario.laneLength * FIXED_SCALE,
+            layout.vesselY(event.lane),
+          );
+          this.burst(
+            point.x,
+            point.y - 12 * point.scale,
+            FLAVOR_ART[event.flavor].base,
+            14,
+          );
+          this.burst(
+            point.x,
+            point.y - 12 * point.scale,
+            FLAVOR_ART[event.flavor].light,
+            8,
+          );
           this.triggerShake(7);
           failureLane = event.lane;
           break;
-        case 'jar_smashed':
-          this.burst(COUNTER_X + 16, layout.laneCenterY(event.lane), '#cfd8d4', 12);
+        }
+        case 'jar_smashed': {
+          const point = layout.projectReturningJar(0, event.lane);
+          this.burst(
+            point.anchorX,
+            point.groundY - 12 * point.scale,
+            '#cfd8d4',
+            12,
+          );
           this.triggerShake(6);
           failureLane = event.lane;
           break;
-        case 'walkout':
-          this.flashRecords.push({ lane: event.lane, age: 0, ttl: 480, color: FEEDBACK.urgent });
-          this.burst(COUNTER_X + 22, layout.laneCenterY(event.lane), FEEDBACK.urgent, 10);
+        }
+        case 'walkout': {
+          const point = layout.project(0, layout.counterFrontY(event.lane));
+          this.flashRecords.push({
+            lane: event.lane,
+            age: 0,
+            ttl: 480,
+            color: FEEDBACK.urgent,
+          });
+          this.burst(point.x, point.y - 24 * point.scale, FEEDBACK.urgent, 10);
           this.triggerShake(8);
           failureLane = event.lane;
           break;
-        case 'jar_caught':
-          this.burst(COUNTER_X + 28, layout.laneCenterY(event.lane), CREAM, 6, -60);
+        }
+        case 'jar_caught': {
+          // Interceptions can happen while running anywhere along a counter.
+          // The post-tick player position is the authoritative crossing anchor;
+          // the event deliberately carries no presentation coordinates.
+          const x = state.player.lane === event.lane ? state.player.x : 0;
+          const point = layout.projectReturningJar(x, event.lane);
+          this.burst(
+            point.anchorX,
+            point.groundY - 12 * point.scale,
+            CREAM,
+            6,
+            -60,
+          );
           this.popup(
-            COUNTER_X + 28,
-            layout.laneCenterY(event.lane) - 30,
+            point.anchorX,
+            point.groundY - 38 * point.scale,
             event.points > 0 ? `+${event.points}` : 'RETURN CAUGHT · 0 PTS',
             CREAM_DIM,
           );
           break;
+        }
         case 'served': {
-          const customer = state.customers.find((candidate) => candidate.id === event.customerId);
+          const customer = state.customers.find(
+            (candidate) => candidate.id === event.customerId,
+          );
           if (customer) {
-            const px = layout.lanePx(customer.x);
+            const point = layout.project(
+              customer.x,
+              layout.counterFrontY(customer.lane),
+            );
             const text = event.firstFulfillment
               ? `+${event.points}`
-              : event.points > 0 ? `RESCUED · +${event.points}` : 'RESCUED · 0 PTS';
-            this.popup(px, layout.laneCenterY(customer.lane) - 34, text, FLAVOR_ART[event.flavor].light);
-            this.burst(px, layout.laneCenterY(customer.lane), FLAVOR_ART[event.flavor].light, 7, -40);
+              : event.points > 0
+                ? `RESCUED · +${event.points}`
+                : 'RESCUED · 0 PTS';
+            this.popup(
+              point.x,
+              point.y - 64 * point.scale,
+              text,
+              FLAVOR_ART[event.flavor].light,
+            );
+            this.burst(
+              point.x,
+              point.y - 30 * point.scale,
+              FLAVOR_ART[event.flavor].light,
+              7,
+              -40,
+            );
           }
           break;
         }
@@ -198,15 +257,17 @@ export class MaltlineRendererEffects {
       particle.age += dtMs;
       const ageSeconds = particle.age / 1000;
       particle.x = particle.originX + particle.vx * ageSeconds;
-      particle.y = particle.originY + particle.initialVy * ageSeconds
-        + 0.5 * particle.gravity * ageSeconds * ageSeconds;
+      particle.y =
+        particle.originY +
+        particle.initialVy * ageSeconds +
+        0.5 * particle.gravity * ageSeconds * ageSeconds;
       return particle.age < particle.ttl;
     });
     this.popupRecords = this.popupRecords.filter((popup) => {
       popup.age += dtMs;
       if (!this.reducedMotion) {
         popup.motionAgeMs += dtMs;
-        popup.y = popup.originY - popup.motionAgeMs / 1000 * 34;
+        popup.y = popup.originY - (popup.motionAgeMs / 1000) * 34;
       }
       return popup.age < popup.ttl;
     });
@@ -214,10 +275,12 @@ export class MaltlineRendererEffects {
       flash.age += dtMs;
       return flash.age < flash.ttl;
     });
-    this.failureCalloutRecords = this.failureCalloutRecords.filter((callout) => {
-      callout.age += dtMs;
-      return callout.age < callout.ttl;
-    });
+    this.failureCalloutRecords = this.failureCalloutRecords.filter(
+      (callout) => {
+        callout.age += dtMs;
+        return callout.age < callout.ttl;
+      },
+    );
     this.shakeAgeMs += dtMs;
     this.shake = this.shakeInitial * Math.pow(0.03, this.shakeAgeMs / 1000);
     if (this.shake < 0.2) this.shake = 0;
@@ -241,10 +304,22 @@ export class MaltlineRendererEffects {
   }
 
   private failureCallout(reason: LifeLossReason, lane: number): void {
-    const presentation: Record<LifeLossReason, { text: string; color: string }> = {
-      walkout: { text: 'LIFE LOST · CUSTOMER REACHED COUNTER', color: FEEDBACK.walkout },
-      shake_smashed: { text: 'LIFE LOST · SHAKE MISSED', color: FEEDBACK.shakeMiss },
-      jar_smashed: { text: 'LIFE LOST · RETURN JAR MISSED', color: FEEDBACK.returnMiss },
+    const presentation: Record<
+      LifeLossReason,
+      { text: string; color: string }
+    > = {
+      walkout: {
+        text: 'LIFE LOST · CUSTOMER REACHED COUNTER',
+        color: FEEDBACK.walkout,
+      },
+      shake_smashed: {
+        text: 'LIFE LOST · SHAKE MISSED',
+        color: FEEDBACK.shakeMiss,
+      },
+      jar_smashed: {
+        text: 'LIFE LOST · RETURN JAR MISSED',
+        color: FEEDBACK.returnMiss,
+      },
     };
     this.failureCalloutRecords.push({
       lane,
@@ -254,7 +329,13 @@ export class MaltlineRendererEffects {
     });
   }
 
-  private burst(x: number, y: number, color: string, count: number, lift = -30): void {
+  private burst(
+    x: number,
+    y: number,
+    color: string,
+    count: number,
+    lift = -30,
+  ): void {
     if (this.reducedMotion) return;
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2 + this.random() * 0.6;
@@ -276,6 +357,15 @@ export class MaltlineRendererEffects {
   }
 
   private popup(x: number, y: number, text: string, color: string): void {
-    this.popupRecords.push({ x, originY: y, motionAgeMs: 0, y, text, age: 0, ttl: 900, color });
+    this.popupRecords.push({
+      x,
+      originY: y,
+      motionAgeMs: 0,
+      y,
+      text,
+      age: 0,
+      ttl: 900,
+      color,
+    });
   }
 }

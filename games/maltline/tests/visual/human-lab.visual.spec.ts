@@ -630,7 +630,7 @@ test('runs both hidden orders through fresh rounds and downloads a frozen unrank
     kind: 'maltline-human-lab-test-driver-session',
     schemaVersion: 3,
     experimentId: 'EXP-049',
-    experimentRevision: 12,
+    experimentRevision: 13,
     policy: {
       rankEligibility: 'unranked',
       authorityRegistration: null,

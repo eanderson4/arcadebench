@@ -1,7 +1,8 @@
 # ArcadeBench
 
-**A free public arcade for humans and machines.** Play games, build LLM
-controllers, inspect replays, and compare results.
+**A growing, free public collection of browser arcade games.** Quick to start,
+simple controls, and scores worth chasing — no ads, no microtransactions, no
+loot boxes.
 
 [![Verify and deploy](https://github.com/eanderson4/arcadebench/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/eanderson4/arcadebench/actions/workflows/ci-cd.yml)
 [![CodeQL](https://github.com/eanderson4/arcadebench/actions/workflows/application-security.yml/badge.svg)](https://github.com/eanderson4/arcadebench/actions/workflows/application-security.yml)
@@ -11,27 +12,29 @@ controllers, inspect replays, and compare results.
 
 **[Choose a game at arcadebench.org →](https://arcadebench.org/)**
 
-[Play Partition](https://arcadebench.org/partition/) ·
-[Play Maltline](https://arcadebench.org/maltline/)
+[Play Partition](https://arcadebench.org/games/partition/) ·
+[Play Maltline](https://arcadebench.org/games/maltline/) ·
+[About](https://arcadebench.org/about/)
 
-ArcadeBench is a growing cabinet of inspectable games. Humans play directly;
-language models play through small structured SDKs or build resident
-controllers that keep operating while the model observes, diagnoses, and
-revises them. Every official result can be tied to an immutable protocol,
-scored artifact, and deterministic replay.
+ArcadeBench is inspired by the early arcade era: games you can start in
+seconds, understand from a line of instructions, and keep replaying because the
+score is close. Each game here is a small, complete thing with its own rules and
+its own pull. Learn by playing, chase the score, take one more try.
 
-The games are free to play, with no ads. Each one owns its personality, rules,
-assets, simulation, scoring, and model interface. The shared platform provides
-the boring-but-important pieces: benchmark records, replay transport,
-leaderboards, and social discovery.
+The games are free to play: no ads, no microtransactions, no loot boxes. Each one
+owns its personality, rules, assets, simulation, scoring, and model interface.
+The shared platform provides the boring-but-important pieces: benchmark records,
+replay transport, leaderboards, and social discovery.
 
 ArcadeBench is free, non-commercial, and does not sell player data or use
-gameplay, replays, prompts, or controllers to train AI. Complete replay payloads
-expire after five days; verified leaderboard summaries and replay hashes remain.
+gameplay, replays, prompts, or controllers to train AI. Earlier submissions, nonqualifying proofs, and shared replays expire after
+five days. New Top 50 submissions under the displayed policy are saved privately;
+social-media use requires a separate optional permission. Verified leaderboard
+summaries and replay hashes remain.
 Read the [plain-language privacy promise](docs/PRIVACY.md) or the
 [live version](https://arcadebench.org/privacy/).
 
-## Cabinet 01: Partition
+## Partition
 
 Partition is a real-time control game inspired by the territory-capture arcade
 tradition. Trace boundaries, isolate moving anomalies, and stabilize the field
@@ -46,12 +49,12 @@ before the clock runs out.
 - **Replay Lab:** scrub human or model runs tick by tick and inspect every
   control signal.
 
-Partition is playable at [arcadebench.org/partition/](https://arcadebench.org/partition/)
-and locally today. `dev-0` is intentionally
-unfrozen, so its results are development evidence rather than permanent
-leaderboard entries.
+Partition is playable at
+[arcadebench.org/games/partition/](https://arcadebench.org/games/partition/) and
+locally today. `dev-0` is intentionally unfrozen, so its results are development
+evidence rather than permanent leaderboard entries.
 
-## Cabinet 02: Maltline
+## Maltline
 
 Maltline is a Tapper-lineage shake-counter game. Match each order, blend and
 slide the right shake, then face its window to catch the returning jar.
@@ -65,13 +68,14 @@ slide the right shake, then face its window to catch the returning jar.
   least 700 CSS pixels wide.
 
 Play the prototype at
-[arcadebench.org/maltline/](https://arcadebench.org/maltline/).
+[arcadebench.org/games/maltline/](https://arcadebench.org/games/maltline/).
 
 ## Play
 
-Open **[arcadebench.org](https://arcadebench.org/)** to choose a cabinet. The
+Open **[arcadebench.org](https://arcadebench.org/)** to choose a game. The
 launcher does not start or resume gameplay; Partition and Maltline keep their
-permanent direct routes at `/partition/` and `/maltline/`.
+permanent direct routes at `/games/partition/` and `/games/maltline/`. What the
+arcade is for is on the [About page](https://arcadebench.org/about/).
 
 For local development, use Node.js 22 or newer:
 
@@ -139,7 +143,8 @@ Core design rules:
 - Every official result identifies an immutable game protocol generation.
 - Local benchmark runs can retain model configuration, tool events, usage,
   scores, and replay/controller artifacts under the runner's control. The
-  public service deletes complete replay payloads after five days.
+  public service retains new qualifying Top 50 replays privately under the
+  displayed policy; other replay payloads expire after five days.
 - Continuous games never pause for model inference.
 
 ## Production and contributions

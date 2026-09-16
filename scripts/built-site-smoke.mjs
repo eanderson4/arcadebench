@@ -77,6 +77,10 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&');
 }
 
+function primaryNav(contents) {
+  return /<nav class="site-nav__links" aria-label="Primary">([\s\S]*?)<\/nav>/u.exec(contents)?.[1] ?? '';
+}
+
 function referenceSourceFiles(group, actualFiles) {
   const sources = new Set();
   for (const pattern of group.referenceSources) {
@@ -180,16 +184,91 @@ for (const route of SITE_CONTRACT.routes) {
   inspectHtml(contents, route, titles, failures);
 }
 const launcher = htmlByRoute.get('/');
-const partition = htmlByRoute.get('/partition/');
+const partition = htmlByRoute.get('/games/partition/');
+const maltline = htmlByRoute.get('/games/maltline/');
+const about = htmlByRoute.get('/about/');
 check(launcher !== partition, 'launcher is an accidental copy of Partition', failures);
-check(launcher.includes('href="/partition/"') && launcher.includes('href="/maltline/"'),
+check(launcher.includes('href="/games/partition/"') && launcher.includes('href="/games/maltline/"'),
   'launcher lacks direct permanent game links', failures);
-check(!/<script\b/iu.test(launcher), 'launcher must not execute JavaScript', failures);
+check(launcher.includes('href="#games"') && launcher.includes('href="/about/"'),
+  'launcher primary navigation is not Games plus About', failures);
+check(!launcher.includes('href="/partition/"') && !launcher.includes('href="/maltline/"'),
+  'launcher still links a retired game route', failures);
+check(partition.includes('href="/assets/') && maltline.includes('href="/maltline/assets/'),
+  'game routes lost their shipped asset prefixes', failures);
+
+// The About page is the published mission statement: one self-contained HTML
+// page, the shared brand layer, its own stylesheet, and the closing credit.
+check(/<h1>An arcade for everyone\.<\/h1>/u.test(about),
+  'about page lacks its opening statement', failures);
+check(about.includes('No ads. No microtransactions. No paid advantages. No gacha or loot boxes.'),
+  'about page lacks its no-monetization promise', failures);
+check(about.includes('A project by <a href="https://mathvsvibes.com">Math vs Vibes</a>.'),
+  'about page lacks its Math vs Vibes credit', failures);
+check(primaryNav(about).includes('<a href="/">Games</a>')
+  && primaryNav(about).includes('<a href="/about/" aria-current="page">About</a>'),
+'about page primary navigation is not Games plus a current About', failures);
+for (const [label, contents] of [['launcher', launcher], ['about', about]]) {
+  const anchors = [...primaryNav(contents).matchAll(/<a\b[^>]*>/gu)].map((match) => match[0]);
+  check(anchors.length === 2 && !anchors.some((anchor) => anchor.includes('github.com')),
+    `${label} primary navigation must be exactly Games and About`, failures);
+  check(contents.includes('github.com/eanderson4/arcadebench'),
+    `${label} must keep the Source link in its footer`, failures);
+}
+check(about.includes('href="/about.css"'), 'about page lacks its site-owned stylesheet', failures);
+check(about.includes('src="/brand/mark.svg"'), 'about page does not show the ArcadeBench mark', failures);
+check(!/<script\b/iu.test(about), 'about page must not execute JavaScript', failures);
+const launcherScripts = launcher.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu) ?? [];
+check(launcherScripts.length === 1
+  && /^<script\s+(?:type="module"\s+src="\/activity\.js"|src="\/activity\.js"\s+type="module")\s*>\s*<\/script\s*>$/u.test(launcherScripts[0]),
+  'launcher must execute only the external /activity.js module, without inline code', failures);
+check(!/\son[a-z]+\s*=|javascript\s*:/iu.test(launcher),
+  'launcher contains an inline event handler or JavaScript URL', failures);
 check(!/(?:\/api\/|\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie)/u.test(launcher),
   'launcher contains a network, API, or persistent-storage surface', failures);
 check(!/(?:\/assets\/|\/maltline\/assets\/)[A-Za-z0-9._-]+/u.test(launcher),
   'launcher imports a game JavaScript or stylesheet asset', failures);
 check(launcher.includes('href="/arcade.css"'), 'launcher lacks its site-owned stylesheet', failures);
+check(SITE_CONTRACT.staticFiles.some(({ output, source }) => (
+  output === 'activity.js' && source === 'deploy/activity.js'
+)), 'site contract does not ship its owned activity module', failures);
+if (actualFiles.includes('activity.js')) {
+  const activitySource = await readFile(resolve(root, 'activity.js'), 'utf8');
+  const activityApiPaths = [...new Set(activitySource.match(/\/api\/[A-Za-z0-9/_-]+/gu) ?? [])];
+  check(JSON.stringify(activityApiPaths) === JSON.stringify(['/api/v2/activity']),
+    'activity module must address only /api/v2/activity', failures);
+  check(!/(?:XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie|\bimport\s*(?:\(|[{'"*]))/u.test(activitySource),
+    'activity module contains an unapproved transport, storage surface, or runtime import', failures);
+  check(!/(?:\/assets\/|\/maltline\/assets\/)[A-Za-z0-9._-]+/u.test(activitySource),
+    'activity module imports a game JavaScript or stylesheet asset', failures);
+}
+
+// The brand layer is only real if the launcher can reach every byte of it: the
+// token stylesheet ahead of the catalog stylesheet, the mark, and the three
+// licensed weights that brand.css addresses relative to itself.
+const brandSheet = launcher.indexOf('href="/brand/brand.css"');
+check(brandSheet !== -1 && brandSheet < launcher.indexOf('href="/arcade.css"'),
+  'launcher must link /brand/brand.css before /arcade.css', failures);
+check(launcher.includes('src="/brand/mark.svg"'), 'launcher does not show the ArcadeBench mark', failures);
+const brandSheetSource = await readFile(resolve(root, 'brand/brand.css'), 'utf8');
+check(!/local\(/u.test(brandSheetSource),
+  'brand.css must not resolve a host-installed face through local()', failures);
+for (const weight of [400, 600, 800]) {
+  const font = `fonts/noto-sans-latin-${weight}-normal.woff2`;
+  check(brandSheetSource.includes(`url('${font}')`),
+    `brand.css does not address its ${weight} weight at ${font}`, failures);
+  check(SITE_CONTRACT.staticFiles.some(({ output }) => output === `brand/${font}`),
+    `site contract does not ship brand/${font}`, failures);
+}
+
+const coverOutputs = SITE_CONTRACT.staticFiles
+  .map(({ output }) => output)
+  .filter((output) => output.startsWith('covers/'));
+check(coverOutputs.length > 0, 'site contract ships no catalog cover art', failures);
+for (const output of coverOutputs) {
+  check(launcher.includes(`src="/${output}"`),
+    `launcher does not show its cover art ${output}`, failures);
+}
 
 const expectedSitemap = renderSitemap();
 const expectedRobots = renderRobots();
@@ -237,7 +316,8 @@ try {
   }
   for (const route of [
     '/missing-route', '/src/viewer/main.ts', '/maltline/human-lab.html',
-    '/maltline/src/viewer/human-lab.html', '/@vite/client', '/_headers', '/_redirects',
+    '/maltline/src/viewer/human-lab.html', '/games/partition/src/viewer/main.ts',
+    '/games/maltline/human-lab.html', '/@vite/client', '/_headers', '/_redirects',
     '/api/v1/health',
   ]) {
     const response = await fetch(`${origin}${route}`);

@@ -1,6 +1,6 @@
 # Maltline
 
-**Cabinet 02 (prototype).** A Tapper-lineage counter game: customers line up
+**A two-button arcade game.** A Tapper-lineage counter game: customers line up
 at the windows, each wanting a specific shake. Blend the right flavor at the
 right station, slide it down the counter, and catch the empty jars before
 they hit the floor.
@@ -13,9 +13,9 @@ they hit the floor.
   positions; a recorded input list replays any stage byte-for-byte.
 - **Verified competition:** deployed sessions request a one-use same-origin
   challenge, retain only an in-memory input proof, and submit no browser-authored
-  score. The server replays the proof before the Shift Board accepts it; every
-  retained board proof can then be inspected and replayed locally from inputs
-  with a stage picker, exact-tick scrubber, and 1×–8× playback.
+  trusted score. The shared platform replays the proof before the Shift Board
+  accepts it. Top 50 proofs are saved privately; other proofs expire after
+  five days. Optional social-media permission starts unchecked each run.
 - **Model control (planned):** the whole state — order bubbles, station
   progress, jar pool, player position — serializes into compact ticks, so a
   controller can plan serving orders under the live clock.
@@ -31,13 +31,24 @@ npm run dev --workspace=@arcadebench/maltline
 
 Open <http://127.0.0.1:5184/src/viewer/>.
 
+The opening page has a **Start Game** button and teaches the controls before the shift.
+Local development is unranked by default. Production uses the shared
+ArcadeBench SDK and the independent `cabinet-1` verified leaderboard.
+
 | Input | Action |
 | --- | --- |
-| `←` `→` | select station (which flavor to blend) |
-| `↑` `↓` | select window (which lane you face) |
-| hold `SPACE` | blend at the selected station |
-| `F` / `ENTER` | slide the held shake down the current window |
-| `R` | restart; ranked terminal results open the Shift Board before discard |
+| `←` `→` | run along the current counter to catch returning jars |
+| `↑` `↓` | change lanes |
+| Button 1 / `SPACE` | hold to fill; release a ready shake to toss it |
+| Button 2 / `ENTER` | cycle flavors; replace a held shake and send its jar to the wash |
+| `SPACE` / `ENTER` on menus | advance |
+| `R` | restart |
+
+Releasing Space before the shake is ready cancels the pour. Replacing a filled
+shake costs no life or points, but its jar must finish washing before reuse.
+`X` remains a compatibility shortcut for button 2.
+The selected flavor stays beside the bartender; there is no duplicate mixer
+selector at the bottom of the screen.
 
 ## Rules
 
@@ -102,10 +113,15 @@ as acceptance evidence rather than a detached mood board.
 
 ## Status
 
-Prototype for gameplay iteration. The current deterministic identity is ruleset
-2, campaign generation 2. The authoritative server route, live proof recorder,
-and accessible Shift Board with retained-proof inspection and animated local
-playback are integrated;
-the local [edge-admission layer](../../docs/maltline/EDGE-ADMISSION.md) is
-integrated, while its deployed WAF/capacity evidence, final tuning, audio, and
-launcher discoverability remain.
+The current two-button viewer uses version-3 input replays wrapped in the
+challenge-bound `cabinet-1` proof protocol. Its authority pins the campaign,
+controls, scoring, and verification limits independently of the original
+version-2/generation-2 proof protocol. Old verification remains available to
+its tests and tools; its unreleased public routes stay closed.
+
+The shared ArcadeBench leaderboard owns rank, publication, and Top 50 activity.
+The Shift Board provides score submission and leaderboard reads; archived proof
+files are private, with no public replay-inspection endpoint. See the
+[SDK contract](../../docs/ARCADE-SDK.md) and
+[release procedure](../../docs/PLATFORM-RELEASE-PLAN.md). This source describes
+the implementation; the release record determines what is deployed.

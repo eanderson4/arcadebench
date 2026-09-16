@@ -48,6 +48,42 @@ changes.
 
 ## Baseline history
 
+The Second Shift progression keeps Stage 3 to two flavors across three lanes,
+introduces Strawberry on Stage 4, and adds a reviewed arcade chase intermission
+before Stage 5. Short desktop sizing now budgets wrapped controls, the ranking
+notice, and the visible Shift Board header, eliminating page scroll at 700×500
+and 1024×600. The comparison study explicitly starts each replacement survey
+at its top, while the live board identifies the current Second Shift season.
+Those two intentional screenshot changes produce a 49-image ordered raw-PNG
+SHA-256 of
+`f0f5e7e2dfb9c7d216d1e143e6a2a62a14fdf0d00b71c6cb6ef5a3a7210e2b2b`.
+
+The customer-gait pass replaces the symmetric sliding pose with a distance-driven
+contact/pass cycle. Incoming and departing customers now alternate a planted
+foot and lifted passing foot, separate their front and rear legs, soften their
+shadow and torso bob, and keep a restrained arm counter-swing. Departing
+customers turn fully toward the door while their music-note overlay remains
+unmirrored. Normal and reduced-motion frames were reviewed at desktop and 700px.
+The 49-image ledger's ordered raw-PNG SHA-256 is
+`40162db2a93d9333be0e92ba46f1e7ee3a41c089d1051f24905b0c508f73e4ba`.
+
+The September 15 room-perspective pass replaces the flat playfield and bottom
+status bar with the approved Maltline shop interior. A rear wall, side walls,
+customer doors, serving counters with floor supports, and the left preparation
+counter now share one perspective system. Clean cups sit on the counter and
+the selected blender carries its own large fill/ready status, keeping inventory
+and preparation inside the scene. The full 49-image ledger pins the reviewed
+room across desktop, 700px, replay, overlay, and human-lab states; its ordered
+raw-PNG SHA-256 is `3d9531f4b81e2147715b5755f111919e73d0d15d14ef87907ed1a3c66563c01c`.
+
+The September 15 cabinet update deliberately refreshes the reviewed gameplay,
+overlay, retained-proof, and human-lab screenshots for the machines beside the
+bartender, the expanded lanes, and the two-button control copy. It also replaces
+the title card with the illustrated Start Game splash. All changed captures were
+reviewed as expected/current/difference triplets at desktop and minimum width;
+the manifest continues to pin every PNG and the concatenated image digest.
+The renderer update does not change the frozen generation-two proof fixtures.
+
 The P0-16 parity update regenerated eight gameplay baselines after production
 and fixtures were moved to the same bundled font definitions. The changed
 pixels are confined to text that previously requested weight 600 while the
@@ -203,3 +239,22 @@ bar silhouette. Desktop geometry keeps the 16:9 playfield inside a 1280×720
 viewport while using the available height. The reviewed 49-image ledger's
 ordered raw-PNG SHA-256 is
 `3081a3b3510661f0a631f7fd8d66d20a03d798e6a8e2c67abbcb644522aee2ef`.
+
+The homepage-navigation pass adds a visible arrow and underline to the shared
+ArcadeBench header link. Forty-three images changed only within the header
+wordmark (at most 335×31 pixels); the six competition overlays and cropped
+controls remain byte-identical. Desktop, minimum-width, portrait, lab, title,
+and keyboard-focus variants were compared before accepting these images.
+The 49-image manifest now pins ordered raw-PNG SHA-256
+`05450bbb5e5d5ba81ed9221a85e2b6dcaec554b68f1e20494da917589ce806e5`.
+
+The desktop-button pass teaches Space for button 1 and Enter for button 2.
+Forty-four captures changed in the splash key labels, instruction steps,
+workstation label, action prompt, and footer text. The shorter footer keycaps
+recenter its contents without changing the playfield or cabinet geometry. All
+44 before/after/diff images were reviewed, including reduced motion, the human
+lab, and embedded replay controls; five images remain byte-identical. A human
+lab countdown was recaptured to exclude unrelated status-dot animation pixels.
+No workstation design preview was adopted. The 49-image ledger now pins
+ordered raw-PNG SHA-256
+`1085a5f410818e7f93606e5c8993e3a176c530b62fd4a86219ef64e8d4cbdd11`.

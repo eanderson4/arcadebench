@@ -53,11 +53,11 @@ export function deriveMaltlineStationActionPresentation(
       quantizedPercent: null,
       tone: state.player.holding === null ? 'selected-flavor' : 'ready',
       canvasText: state.player.holding === null
-        ? 'SPACE · SNAP TO MIXER + POUR'
-        : 'F / ENTER · SNAP HOME + SLIDE',
+        ? 'SPACE · RETURN + FILL'
+        : 'RELEASE SPACE · RETURN + TOSS',
       semanticText: state.player.holding === null
-        ? 'Hold Space to return to the mixer and blend.'
-        : `${FLAVOR_LABELS[flavor]} shake ready. Press F or Enter to return and slide it.`,
+        ? 'Hold button 1 (Space) to return to the mixer and fill.'
+        : `${FLAVOR_LABELS[flavor]} shake ready. Release button 1 (Space) to return and toss it. Press button 2 (Enter) to replace it and switch flavor.`,
     });
   }
 
@@ -71,8 +71,8 @@ export function deriveMaltlineStationActionPresentation(
       actionFlavor: flavor,
       quantizedPercent: null,
       tone: 'ready',
-      canvasText: 'READY · F / ENTER',
-      semanticText: `${FLAVOR_LABELS[flavor]} shake ready. Press F or Enter to slide.`,
+      canvasText: 'READY · RELEASE SPACE',
+      semanticText: `${FLAVOR_LABELS[flavor]} shake ready. Release button 1 (Space) to toss. Press button 2 (Enter) to replace it and switch flavor.`,
     });
   }
 
@@ -115,7 +115,7 @@ export function deriveMaltlineStationActionPresentation(
     actionFlavor: selectedFlavor,
     quantizedPercent: null,
     tone: 'selected-flavor',
-    canvasText: 'SELECTED · HOLD SPACE',
-    semanticText: `Selected ${FLAVOR_LABELS[selectedFlavor]}. Hold Space to blend.`,
+    canvasText: 'HOLD SPACE · FILL',
+    semanticText: `Selected ${FLAVOR_LABELS[selectedFlavor]}. Hold button 1 (Space) to fill, then release to toss. Press button 2 (Enter) to switch flavor.`,
   });
 }

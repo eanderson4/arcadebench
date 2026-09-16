@@ -1,8 +1,12 @@
 # ArcadeBench deployment
 
 ArcadeBench deploys as a Cloudflare Worker with Static Assets. The root `/`
-serves the cross-game launcher; Partition and Maltline keep permanent direct
-routes at `/partition/` and `/maltline/`. Production is live at
+serves the cross-game launcher and the mission statement lives at `/about/`;
+Partition and Maltline keep permanent direct routes at `/games/partition/` and
+`/games/maltline/`. The retired `/partition/`, `/maltline/`, and `/src/viewer`
+paths stay reachable through exact 301 redirects, and a root request carrying a
+Partition query key (a legacy replay share link) forwards to
+`/games/partition/` with its query intact. Production is live at
 <https://arcadebench.org>.
 
 ## Local production preview
@@ -14,10 +18,11 @@ npm run preview:site
 
 `npm run build:site` builds both games and selectively assembles the deployable
 artifact at `dist/site`. The assembly step installs the static launcher at `/`,
-keeps Partition's entry and root-scoped assets under `/partition/` and
-`/assets/`, installs Maltline's entry, hashed assets, and font-license notice
-under `/maltline/`, and adds the policy pages, production headers, and legacy
-viewer redirects. The launcher does not import or mount either game runtime.
+Partition's entry at `/games/partition/` with its root-scoped assets under
+`/assets/`, Maltline's entry at `/games/maltline/` with its hashed assets and
+font-license notice under `/maltline/`, the About page at `/about/`, and the
+policy pages, production headers, and legacy route redirects. The launcher does
+not import or mount either game runtime.
 
 `npm run test:site:wrangler-local` starts the installed Wrangler version on an
 ephemeral local port and probes the combined Worker and Static Assets runtime.
@@ -72,13 +77,21 @@ The checked-in production bindings are:
   verified scores, level/game votes, replay metadata, moderation cache, and
   exact rate windows.
 - R2 `arcadebench-replays`: five-day opt-in shares below `shares/` and five-day
-  leaderboard verification proofs below `proofs/`.
+  leaderboard verification proofs below `proofs/`. New-policy replay candidates
+  and saved Top 50 replays use `archives/`, with database-controlled retention.
 - Workers AI: cached callsign review with a strict structured response.
 - Two edge rate-limit bindings, backed by exact per-session D1 limits.
 - Secret `COOKIE_SIGNING_SECRET`, generated and stored only in Cloudflare.
 
-CI applies D1 migrations before each production deploy. R2 has five-day
-lifecycle rules for both replay prefixes, while an hourly Worker job deletes
+CI applies the reviewed production D1 migration set before each deployment.
+The production directory includes 0001, 0002, 0004, 0005, and 0006; unreleased
+Maltline generation-2 migration 0003 is intentionally excluded. A maintained
+production entry disables those legacy Maltline routes and background jobs
+while serving the shared v2 cabinet adapter. Migration 0006 archives the prior
+`cabinet-1` season and opens `cabinet-2` (Second Shift) when no other Maltline
+authority is active; Partition keeps its existing `0.1.0` launch season. See the
+[shared platform release plan](PLATFORM-RELEASE-PLAN.md). R2 has five-day
+lifecycle rules for `proofs/` and `shares/` only, while an hourly Worker job deletes
 expired objects and metadata proactively. The score summary and proof hash stay
 in D1 after proof deletion. Preview resources must never share bindings with
 production.

@@ -69,7 +69,14 @@ export class MaltlineEngine {
 
   readonly scenario: NormalizedMaltlineScenario;
 
-  constructor(scenario: MaltlineScenario, run?: RunContext) {
+  constructor(
+    scenario: MaltlineScenario,
+    run?: RunContext,
+    private readonly controlMode: 'generation-2' | 'two-button-v1' = 'generation-2',
+  ) {
+    if (controlMode !== 'generation-2' && controlMode !== 'two-button-v1') {
+      throw new Error('Unknown Maltline control mode');
+    }
     this.scenario = normalizeMaltlineScenario(scenario);
     const normalizedRun = normalizeMaltlineRunContext(run, this.scenario);
     this.lives = normalizedRun.lives;
@@ -159,10 +166,26 @@ export class MaltlineEngine {
         this.blendProgress = 0;
       }
     } else if (input.stationDir !== 0 && this.tickNumber % this.scenario.stationRepeatTicks === 0) {
-      this.playerStation = Math.max(
-        0,
-        Math.min(this.scenario.stations.length - 1, this.playerStation + input.stationDir),
-      );
+      // The unranked cabinet revision treats a flavor-selection pulse as a
+      // deliberate replacement. The existing ranked engine keeps its behavior.
+      if (this.controlMode === 'two-button-v1') {
+        if (this.holding !== null) {
+          this.holding = null;
+          this.washing.push(this.scenario.washTicks);
+        }
+        if (this.blending !== null) {
+          this.blending = null;
+          this.blendProgress = 0;
+          this.jarsAvailable++;
+        }
+      }
+      this.playerStation = this.controlMode === 'two-button-v1'
+        ? (this.playerStation + input.stationDir + this.scenario.stations.length)
+          % this.scenario.stations.length
+        : Math.max(
+          0,
+          Math.min(this.scenario.stations.length - 1, this.playerStation + input.stationDir),
+        );
     }
     if (input.laneDir !== 0 && this.tickNumber % this.scenario.laneRepeatTicks === 0) {
       this.playerLane = (this.playerLane + input.laneDir + this.lanesFp) % this.lanesFp;

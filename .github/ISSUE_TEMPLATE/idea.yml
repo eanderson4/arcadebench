@@ -1,5 +1,5 @@
 name: Game or level idea
-description: Propose a field, hazard, controller challenge, or future cabinet.
+description: Propose a field, hazard, controller challenge, or future game.
 title: "[Idea]: "
 labels:
   - idea
@@ -13,7 +13,7 @@ body:
         - Partition hazard or mechanic
         - Model-control challenge
         - Replay or spectator feature
-        - New game cabinet
+        - New game
         - Arcade platform feature
     validations:
       required: true
