@@ -55,12 +55,44 @@ without restructuring the model.
   nameplate inlay on the marquee face.
 - Wall thickness 3 mm, internal ribs, fastener bosses accessible from the
   underside, no upward-facing shell seams.
-- Two build paths from the same parametric model: **4 printable shell
-  parts + 4 small parts with a seamless front** (mid + hood print whole,
-  base splits front/rear — no seam crosses a front-facing surface; needs
-  a 340+ mm bed; a `split_mode: "lr"` 8-part 256 mm-bed fallback keeps
-  the old vertical center seams) or a **flat-pack of 10 wrap panels + 2
-  side plates** — the sheet-aluminum path (~3.3 kg in 2 mm 5052).
+
+## Build variants (the catalog)
+
+One parametric model, three buildable cabinets. Each variant is a distinct
+build with its own BOM line items and fabrication route; all share the same
+shell geometry, control layout, and internal fit.
+
+| | **Full print** (fb split) | **Hybrid wood + print** | **Sheet aluminum** |
+| --- | --- | --- | --- |
+| Builder | [`parts.py`](../hardware/parts.py) | [`hybrid.py`](../hardware/hybrid.py) | [`panels.py`](../hardware/panels.py) |
+| Structure | 8 printed PETG parts, seamless front (mid + hood whole, base front/rear) | 2 plywood sides (12 mm Baltic birch) + 5 ply wrap panels (6 mm) carry the shell | 10 flat wrap panels + 2 side plates with 90° return flanges |
+| Printed | everything | 5 precision panels (nose, deck, face, marquee, lip) + bezel, retainer, hatch + 60 corner cleats | cleats/trim only |
+| Print volume | ~3060 cm³ (~$339 bureau quote) | **~720 cm³ (~$80–130 bureau)** | n/a |
+| Other materials | — | ~0.35 m² ply (~$30), wood screws, M3 short inserts | ~3.3 kg 2 mm 5052 |
+| Needs | 340+ mm print bed (or bureau) | jigsaw/CNC + drill (1:1 DXF templates exported), bureau or home printer | fab shop (laser + brake) |
+| Feel | uniform printed shell | wood sides: stiffer, warmer, classic bartop construction | the premium production path |
+| Status | ✅ ordered (prototype 1) | ✅ modeled, renders below | ✅ modeled |
+
+The hybrid variant keeps the visible identity (cheek-profile wood sides
+stand proud of the front matter exactly like the printed cheeks) and moves
+the flat, hidden structure to plywood — stiffer than printed walls, better
+speaker damping, ~75% less print volume. Joinery is 60 printed L-cleats
+(wood screw into the side, M3 insert under each panel — reversible, no
+glue). Wood cut patterns export as 1:1 DXF (`out/hybrid/wood/*.dxf`) with
+drill-guide pilot holes for every cleat station.
+
+| Hybrid assembled | Hybrid exploded |
+| --- | --- |
+| ![hybrid assembled](images/hardware/hybrid_assembled_iso.png) | ![hybrid exploded](images/hardware/hybrid_exploded_iso.png) |
+
+Known trade-offs (hybrid v1): the wrap panels meet at open corners (a dark
+seam line shows from the front — the metal path welds these; printed
+corner-trim caps are the likely fix and would also restore rounded corners)
+and the wood side outline is modeled with SHARP corners, same as the metal
+flat-pack — flat panels can't follow a rounded silhouette without their
+tips poking past it, so round the physical edges with a router (R3–6)
+after cutting. The display stack bonds with VHB tape instead of the
+monocoque's dish + bosses (mechanical anchor pads are a v1.1 item).
 
 ## Chassis architecture (minimal spine-and-sides)
 
@@ -128,7 +160,8 @@ The enclosure is parametric code, not hand-drawn CAD:
   orthographic front/side/top/iso PNG previews to `hardware/out/` for review
   without opening CAD. (`parts.py` = printable split, `panels.py` =
   flat-pack path, `assembly.py` = full BOM fit-check render,
-  `display_detail.py` = display-stack close-ups + stack cross-section.)
+  `display_detail.py` = display-stack close-ups + stack cross-section,
+  `hybrid.py` = the wood+print build variant with DXF cut templates.)
 - Photoreal studio renders: `studio_export.py` writes world-coordinate
   meshes + a material manifest, then `studio_scene.py` runs headless in
   Blender (`blender -b --python hardware/studio_scene.py -- --manifest

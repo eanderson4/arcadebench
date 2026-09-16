@@ -808,3 +808,33 @@ switch, PSU, inserts, feet) — then an assembled render with the enclosure.
   PETG parts; research-bot verified 6/6 sources) and `part-suppliers.md`
   (BOM consolidated to 4 carts: Mouser + Focus Attack ~70% of items,
   DFRobot compute, Amazon display/sundries; optional Parts Express).
+
+- Hybrid build variant (2026-08-26, hardware-hybrid branch): third build
+  path — plywood sides + flat panels, printed precision/curved parts.
+  New `hardware/hybrid.py`: wood sides from cheek_profile (12 mm Baltic
+  birch, vent gills, cleat pilot drill-marks), 6 mm ply flat wrap panels
+  (bottom/back/taper/neck/top), 3 mm printed panels (nose/deck/face/
+  marquee/lip) via panels.panel_features with screw stations redirected
+  onto printed L-cleats (60x: wood screw into the side + M3 short insert
+  under the panel). Wood cut patterns export as 1:1 DXF (one sketch feeds
+  both the solid and the template — they cannot drift). Print volume
+  722 cm^3 vs 3061 for the fb set (~$80-130 bureau vs $339). Trap hit:
+  panel screw stations are CENTER-relative offsets (0 = segment
+  midpoint), not distances from vertex A — cleats + pilots initially
+  landed on the seam vertices. Known v1 trade-offs: open corner seams
+  between wrap panels (corner-trim strip is the likely fix), display
+  stack bonds with VHB (no dish/bosses on the flat face panel).
+
+- Hybrid corner fixes (2026-08-26, same branch): the collision guard
+  (panel-panel + cleat-panel booleans, now part of hybrid.py main)
+  caught two real latent bugs: (1) vertex-to-vertex wrap panels collide
+  in corner wedges (~11k mm3 at 90 deg corners — the metal flat-pack
+  has the same clash, noted for a later panels.py fix), fixed with lap
+  joints: even-index segments shorten by neighbor_t/sin(turn)+0.5 mm at
+  convex corners, odd segments pass through; (2) corner-adjacent cleats
+  collided with the neighboring panel band, fixed by a station inset
+  rule (12 + 6 + margin = 20 mm) and tiered station counts on short
+  segments (46 cleats instead of 60). Also: wood sides keep SHARP
+  corners (same as the metal path) — flat panels can't follow a rounded
+  silhouette without their tips poking past it; round physical edges
+  with a router or add printed corner caps later.
