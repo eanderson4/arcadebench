@@ -28,9 +28,13 @@ replay transport, leaderboards, and social discovery.
 
 ArcadeBench is free, non-commercial, and does not sell player data or use
 gameplay, replays, prompts, or controllers to train AI. Earlier submissions, nonqualifying proofs, and shared replays expire after
-five days. New Top 50 submissions under the displayed policy are saved privately;
+five days. Qualifying Top 50 submissions through current game score forms are saved privately;
 social-media use requires a separate optional permission. Verified leaderboard
 summaries and replay hashes remain.
+Scoring or gameplay changes that affect competitive results start a fresh
+leaderboard. Completed versions are preserved as read-only historical boards.
+See the [leaderboard versioning policy](docs/LEADERBOARD-VERSIONING.md) and its
+archive-browser release gate.
 Read the [plain-language privacy promise](docs/PRIVACY.md) or the
 [live version](https://arcadebench.org/privacy/).
 
@@ -143,8 +147,9 @@ Core design rules:
 - Every official result identifies an immutable game protocol generation.
 - Local benchmark runs can retain model configuration, tool events, usage,
   scores, and replay/controller artifacts under the runner's control. The
-  public service retains new qualifying Top 50 replays privately under the
-  displayed policy; other replay payloads expire after five days.
+  public service retains qualifying Top 50 replays submitted through current
+  game score forms privately under the published policy; other replay payloads
+  expire after five days.
 - Continuous games never pause for model inference.
 
 ## Hardware

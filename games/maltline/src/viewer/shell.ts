@@ -17,6 +17,7 @@ export interface OverlayPresentation {
 export interface MaltlineShell {
   root: HTMLElement;
   competitionButton: HTMLButtonElement;
+  soundButton: HTMLButtonElement;
   startButton: HTMLButtonElement;
   canvas: HTMLCanvasElement;
   overlay: HTMLElement;
@@ -52,7 +53,10 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
       <header class="topline">
         <span class="brand"><a class="arcade-home" href="/" aria-label="Back to ArcadeBench homepage">← ARCADEBENCH</a> <i>/</i> MALTLINE <em>prototype</em></span>
         <span class="tagline">slide shakes · catch jars · keep the line moving</span>
-        <button class="competition-trigger" type="button" hidden>SHIFT BOARD</button>
+        <span class="topline-actions">
+          <button class="sound-toggle" type="button" aria-pressed="false" aria-label="Mute sound" hidden>SOUND ON</button>
+          <button class="competition-trigger" type="button" hidden>SHIFT BOARD</button>
+        </span>
       </header>
       <section class="splash" aria-labelledby="splash-title">
         <div class="splash-copy">
@@ -104,6 +108,7 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
 
   const root = requiredElement<HTMLElement>(documentRef, '[data-maltline-shell]');
   const competitionButton = requiredElement<HTMLButtonElement>(root, '.competition-trigger');
+  const soundButton = requiredElement<HTMLButtonElement>(root, '.sound-toggle');
   const startButton = requiredElement<HTMLButtonElement>(root, '.start-game');
   const splash = requiredElement<HTMLElement>(root, '.splash');
   const stageWrap = requiredElement<HTMLElement>(root, '.stage-wrap');
@@ -192,6 +197,7 @@ export function mountMaltlineShell(documentRef: Document = document): MaltlineSh
   return {
     root,
     competitionButton,
+    soundButton,
     startButton,
     canvas,
     overlay,

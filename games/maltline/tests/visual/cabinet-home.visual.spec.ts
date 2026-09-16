@@ -140,10 +140,10 @@ test('submitted terminal scores can go home without another warning', async ({ p
     for (let tick = 2; tick <= 1854; tick++) advance(tick * 1000 / 60);
   });
   await expect(page.locator('html')).toHaveAttribute('data-maltline-screen', 'gameover');
-  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toBeVisible();
   await page.getByLabel('Callsign', { exact: true }).fill('SODA');
   await page.getByRole('button', { name: 'Submit score', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('Score saved at #1.');
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('Score saved.');
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   const dialogs: string[] = []; page.on('dialog', async dialog => { dialogs.push(dialog.type()); await dialog.dismiss(); });
   await home(page).click(); await expect(page).toHaveURL('http://127.0.0.1:5184/'); expect(dialogs).toEqual([]);

@@ -190,7 +190,7 @@ async function submitScore(
   const createdAt = new Date().toISOString();
   const completed = score.scope === 'arcade' ? Boolean(score.completed) : Boolean(score.won);
   // This legacy route keeps its own five-day proof retention and writes no
-  // publication or event, so earlier submissions keep their earlier policy.
+  // publication or event, so compatibility submissions keep the five-day policy.
   // The `scores` projection trigger still owns shared entry insertion, which
   // keeps one ranking authority for legacy-era and new writes alike.
   const statements = await env.DB.batch([

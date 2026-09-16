@@ -32,6 +32,7 @@ import {
 } from './gameplay-flow';
 import { drawMaltlineIntermission } from './intermission';
 import { MaltlineRenderer } from './renderer';
+import { MaltlineAudio } from './audio';
 import { MaltlineEventAnnouncer, semanticPlayStatus } from './semantic-status';
 import { mountMaltlineShell, type OverlayPresentation } from './shell';
 import {
@@ -67,6 +68,7 @@ const { canvas } = shell;
 const ctx = canvas.getContext('2d')!;
 const motionPreference = browserMaltlineMotionPreference(window);
 const renderer = new MaltlineRenderer({ reducedMotion: motionPreference.current() });
+const audio = new MaltlineAudio();
 bindMaltlineMotionPreference(renderer, motionPreference, window);
 const eventAnnouncer = new MaltlineEventAnnouncer(shell.liveEvents);
 const runEligibility = new MaltlineRunEligibility();
@@ -245,6 +247,7 @@ function renderVictory(): void {
   resetPresentationAnchor();
   showTerminalOverlay(victoryPresentation(engine.snapshot(), MALTLINE_CAMPAIGN.length));
   publishViewerStatus();
+  competition.openPanel();
 }
 
 function finishStage(bonus: number): void {
@@ -276,6 +279,7 @@ function gameOver(fatalReason: LifeLossReason | null): void {
     fatalReason,
   ));
   publishViewerStatus(state);
+  competition.openPanel();
 }
 
 function interruptionCopy(reason: MaltlineRunEligibilitySnapshot['interruptionReason']): string {
@@ -326,6 +330,8 @@ function renderInterruptedResume(): void {
 }
 
 function applyFlowEffect(effect: MaltlineViewerFlowEffect, transition: MaltlineViewerFlowTransition): void {
+  audio.setGameplayActive(effect.type === 'enter-playing' || effect.type === 'resume-playing');
+  if (effect.type === 'show-countdown') audio.play(effect.step === 'SERVE' ? 'start' : 'countdown');
   intermissionCanvas.style.display = effect.type === 'show-intermission' ? 'block' : 'none';
   switch (effect.type) {
     case 'show-intermission':
@@ -457,12 +463,14 @@ window.addEventListener('pageshow', () => {
 });
 
 shell.startButton.addEventListener('click', () => {
+  audio.unlock();
   if (shell.isSupportedDevice() && flow.snapshot().screen === 'title') {
     flow.dispatch({ type: 'advance' });
   }
 });
 
 shell.root.addEventListener('keydown', (event) => {
+  audio.unlock();
   if (isEditableOrInteractiveTarget(event.target) || !shell.isSupportedDevice()) return;
   if (isRepeatedPresentationAction(event.code, event.repeat)) {
     event.preventDefault();
@@ -496,7 +504,13 @@ shell.root.addEventListener('keydown', (event) => {
   }
   if (currentScreen === 'stage-card' && advance) {
     event.preventDefault();
-    if (flow.snapshot().stageIndex === 0) competition.lockForPlay();
+    if (flow.snapshot().stageIndex === 0) {
+      const status = competition.snapshot();
+      // Do not let fast presentation input silently turn a ranked run into an
+      // unranked one while its one-use challenge is still in flight.
+      if (status.enabled && status.challenge === 'preparing') return;
+      competition.lockForPlay();
+    }
     flow.dispatch({ type: 'advance' });
     return;
   }
@@ -531,8 +545,23 @@ shell.root.addEventListener('keyup', (event) => {
 });
 
 shell.root.addEventListener('pointerdown', (event) => {
+  audio.unlock();
   if (!isEditableOrInteractiveTarget(event.target)) shell.root.focus({ preventScroll: true });
 });
+
+function syncSoundButton(): void {
+  const muted = audio.isMuted();
+  shell.soundButton.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+  shell.soundButton.setAttribute('aria-pressed', String(muted));
+  shell.soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+}
+
+shell.soundButton.hidden = false;
+shell.soundButton.addEventListener('click', () => {
+  audio.toggleMuted();
+  syncSoundButton();
+});
+syncSoundButton();
 
 shell.root.addEventListener('focusout', (event) => {
   const nextTarget = event.relatedTarget;
@@ -543,12 +572,14 @@ shell.root.addEventListener('focusout', (event) => {
 window.addEventListener('blur', () => {
   if (confirmingHomeNavigation) return;
   windowFocused = false;
+  audio.setGameplayActive(false);
   suspendLiveClockWithoutModal('window_blur');
 });
 
 window.addEventListener('focus', () => {
   if (confirmingHomeNavigation) return;
   windowFocused = true;
+  audio.setGameplayActive(flow.snapshot().screen === 'playing' && !document.hidden);
   inputAdapter.reset();
   simulationClock.reset();
   lastFrameTime = null;
@@ -559,8 +590,10 @@ window.addEventListener('focus', () => {
 document.addEventListener('visibilitychange', () => {
   if (confirmingHomeNavigation) return;
   if (document.hidden) {
+    audio.setGameplayActive(false);
     suspendLiveClockWithoutModal('document_hidden');
   } else {
+    audio.setGameplayActive(flow.snapshot().screen === 'playing' && windowFocused);
     inputAdapter.reset();
     simulationClock.reset();
     lastFrameTime = null;
@@ -611,6 +644,7 @@ function frame(now: number): void {
         stageInputs.push({ ...input });
         const result = engine.step();
         renderer.pushEvents(result.events, result.state);
+        audio.update(preStepState, result.state, result.events);
         const fatalReason = terminalLifeLossReason(result.events);
         for (const event of result.events) {
           if (event.type === 'stage_cleared') {

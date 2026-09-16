@@ -1,6 +1,6 @@
 # ArcadeBench privacy promise
 
-Effective September 15, 2026 (v2).
+Effective September 16, 2026 (v2).
 
 ArcadeBench is a free, non-commercial, open-source arcade.
 
@@ -8,9 +8,12 @@ ArcadeBench is a free, non-commercial, open-source arcade.
   gameplay, replays, prompts, or controllers.
 - Earlier ranked submissions and explicit replay shares keep their original
   five-day deletion deadline.
-- The new score form explains that qualifying Top 50 replays are saved
-  privately without scheduled expiration, even after later displacement.
-  Nonqualifying proofs expire after five days.
+- Qualifying Top 50 replays submitted through current ArcadeBench game score
+  forms are saved privately without scheduled expiration, even after later
+  displacement. Nonqualifying proofs and submissions through older
+  compatibility clients or routes expire after five days.
+- Public score summaries remain in current or historical leaderboards. When a
+  scoring version closes, its final standings become a read-only archive.
 - The separate social-media checkbox starts unchecked for every run. It does
   not affect ranking, qualification, retention, or appearance of the public
   score summary in the activity feed. It never authorizes AI training.

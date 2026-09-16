@@ -268,31 +268,12 @@ export function adaptPublication(value: unknown): ScorePublication | null {
   return isScorePublication(value) ? value : null;
 }
 
-/** Retention is quoted from the response's own deadline, never assumed. */
-export function replayRetentionLabel(expiresAt: string | null, now = Date.now()): string {
-  if (!expiresAt) return 'REPLAY NOT ARCHIVED';
-  const days = Math.max(0, Math.round((Date.parse(expiresAt) - now) / 86_400_000));
-  if (days === 0) return 'REPLAY EXPIRES TODAY';
-  return `REPLAY EXPIRES IN ${days} ${days === 1 ? 'DAY' : 'DAYS'}`;
-}
-
-/**
- * Say exactly what the platform reported and nothing it did not: the placement
- * the submission itself carried, an archive only when the response said the
- * replay was saved, and otherwise the retention deadline that came back.
- */
+/** Keep the game result terse; the Privacy Promise owns retention details. */
 export function submissionOutcomeMessage(
-  result: SubmissionResult,
+  _result: SubmissionResult,
   mode: 'public' | 'local',
-  now = Date.now(),
 ): string {
-  if (mode !== 'public') return 'SCORE SAVED ON THIS DEVICE';
-  const publication = result.publication;
-  if (!publication) return 'SCORE VERIFIED · CALLSIGN ACCEPTED';
-  const placement = `SCORE VERIFIED · RANK #${publication.rankAtSubmission}`;
-  return publication.replaySaved
-    ? `${placement} · REPLAY SAVED PRIVATELY`
-    : `${placement} · ${replayRetentionLabel(publication.expiresAt, now)}`;
+  return mode === 'public' ? 'SCORE SAVED' : 'SCORE SAVED ON THIS DEVICE';
 }
 
 function entryTieBreak(first: LeaderboardEntry, second: LeaderboardEntry): number {

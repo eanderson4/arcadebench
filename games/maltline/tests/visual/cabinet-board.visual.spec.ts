@@ -35,17 +35,19 @@ async function terminal(page: Page) {
   await expect(page.getByRole('dialog')).toBeVisible();
 }
 
-test('cabinet score form discloses private Top 50 retention and submits an unchecked native choice', async ({ page }) => {
+test('cabinet score form stays brief and submits an unchecked native choice', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   const submissions = await prepare(page); await terminal(page);
   const dialog = page.getByRole('dialog');
-  await expect(dialog).toContainText('If this run reaches the Top 50 on its leaderboard, its replay is saved even if later overtaken. Other replays expire after five days. Saved replays are private. No AI training.');
+  await expect(dialog).toContainText('Allow ArcadeBench to use this replay or clips from it on social media.');
+  await expect(dialog).toContainText('Optional. Your score is saved either way.');
+  await expect(dialog).not.toContainText('Top 50');
   const checkbox = page.getByRole('checkbox'); await expect(checkbox).not.toBeChecked();
   await expect(dialog.locator('img')).toHaveCount(0);
   await expect(dialog).toContainText('<img src=x onerror=alert(1)>');
   await page.getByLabel('Callsign', { exact: true }).fill('SODA');
   await page.getByRole('button', { name: 'Submit score', exact: true }).click();
-  await expect(dialog).toContainText('Score saved at #3. Your Top 50 replay is saved privately.');
+  await expect(dialog).toContainText('Score saved.');
   expect(submissions[0]).toMatchObject({ gameVersion, publication: { policyVersion: 'top50-social-v1', socialMedia: false } });
   await expect(checkbox).toBeDisabled(); await expect(page.getByRole('button', { name: 'Submit score', exact: true })).toBeDisabled();
   expect(errors).toEqual([]);
@@ -60,7 +62,7 @@ test('social permission is keyboard operable, survives a rejected name, and rese
   await expect(page.getByRole('dialog')).toContainText('Please choose another callsign.');
   await expect(checkbox).toBeChecked(); await expect(checkbox).toBeEnabled();
   await page.getByRole('button', { name: 'Submit score', exact: true }).click();
-  await expect(page.getByRole('dialog')).toContainText('Score saved at #3.');
+  await expect(page.getByRole('dialog')).toContainText('Score saved.');
   expect(submissions.map(body => body.publication)).toEqual([
     { policyVersion: 'top50-social-v1', socialMedia: true }, { policyVersion: 'top50-social-v1', socialMedia: true },
   ]);

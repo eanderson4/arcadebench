@@ -811,7 +811,7 @@ body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
   backdrop-filter: blur(6px);
 }
 /* Centred by an auto margin rather than by the container, so a tall result —
-   a full score form with its disclosure on a short screen — starts at the top
+   a full score form on a short screen — starts at the top
    and scrolls instead of being clipped above the fold. */
 .message-card { display: grid; justify-items: center; width: min(680px, 92vw); margin: auto; }
 .message-kicker { margin-bottom: 17px; color: var(--yellow); font: 500 9px 'DM Mono', monospace; letter-spacing: 0.16em; }
@@ -838,13 +838,10 @@ body[data-mode='live'][data-immersive='true'] .corner { margin: 8px; }
 .score-entry > p[data-tone='error'] { color: #ff83b4; }
 .score-entry > p[data-tone='success'] { color: #77e9c8; }
 .score-entry > .text-button { justify-self: end; margin-top: 6px; color: var(--cyan); font-size: 7px; }
-/* Retention disclosure and the run's one optional permission. Public ranked
-   runs only: an unranked or local run makes no public claim, so it asks for
-   nothing. The checkbox starts unchecked and is never remembered. */
+/* One optional permission for public ranked runs. The checkbox starts
+   unchecked, is never remembered, and never gates score saving. */
 .score-retention { display: grid; gap: 10px; margin-top: 15px; padding-top: 14px; border-top: 1px solid rgba(110, 233, 245, 0.12); }
 .score-retention[hidden] { display: none; }
-.score-retention__terms { margin: 0; color: #8aa2a8; font: 500 8px/1.65 'DM Mono', monospace; letter-spacing: 0.02em; text-transform: none; }
-.score-retention__terms a { color: var(--cyan); text-underline-offset: 2px; }
 .score-consent { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 9px; }
 .score-consent input { width: 17px; height: 17px; margin: 1px 0 0; accent-color: var(--cyan); cursor: pointer; }
 .score-consent input:disabled { opacity: 0.45; cursor: wait; }

@@ -264,21 +264,16 @@
                     <button id="submit-score" class="primary-button" type="submit">ENTER SCORE <b>→</b></button>
                   </div>
                   <!--
-                    Public ranked runs only. The disclosure states the
-                    retention policy this score is entered under, and the one
-                    optional permission beside it starts unchecked for every
-                    run: declining changes neither the score nor the ranking.
+                    Public ranked runs only. The optional social-use permission
+                    starts unchecked for every run and never gates score saving
+                    or ranking.
                   -->
                   <div id="score-retention" class="score-retention" hidden>
-                    <p class="score-retention__terms" id="score-retention-terms">
-                      If this run reaches the Top 50 on its leaderboard, its replay is saved even if later overtaken. Other replays expire after five days. Saved replays are private. No AI training.
-                      <a href="/privacy/">Privacy</a>
-                    </p>
                     <div class="score-consent">
                       <input id="score-social-consent" type="checkbox" />
-                      <label for="score-social-consent">Allow ArcadeBench to share this replay or clips from it on social media.</label>
+                      <label for="score-social-consent">Allow ArcadeBench to use this replay or clips from it on social media.</label>
                     </div>
-                    <p class="score-consent__helper" id="score-consent-helper">Optional. Your choice won’t affect your score or ranking.</p>
+                    <p class="score-consent__helper" id="score-consent-helper">Optional. Your score is saved either way.</p>
                   </div>
                   <p id="score-entry-status" aria-live="polite">PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY</p>
                   <button id="score-board-link" class="text-button" type="button" hidden>VIEW HIGH SCORES →</button>
@@ -308,6 +303,7 @@
           <div class="live-controls">
             <p><kbd>ARROWS</kbd> MOVE <span>·</span> HOLD <kbd>SPACE</kbd> TO TRACE <span>·</span> <b id="control-target">CAPTURE 75%</b></p>
             <div class="actions">
+              <button id="sound-toggle" class="quiet-button sound-toggle" type="button" aria-pressed="false" aria-label="Mute sound">SOUND ON</button>
               <button id="return-home" class="quiet-button" type="button">HOME</button>
               <button id="how-to-play" class="quiet-button" type="button">HOW TO PLAY</button>
               <button id="watch-run" class="quiet-button" type="button" disabled>WATCH RUN</button>

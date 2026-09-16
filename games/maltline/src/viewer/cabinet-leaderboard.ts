@@ -16,9 +16,8 @@ import type { MaltlineCabinetReplay } from '../core/replay';
 import type { MaltlineFlowScreen } from './gameplay-flow';
 import './cabinet-leaderboard.css';
 
-export const CABINET_RETENTION_DISCLOSURE = 'If this run reaches the Top 50 on its leaderboard, its replay is saved even if later overtaken. Other replays expire after five days. Saved replays are private. No AI training.';
-export const CABINET_SOCIAL_LABEL = 'Allow ArcadeBench to share this replay or clips from it on social media.';
-export const CABINET_SOCIAL_HELP = 'Optional. Your choice won’t affect your score or ranking.';
+export const CABINET_SOCIAL_LABEL = 'Allow ArcadeBench to use this replay or clips from it on social media.';
+export const CABINET_SOCIAL_HELP = 'Optional. Your score is saved either way.';
 const VERSION = MALTLINE_CABINET_AUTHORITY.gameVersion;
 type Entry = NormalizedEntry<MaltlineCabinetSummary>;
 type Submission = NormalizedSubmission<MaltlineCabinetSummary>;
@@ -230,7 +229,6 @@ export function mountMaltlineCabinetLeaderboard(options: {
     <p>Eight shifts. Two buttons. Server-verified cabinet runs.</p>
     <p data-run-status role="status"></p>
     <form hidden><label for="cabinet-callsign">Callsign</label><input id="cabinet-callsign" name="callsign" maxlength="16" required autocomplete="off" spellcheck="false">
-      <p class="cabinet-policy">${CABINET_RETENTION_DISCLOSURE} <a href="/privacy/" target="_blank" rel="noopener">Privacy</a></p>
       <label class="cabinet-consent"><input name="socialMedia" type="checkbox"><span>${CABINET_SOCIAL_LABEL}</span></label>
       <p class="cabinet-help">${CABINET_SOCIAL_HELP}</p><button type="submit">Submit score</button>
     </form><p data-submit-status role="status"></p>
@@ -252,7 +250,7 @@ export function mountMaltlineCabinetLeaderboard(options: {
   const safe = () => !['playing', 'countdown'].includes(screen);
   const runDescription = () => session.submitted ? 'Score submitted to Second Shift.'
     : session.rankEligible() ? session.terminal ? `Your run: ${session.terminal.summary.score.toLocaleString()} points · ${session.terminal.summary.completed ? 'All shifts cleared' : `Stage ${session.terminal.summary.stageReached}`}. Submit for verification.` : 'Ranked Second Shift run ready.'
-      : session.challengeStatus === 'preparing' ? 'Preparing ranked run. You can start unranked now.'
+      : session.challengeStatus === 'preparing' ? 'Preparing ranked run. Please wait…'
         : session.reason || (session.challengeStatus === 'ready' ? 'Ranked challenge expired. This run is unranked.'
           : options.enabled ? 'Start a game to prepare a ranked run.' : 'Local preview · unranked. Scores are not submitted.');
   const render = () => {
@@ -306,11 +304,9 @@ export function mountMaltlineCabinetLeaderboard(options: {
     const generation = attemptGeneration;
     const request = session.submit(name.value, social.checked);
     submitStatus.textContent = 'Verifying and submitting…'; render();
-    void request.then(receipt => {
+    void request.then(() => {
       if (generation !== attemptGeneration) return;
-      submitStatus.textContent = `Score saved at #${receipt.publication.rankAtSubmission}. ${receipt.publication.replaySaved
-        ? 'Your Top 50 replay is saved privately.'
-        : `Your private replay expires ${new Date(receipt.publication.expiresAt!).toLocaleDateString()}.`}`;
+      submitStatus.textContent = 'Score saved.';
       void refresh();
     }).catch(error => {
       if (generation === attemptGeneration) submitStatus.textContent = errorMessage(error);
@@ -326,8 +322,10 @@ export function mountMaltlineCabinetLeaderboard(options: {
       render(); void preparing.then(render);
     },
     lockForPlay() { session.lockForPlay(); render(); },
-    startHint() { return session.rankEligible() ? 'Press Enter to start ranked · R to restart'
-      : 'Press Enter to start unranked · R to retry ranked preparation'; },
+    startHint() { return session.challengeStatus === 'preparing'
+      ? 'Preparing ranked run…'
+      : session.rankEligible() ? 'Press Enter to start ranked · R to restart'
+        : 'Press Enter to start unranked · R to retry ranked preparation'; },
     complete(replays: readonly MaltlineCabinetReplay[]) { session.complete(replays); render(); },
     invalidate(reason: string) { session.invalidate(reason); render(); },
     setScreen(next: MaltlineFlowScreen) {

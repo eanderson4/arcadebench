@@ -308,9 +308,8 @@ describe('Partition platform submission', () => {
     );
   });
 
-  it('reports only what the submission response actually decided', () => {
+  it('keeps the submission result brief while the privacy page owns retention details', () => {
     const entry = adaptLeaderboardEntry(normalizedEntry(arcadeResult()))!;
-    const now = Date.parse('2026-09-15T00:00:00.000Z');
     const outcome = (
       replaySaved: boolean,
       expiresAt: string | null,
@@ -318,19 +317,14 @@ describe('Partition platform submission', () => {
     ) => submissionOutcomeMessage(
       { entry, publication: { rankAtSubmission, replaySaved, expiresAt } },
       'public',
-      now,
     );
-    expect(outcome(true, null)).toBe('SCORE VERIFIED · RANK #7 · REPLAY SAVED PRIVATELY');
-    expect(outcome(false, '2026-09-20T00:00:00.000Z')).toBe('SCORE VERIFIED · RANK #7 · REPLAY EXPIRES IN 5 DAYS');
-    expect(outcome(false, '2026-09-16T00:00:00.000Z')).toBe('SCORE VERIFIED · RANK #7 · REPLAY EXPIRES IN 1 DAY');
-    expect(outcome(false, '2026-09-15T00:00:00.000Z')).toBe('SCORE VERIFIED · RANK #7 · REPLAY EXPIRES TODAY');
-    expect(outcome(false, null)).toBe('SCORE VERIFIED · RANK #7 · REPLAY NOT ARCHIVED');
-    expect(outcome(true, null, 1)).toBe('SCORE VERIFIED · RANK #1 · REPLAY SAVED PRIVATELY');
-    // No envelope, no claim — not even a rank.
-    expect(submissionOutcomeMessage({ entry, publication: null }, 'public', now))
-      .toBe('SCORE VERIFIED · CALLSIGN ACCEPTED');
+    expect(outcome(true, null)).toBe('SCORE SAVED');
+    expect(outcome(false, '2026-09-20T00:00:00.000Z')).toBe('SCORE SAVED');
+    expect(outcome(false, null)).toBe('SCORE SAVED');
+    expect(outcome(true, null, 1)).toBe('SCORE SAVED');
+    expect(submissionOutcomeMessage({ entry, publication: null }, 'public')).toBe('SCORE SAVED');
     // The local store never speaks for the platform.
-    expect(submissionOutcomeMessage({ entry, publication: null }, 'local', now))
+    expect(submissionOutcomeMessage({ entry, publication: null }, 'local'))
       .toBe('SCORE SAVED ON THIS DEVICE');
   });
 

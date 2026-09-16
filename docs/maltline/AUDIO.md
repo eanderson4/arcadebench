@@ -1,8 +1,10 @@
-# Maltline audio production foundation
+# Maltline audio
 
-Status: production design and acquisition scaffold only. No audio has been
-generated, selected, licensed, committed, or connected to the game runtime.
-This document was checked against provider documentation on 2026-09-11.
+Status: runtime v1 ships procedural Web Audio cues and a session-scoped mute
+control. No recorded or generated audio asset has been selected, licensed, or
+committed. The acquisition material below remains the plan for any future
+recorded sound pass and was checked against provider documentation on
+2026-09-11.
 
 ## Decision
 
@@ -22,11 +24,13 @@ run must produce byte-identical proofs and summaries.
 Maltline currently has:
 
 - no product `.wav`, `.mp3`, `.ogg`, `.opus`, `.m4a`, or `.flac` assets;
-- no Web Audio, `HTMLAudioElement`, audio library, sound settings, or audio
-  preload/decode path;
-- no mute, master-volume, or reduced-sensory preference;
+- a dependency-free Web Audio synth connected only to viewer events and state;
+- distinct movement, selector, blend-ready, serve, catch, failure, stage, and
+  terminal cues, plus a blender loop while the machine is active;
+- a keyboard-accessible mute control that resets when the page reloads and
+  stores no player data;
 - no audio license/provenance manifest;
-- no audio-specific test harness; and
+- pure event-to-cue mapping tests and browser coverage for the mute control; and
 - no package dependency needed for a first Web Audio implementation.
 
 The engine already emits the authoritative presentation events needed for most

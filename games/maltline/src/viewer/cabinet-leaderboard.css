@@ -11,10 +11,9 @@
 .cabinet-board form { padding: 16px; border: 1px solid #729180; border-radius: 9px; }
 .cabinet-board form[hidden] { display: none; }
 .cabinet-board input[name= callsign] { display: block; width: min(100%, 260px); margin-top: 6px; padding: 9px; border: 1px solid #8daf9b; border-radius: 5px; background: #082b22; color: #fff0d4; }
-.cabinet-consent { display: flex; align-items: flex-start; gap: 10px; }
+.cabinet-consent { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; }
 .cabinet-consent input { flex: none; width: 18px; height: 18px; margin-top: 3px; accent-color: #f5a5ba; }
-.cabinet-help, .cabinet-policy { color: #c2dccf; font-size: 12px; }
-.cabinet-board a { color: #f5a5ba; }
+.cabinet-help { color: #c2dccf; font-size: 12px; }
 .cabinet-board-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
 .cabinet-board ol { padding-left: 26px; }
 .cabinet-board li { padding: 9px 0; border-bottom: 1px solid #527c66; }
