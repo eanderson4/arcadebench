@@ -38,6 +38,18 @@ test('Space tap arms visibly, release does not cancel it, and recorded replay ma
 
 test('four-second auto-launch preserves held Space and direction and arms the next stage once', async ({ page }) => {
   await openGame(page);
+  // Observe the first countdown render in the same virtual-clock task that
+  // schedules auto-launch. Input chunks can otherwise finish a few ticks after
+  // the win, so their end is not the start of the four-second deadline.
+  await page.evaluate(() => {
+    const countdown = document.querySelector<HTMLElement>('#message-countdown')!;
+    const observer = new MutationObserver(() => {
+      if (countdown.textContent !== 'AUTO-LAUNCHING STAGE 02 IN 4') return;
+      countdown.dataset.testStartedAt = String(Date.now());
+      observer.disconnect();
+    });
+    observer.observe(countdown, { childList: true });
+  });
   // Two deterministic cuts stabilize 75% of seed 11's real opening campaign field.
   await page.keyboard.down('Space'); await page.keyboard.down('ArrowUp');
   await ticks(page, 60);
@@ -48,10 +60,20 @@ test('four-second auto-launch preserves held Space and direction and arms the ne
   await expect(page.locator('#stage-field-label')).toContainText('01');
   // Hold a safe direction and Space throughout the completion screen.
   await page.keyboard.up('ArrowDown'); await page.keyboard.down('ArrowLeft');
-  await page.clock.runFor(3800);
+  const startedAt = await page.locator('#message-countdown').getAttribute('data-test-started-at');
+  expect(startedAt).not.toBeNull();
+  const deadline = Number(startedAt) + 4000;
+  const remaining = deadline - await page.evaluate(() => Date.now());
+  expect(remaining).toBeGreaterThan(0);
+  // The engine is won: coalesce idle interval/animation callbacks instead of
+  // painting ~240 expensive canvas frames and exhausting CI's wall-clock budget.
+  // Active gameplay above and below still executes every recorded engine tick.
+  await page.clock.fastForward(remaining - 1);
+  expect(await page.evaluate(() => Date.now())).toBe(deadline - 1);
   await expect(page.locator('#stage-field-label')).toContainText('01');
   await expect(page.locator('#message-countdown')).toContainText('IN 1');
-  await page.clock.runFor(200);
+  await page.clock.runFor(1);
+  expect(await page.evaluate(() => Date.now())).toBe(deadline);
   await expect(page.locator('#stage-field-label')).toContainText('02');
   await ticks(page, 6);
   await expect(page.locator('[data-trace]')).toHaveText('ARMED');
