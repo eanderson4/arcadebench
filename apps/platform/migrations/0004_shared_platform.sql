@@ -136,7 +136,9 @@ CREATE TRIGGER entry_publication_requires_pending_object
 BEFORE INSERT ON entry_publication
 WHEN NEW.replay_object_id IS NOT NULL
 BEGIN
-  SELECT CASE
+  -- Parentheses keep D1's remote statement splitter from treating this CASE's
+  -- END as the end of the trigger body.
+  SELECT (CASE
     WHEN (SELECT state FROM replay_objects WHERE id = NEW.replay_object_id) IS NOT 'pending'
       THEN RAISE(ABORT, 'replay object is not finalizable')
     WHEN (SELECT expires_at FROM replay_objects WHERE id = NEW.replay_object_id) IS NOT NULL
@@ -151,7 +153,7 @@ BEGIN
         AND b.game_id = e.game_id AND b.game_version = e.game_version
         AND b.season_id = e.season_id AND b.board_id = e.board_id
     ) THEN RAISE(ABORT, 'ranked board closed before finalization')
-  END;
+  END);
 END;
 
 -- ---------------------------------------------------------------------------
