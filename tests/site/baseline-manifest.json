@@ -11,15 +11,15 @@
   "screenshots": [
     {
       "name": "launcher-1280.png",
-      "sha256": "fdac22e7b9b7aa8f75a7db49481cf6bca6aaf55efc007f8f8e9361b548f8a5f9"
+      "sha256": "e5e7361a8714f381da1c872cc8bf3e98228b4265b3e1d1253831edcb6414f8a6"
     },
     {
       "name": "launcher-700.png",
-      "sha256": "234510e97afc5bbbf49fe9fdedb09493e0ae47a98348f3e43e89a88d16ec038b"
+      "sha256": "462a5a2269c129025da7e201a70be847422e14b8f52d5f8e55ff51afc529cf15"
     },
     {
       "name": "launcher-390.png",
-      "sha256": "c56e60cf269970ac9ecb359a3fe9201dfd99a1213a7848d30ebb81ea7437162c"
+      "sha256": "fe09dd6c5c359c20dd12e87dc60aa366b8589e8f958fbecf87dd92ff67fa6a17"
     },
     {
       "name": "launcher-320.png",
@@ -27,7 +27,7 @@
     },
     {
       "name": "launcher-focus-700.png",
-      "sha256": "085a6035847b6525bad8c31055f13d7152e6f1e74f83cc8645eff1933e1d3721"
+      "sha256": "920dec8c522858634607931a5ad8b06cb417efabec30cddebed2eb906d96984c"
     },
     {
       "name": "not-found-1280.png",
