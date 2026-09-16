@@ -12,7 +12,10 @@ export default defineConfig({
     toHaveScreenshot: {
       animations: 'disabled',
       caret: 'hide',
-      maxDiffPixels: 0,
+      // Chrome for Testing can rasterize a few SVG edge pixels differently
+      // between the local and GitHub Linux images. Keep the allowance smaller
+      // than a single icon while the geometry assertions guard layout exactly.
+      maxDiffPixels: 50,
       scale: 'css',
     },
   },
