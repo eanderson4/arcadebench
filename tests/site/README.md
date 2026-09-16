@@ -1,7 +1,7 @@
 # ArcadeBench site visual fixtures
 
 This suite exercises the assembled, production-shaped `dist/site` artifact.
-It is intentionally independent of either game's development fixture entry.
+It is intentionally independent of any game's development fixture entry.
 
 The seven exact images cover the launcher at 1280×720, 700×600, 390×720, and
 320×568; its 700px keyboard-focus state; and the custom 404 at 1280×720 and
@@ -47,3 +47,12 @@ which the repository controls. `playwright.site.config.ts` pins
 factor of 1 to narrow that variance, but the remaining differences are real.
 Regenerate the baselines on the recorded platform rather than expecting a
 different one to match. Do not mask text to make a mismatch pass.
+
+## Carousel coverage
+
+The launcher tests stub `crypto.getRandomValues` to preserve authored order in
+pixel baselines. `carousel.spec.ts` independently covers all six shuffle
+permutations, rejection of the biased uint32 tail, one shuffle per load,
+keyboard/Tab order, touch scrolling, reduced motion, and no-JavaScript links.
+The track may overflow horizontally inside its own viewport; the document and
+play targets must remain contained and each game must be reachable.

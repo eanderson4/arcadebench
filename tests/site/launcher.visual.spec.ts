@@ -22,6 +22,10 @@ const launcherViewports = [
 ] as const;
 
 test.beforeEach(async ({ page }, testInfo) => {
+  await page.addInitScript(() => {
+    let i = 0;
+    Object.defineProperty(crypto, 'getRandomValues', { value: (array: Uint32Array) => { array[0] = [2, 1][i++ % 2]!; return array; } });
+  });
   const failures: BrowserFailures = {
     console: [],
     page: [],
@@ -110,7 +114,7 @@ test('site visual inventory matches the pinned environment', async ({ browser },
   }
 });
 
-test('launcher has truthful metadata, semantic links, and only its activity module', async ({ page }) => {
+test('launcher has truthful metadata, semantic links, and only its site modules', async ({ page }) => {
   await openLauncher(page);
   await expect(page).toHaveTitle('ArcadeBench — Choose your game');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://arcadebench.org/');
@@ -149,11 +153,12 @@ test('launcher has truthful metadata, semantic links, and only its activity modu
   )));
   expect(imagePaths.filter((path) => path === '/brand/mark.svg')).toHaveLength(1);
   expect(imagePaths.every((path) => [
-    '/brand/mark.svg', '/covers/partition.png', '/covers/maltline.png',
+    '/brand/mark.svg', '/covers/partition.png', '/covers/maltline.png', '/covers/smilefall.png',
   ].includes(path))).toBe(true);
-  await expect(covers).toHaveCount(2);
+  await expect(covers).toHaveCount(3);
   await expect(covers.nth(0)).toHaveAttribute('src', '/covers/partition.png');
   await expect(covers.nth(1)).toHaveAttribute('src', '/covers/maltline.png');
+  await expect(covers.nth(2)).toHaveAttribute('src', '/covers/smilefall.png');
   expect(await covers.evaluateAll((images) => images.map((image) => ({
     src: new URL((image as HTMLImageElement).src).pathname,
     naturalWidth: (image as HTMLImageElement).naturalWidth,
@@ -161,17 +166,21 @@ test('launcher has truthful metadata, semantic links, and only its activity modu
   })))).toEqual([
     { src: '/covers/partition.png', naturalWidth: 960, naturalHeight: 540 },
     { src: '/covers/maltline.png', naturalWidth: 960, naturalHeight: 540 },
+    { src: '/covers/smilefall.png', naturalWidth: 960, naturalHeight: 540 },
   ]);
   await expect(covers.nth(0)).toHaveAttribute('alt', /^Partition gameplay: /u);
   await expect(covers.nth(1)).toHaveAttribute('alt', /^Maltline gameplay: /u);
 
-  // Rankings are closed for Maltline in production: no verified-board claim.
+  await expect(page.getByRole('link', { name: 'Play Smilefall' })).toHaveAttribute('href', '/games/smilefall/');
+  await expect(page.getByRole('link', { name: 'Play Smilefall' })).toHaveAccessibleDescription(/Guide one sky of falling smiles past hazards and into buckets\.\s*Shared steering · timed hops\s*Handcrafted stages/u);
+  await expect(covers.nth(2)).toHaveAttribute('alt', /^Smilefall gameplay: /u);
+
+  // The catalog makes no claim about verification.
   await expect(page.getByText(/verified/i)).toHaveCount(0);
   await expect(page.getByRole('navigation', { name: 'Site information' })).toBeVisible();
-  await expect(page.locator('script')).toHaveCount(1);
-  await expect(page.locator('script')).toHaveAttribute('type', 'module');
-  await expect(page.locator('script')).toHaveAttribute('src', '/activity.js');
-  await expect(page.locator('script')).toHaveText('');
+  expect(await page.locator('script').evaluateAll(scripts => scripts.map(script => ({ src: script.getAttribute('src'), type: script.type, text: script.textContent })))).toEqual([
+    { src: '/carousel.js', type: 'module', text: '' }, { src: '/activity.js', type: 'module', text: '' },
+  ]);
   await expect(page.getByRole('heading', { level: 2, name: 'Recent high scores' })).toBeVisible();
   await expect(page.getByText('New high scores will appear here.')).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
@@ -189,8 +198,10 @@ test('launcher has truthful metadata, semantic links, and only its activity modu
     '/brand/fonts/noto-sans-latin-600-normal.woff2',
     '/brand/fonts/noto-sans-latin-800-normal.woff2',
     '/brand/mark.svg',
+    '/carousel.js',
     '/covers/maltline.png',
     '/covers/partition.png',
+    '/covers/smilefall.png',
   ]);
 });
 
@@ -269,10 +280,10 @@ for (const viewport of launcherViewports) {
       footerTop: document.querySelector<HTMLElement>('.site-footer')!.getBoundingClientRect().top,
     }));
     expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.innerWidth);
-    expect(measurements.cards).toHaveLength(2);
+    expect(measurements.cards).toHaveLength(3);
     for (const card of measurements.cards) {
       expect(card.left).toBeGreaterThanOrEqual(0);
-      expect(card.right).toBeLessThanOrEqual(measurements.innerWidth);
+      expect(card.right - card.left).toBeLessThanOrEqual(measurements.innerWidth);
       expect(card.actionLeft).toBeGreaterThanOrEqual(card.left);
       expect(card.actionRight).toBeLessThanOrEqual(card.right);
       expect(card.actionTop).toBeGreaterThanOrEqual(card.top);
@@ -291,19 +302,20 @@ for (const viewport of launcherViewports) {
       expect(measurements.cards[0]!.right).toBeLessThan(measurements.cards[1]!.left);
       // Both games are comparable without scrolling past the introduction: the
       // artwork and the play action both sit above the fold in two-column mode.
-      for (const card of measurements.cards) {
+      for (const card of measurements.cards.slice(0, 2)) {
         expect(card.artTop).toBeGreaterThanOrEqual(0);
         expect(card.artBottom).toBeLessThanOrEqual(measurements.innerHeight);
         expect(card.actionBottom).toBeLessThanOrEqual(measurements.innerHeight);
       }
     } else {
-      expect(measurements.cards[1]!.top).toBeGreaterThan(measurements.cards[0]!.bottom);
+      expect(measurements.cards[1]!.top).toBe(measurements.cards[0]!.top);
+      expect(measurements.cards[1]!.left).toBeGreaterThan(measurements.cards[0]!.right);
     }
     await expect(page).toHaveScreenshot(viewport.name);
   });
 }
 
-test('launcher switches to one contained column exactly below 700px', async ({ page }) => {
+test('launcher shows one card and a next-card hint below 700px', async ({ page }) => {
   await page.setViewportSize({ width: 699, height: 600 });
   await openLauncher(page);
   const measurements = await page.evaluate(() => ({
@@ -322,13 +334,15 @@ test('launcher switches to one contained column exactly below 700px', async ({ p
     }),
   }));
   expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.innerWidth);
-  expect(measurements.cards).toHaveLength(2);
+  expect(measurements.cards).toHaveLength(3);
   for (const card of measurements.cards) {
     expect(card.left).toBeGreaterThanOrEqual(0);
-    expect(card.right).toBeLessThanOrEqual(measurements.innerWidth);
+    expect(card.right - card.left).toBeLessThan(measurements.innerWidth);
     expect(card.actionHeight).toBeGreaterThanOrEqual(44);
   }
-  expect(measurements.cards[1]!.top).toBeGreaterThan(measurements.cards[0]!.bottom);
+  expect(measurements.cards[1]!.top).toBe(measurements.cards[0]!.top);
+  expect(measurements.cards[1]!.left).toBeLessThan(measurements.innerWidth);
+  expect(measurements.cards[1]!.right).toBeGreaterThan(measurements.innerWidth);
 });
 
 test('keyboard order and focus treatment are explicit at 700px', async ({ page }) => {
@@ -346,6 +360,8 @@ test('keyboard order and focus treatment are explicit at 700px', async ({ page }
   await page.keyboard.press('Tab');
   await expect(primaryNav.getByRole('link', { name: 'About' })).toBeFocused();
   await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Next game' })).toBeFocused();
+  await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Play Partition' })).toBeFocused();
   await page.keyboard.press('Tab');
   const maltline = page.getByRole('link', { name: 'Play Maltline' });
@@ -356,6 +372,8 @@ test('keyboard order and focus treatment are explicit at 700px', async ({ page }
   });
   expect(focusStyle).toEqual({ outlineStyle: 'solid', outlineWidth: '3px' });
   await expect(page).toHaveScreenshot('launcher-focus-700.png');
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'Play Smilefall' })).toBeFocused();
   const activityLinks = page.getByRole('region', { name: 'Recent high scores' }).getByRole('link');
   expect(await activityLinks.count()).toBeGreaterThan(0);
   for (const link of await activityLinks.all()) {
@@ -399,6 +417,7 @@ test('permanent game routes remain reachable with their own canonical identity',
   for (const expected of [
     { route: '/games/partition/', title: 'Partition — ArcadeBench', canonical: 'https://arcadebench.org/games/partition/' },
     { route: '/games/maltline/', title: 'Maltline — ArcadeBench', canonical: 'https://arcadebench.org/games/maltline/' },
+    { route: '/games/smilefall/', title: 'Smilefall — ArcadeBench', canonical: 'https://arcadebench.org/games/smilefall/' },
   ]) {
     const response = await request.get(expected.route);
     expect(response.status(), expected.route).toBe(200);
@@ -406,9 +425,12 @@ test('permanent game routes remain reachable with their own canonical identity',
     expect(html).toContain(`<title>${expected.title}</title>`);
     expect(html).toContain(`rel="canonical" href="${expected.canonical}"`);
   }
+  for (const path of ['/games/smilefall/kit/', '/smilefall/src/viewer/kit/']) {
+    expect((await request.get(path)).status(), path).toBe(404);
+  }
 });
 
-test('unknown routes expose a noindex recovery page with both games', async ({ page }) => {
+test('unknown routes expose a noindex recovery page with every game', async ({ page }) => {
   await openNotFound(page);
   await expect(page).toHaveTitle('Page not found — ArcadeBench');
   await expect(page.locator('meta[name="description"]'))
@@ -420,6 +442,7 @@ test('unknown routes expose a noindex recovery page with both games', async ({ p
   await expect(page.getByRole('link', { name: 'RETURN TO ARCADE' })).toHaveAttribute('href', '/');
   await expect(page.getByRole('link', { name: 'PARTITION' })).toHaveAttribute('href', '/games/partition/');
   await expect(page.getByRole('link', { name: 'MALTLINE' })).toHaveAttribute('href', '/games/maltline/');
+  await expect(page.getByRole('link', { name: 'SMILEFALL' })).toHaveAttribute('href', '/games/smilefall/');
   await expect(page.getByRole('link', { name: 'ABOUT' })).toHaveAttribute('href', '/about/');
 });
 
@@ -700,7 +723,7 @@ for (const viewport of [
     expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.innerWidth);
     expect(measurements.panel.left).toBeGreaterThanOrEqual(0);
     expect(measurements.panel.right).toBeLessThanOrEqual(measurements.innerWidth);
-    expect(measurements.actions).toHaveLength(3);
+    expect(measurements.actions).toHaveLength(4);
     for (const action of measurements.actions) {
       expect(action.left).toBeGreaterThanOrEqual(measurements.panel.left);
       expect(action.right).toBeLessThanOrEqual(measurements.panel.right);
@@ -731,4 +754,6 @@ test('custom 404 keyboard order and recovery focus are explicit', async ({ page 
   await expect(page.getByRole('link', { name: 'PARTITION' })).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'MALTLINE' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('link', { name: 'SMILEFALL' })).toBeFocused();
 });

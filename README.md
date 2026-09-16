@@ -14,6 +14,7 @@ loot boxes.
 
 [Play Partition](https://arcadebench.org/games/partition/) ·
 [Play Maltline](https://arcadebench.org/games/maltline/) ·
+[Play Smilefall](https://arcadebench.org/games/smilefall/) ·
 [About](https://arcadebench.org/about/)
 
 ArcadeBench is inspired by the early arcade era: games you can start in
@@ -37,6 +38,18 @@ See the [leaderboard versioning policy](docs/LEADERBOARD-VERSIONING.md) and its
 archive-browser release gate.
 Read the [plain-language privacy promise](docs/PRIVACY.md) or the
 [live version](https://arcadebench.org/privacy/).
+
+## Smilefall
+
+Guide one sky of falling smiles past hazards and into buckets with shared
+steering and timed hops. The public entry is `/games/smilefall/`; run
+`npm run dev:smilefall` for the local viewer on port 5186. Production builds
+ship only its game entry and scoped `/smilefall/` assets, excluding the
+internal Sticker Kit.
+
+The launcher presents all three games in a scrollable carousel. Its initial
+order is shuffled once per page load; keyboard, touch, and no-JavaScript
+navigation retain real links to every game.
 
 ## Partition
 
@@ -77,8 +90,8 @@ Play the prototype at
 ## Play
 
 Open **[arcadebench.org](https://arcadebench.org/)** to choose a game. The
-launcher does not start or resume gameplay; Partition and Maltline keep their
-permanent direct routes at `/games/partition/` and `/games/maltline/`. What the
+launcher does not start or resume gameplay. Each game has a permanent route:
+`/games/partition/`, `/games/maltline/`, and `/games/smilefall/`. What the
 arcade is for is on the [About page](https://arcadebench.org/about/).
 
 For local development, use Node.js 22 or newer:
@@ -88,6 +101,8 @@ npm install
 npm run dev:partition
 # In a second terminal, or instead of Partition:
 npm run dev --workspace=@arcadebench/maltline
+# Or run Smilefall on port 5186:
+npm run dev:smilefall
 ```
 
 For Partition, open <http://127.0.0.1:5183/src/viewer/?seed=11> and choose
@@ -130,6 +145,7 @@ packages/arcade-sdk/   game-facing leaderboards, replays, and social client
 packages/harness/      provider-neutral model and tool orchestration
 games/partition/       Partition simulation, controller SDK, and viewer
 games/maltline/        Maltline deterministic engine, proof core, and viewer
+games/smilefall/       Smilefall engine, levels, verifier, and viewer
 apps/cli/              family-wide command line interface
 apps/board/            cross-game run browser and leaderboard
 deploy/                static launcher, policy pages, and Worker entry

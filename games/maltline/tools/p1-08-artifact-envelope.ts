@@ -23,6 +23,7 @@ import {
   collectStaticSourceGraph,
   type StaticSourceGraphPolicy,
 } from './static-source-graph';
+import { artifactToolchainLockIdentity } from './artifact-toolchain-lock';
 
 export const P108_ARTIFACT_ENVELOPE_KIND = 'maltline-p108-offline-artifact' as const;
 export const P108_ARTIFACT_ENVELOPE_SCHEMA_VERSION = 1 as const;
@@ -367,6 +368,7 @@ async function producerIdentity(repositoryRoot: string): Promise<ProducerIdentit
   ]);
   const packageManifest = parsedJson(packageBytes, 'Maltline package manifest');
   const lockfile = parsedJson(lockBytes, 'root package lock');
+  const toolchainLock = artifactToolchainLockIdentity(lockfile);
   const lockPackages = exactObject(lockfile.packages, Object.keys(lockfile.packages as object),
     'root package lock packages');
   const typescriptPackage = exactObject(lockPackages['node_modules/typescript'],
@@ -398,7 +400,7 @@ async function producerIdentity(repositoryRoot: string): Promise<ProducerIdentit
       packageManifestSha256: sha256Bytes(normalizedText(packageBytes)),
       tsconfigSha256: sha256Bytes(normalizedText(tsconfigBytes)),
       rootTsconfigSha256: sha256Bytes(normalizedText(rootTsconfigBytes)),
-      lockfileSha256: sha256Bytes(normalizedText(lockBytes)),
+      toolchainLockSha256: canonicalSha256(toolchainLock),
     },
   } as const;
   return Object.freeze({

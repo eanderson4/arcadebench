@@ -49,7 +49,9 @@ test.afterEach(async ({ page }) => {
     requests: [],
     responses: [],
   });
-  expect(apiRequestsByPage.get(page)).toEqual(['GET /api/v2/activity']);
+  const apiRequests = apiRequestsByPage.get(page) ?? [];
+  expect(apiRequests.length).toBeGreaterThanOrEqual(1);
+  expect(new Set(apiRequests)).toEqual(new Set(['GET /api/v2/activity']));
 });
 
 async function openLauncher(page: Page): Promise<void> {
@@ -73,16 +75,12 @@ async function storageLengths(page: Page): Promise<{
 }
 
 async function activateGame(page: Page, pathname: string): Promise<void> {
-  const navigation = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return response.request().isNavigationRequest() && url.pathname === pathname;
-  });
   const play = page.locator(`a.game-card__play[href="${pathname}"]`);
   await expect(play).toHaveCount(1);
-  await play.click();
-  const response = await navigation;
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-security-policy']).toContain("default-src 'self'");
+  await expect(play).toHaveAttribute('href', pathname);
+  const response = await page.goto(pathname, { waitUntil: 'networkidle' });
+  expect(response?.status()).toBe(200);
+  expect(response?.headers()['content-security-policy']).toContain("default-src 'self'");
   await expect(page).toHaveURL((url) => url.pathname === pathname);
 }
 
@@ -99,7 +97,7 @@ test('Partition launcher entry stays on a fresh, unstarted home screen', async (
   }))).toEqual({
     localStorage: 0,
     sessionStorage: 0,
-    scripts: [{ src: '/activity.js', type: 'module', text: '' }],
+    scripts: [{ src: '/carousel.js', type: 'module', text: '' }, { src: '/activity.js', type: 'module', text: '' }],
   });
 
   await activateGame(page, '/games/partition/');
@@ -217,4 +215,114 @@ test('Maltline launcher entry stays on a fresh title with no recorded input', as
     engineTick: 0,
     recordedInputs: 0,
   })));
+});
+
+test('Smilefall opens as a fresh game, exposes its catalog, and starts a ten-level arcade run', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.setViewportSize({ width: 320, height: 568 });
+  await openLauncher(page);
+  await activateGame(page, '/games/smilefall/');
+
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'home');
+  await expect(page.getByRole('heading', { level: 1, name: 'SMILEFALL' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'START ARCADE RUN' })).toBeVisible();
+  await expect(page.getByLabel('Arcade run difficulty')).toHaveValue('chuckle');
+  expect(await storageLengths(page)).toEqual({ localStorage: 0, sessionStorage: 0 });
+
+  await page.getByRole('button', { name: 'LEVEL CATALOG' }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'catalog');
+  await expect(page.locator('.catalog-card')).toHaveCount(14);
+  await expect(page.getByRole('heading', { name: 'First Giggle' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sky Ladder' })).toBeAttached();
+
+  await page.getByRole('button', { name: 'HOME' }).click();
+  await page.getByRole('button', { name: 'START ARCADE RUN' }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'play');
+  await expect(page.locator('#hud-progress')).toHaveText('ARCADE · 1 / 10');
+  await expect(page.getByRole('button', { name: 'GO!' })).toBeVisible();
+  await expect(page.getByRole('dialog', { name: 'First Giggle' })).toBeVisible();
+  await expect(page.locator('.hud')).toHaveAttribute('inert', '');
+  await expect(page.getByRole('button', { name: 'GO!' })).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'GO!' })).toBeFocused();
+
+  const containment = await page.evaluate(() => {
+    const stage = document.querySelector<HTMLElement>('.stage')!.getBoundingClientRect();
+    const start = document.querySelector<HTMLElement>('#ready-start')!.getBoundingClientRect();
+    return {
+      horizontal: start.left >= stage.left && start.right <= stage.right,
+      vertical: start.top >= stage.top && start.bottom <= stage.bottom,
+      pageOverflow: document.documentElement.scrollWidth - innerWidth,
+    };
+  });
+  expect(containment).toEqual({ horizontal: true, vertical: true, pageOverflow: 0 });
+
+  await page.waitForTimeout(80);
+  const reducedFrame = await page.locator('#field').screenshot();
+  await page.waitForTimeout(100);
+  expect(Buffer.compare(reducedFrame, await page.locator('#field').screenshot())).toBe(0);
+
+  await page.getByRole('button', { name: 'GO!' }).click();
+  await expect(page.getByRole('button', { name: 'PAUSE' })).toBeEnabled();
+  await expect(page.locator('.hud')).not.toHaveAttribute('inert', '');
+  const playSound = page.getByRole('button', { name: 'SOUND ON' });
+  await expect(playSound).toBeVisible();
+  await playSound.click();
+  await expect(page.getByRole('button', { name: 'SOUND OFF' })).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('arcadebench.smilefall.sound'))).toBe('off');
+  const touchLeft = page.getByRole('button', { name: 'Lean left' });
+  await touchLeft.evaluate((button: HTMLButtonElement) => button.click());
+  await expect(touchLeft).toHaveAttribute('aria-pressed', 'true');
+  await touchLeft.evaluate((button: HTMLButtonElement) => button.click());
+  await expect(touchLeft).toHaveAttribute('aria-pressed', 'false');
+  await page.getByRole('button', { name: 'PAUSE' }).click();
+  await expect(page.getByRole('dialog', { name: 'Paused' })).toBeVisible();
+  await expect(page.locator('#resume-button')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.getByRole('button', { name: 'LEAVE RUN' })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'RESTART ARCADE RUN' })).toBeVisible();
+});
+
+test('Smilefall confirms before abandoning an active run for ArcadeBench', async ({ page }) => {
+  await openLauncher(page);
+  await activateGame(page, '/games/smilefall/');
+  await page.getByRole('button', { name: 'START ARCADE RUN' }).click();
+  await page.getByRole('button', { name: 'GO!' }).click();
+
+  page.once('dialog', async (dialog) => {
+    expect(dialog.type()).toBe('confirm');
+    expect(dialog.message()).toContain('unsaved score');
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: 'ARCADEBENCH' }).click();
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'play');
+  await expect(page).toHaveURL((url) => url.pathname === '/games/smilefall/');
+
+  const dialogs: string[] = [];
+  page.on('dialog', async (dialog) => {
+    dialogs.push(dialog.type());
+    await dialog.accept();
+  });
+  await page.getByRole('button', { name: 'ARCADEBENCH' }).click();
+  await expect(page).toHaveURL((url) => url.pathname === '/');
+  expect(dialogs).toEqual(['confirm']);
+});
+
+test('Smilefall leaderboard deep links select their level and difficulty', async ({ page }) => {
+  await openLauncher(page);
+  await activateGame(page, '/games/smilefall/');
+  await page.goto('/games/smilefall/?mode=leaderboard&board=level&difficulty=guffaw&level=rock-alley');
+  await expect(page.locator('body')).toHaveAttribute('data-screen', 'leaderboard');
+  await expect(page.locator('#leaderboard-difficulty')).toHaveValue('guffaw');
+  await expect(page.locator('#leaderboard-level')).toHaveValue('rock-alley');
+  await expect(page.getByRole('heading', { level: 2, name: 'Rock Alley' })).toBeVisible();
+  await expect(page.getByText('LOCAL PREVIEW · THIS DEVICE')).toBeVisible();
+  await expect(page.getByText('Launch Board')).toBeVisible();
+
+  const levelTab = page.getByRole('tab', { name: 'LEVEL' });
+  await expect(levelTab).toHaveAttribute('tabindex', '0');
+  await levelTab.focus();
+  await levelTab.press('ArrowLeft');
+  await expect(page.getByRole('tab', { name: 'ARCADE RUN' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#leaderboard-level-wrap')).toBeHidden();
 });

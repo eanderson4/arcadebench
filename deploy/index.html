@@ -41,7 +41,13 @@
           <p class="catalog__note">A free browser arcade for everyone, inspired by the early arcade era. Simple controls, quick rounds, and high scores worth chasing.</p>
         </div>
 
-        <ul id="games" class="game-grid" aria-label="Available games" tabindex="-1">
+        <section class="game-carousel" aria-label="Choose a game" aria-roledescription="carousel">
+          <div class="game-carousel__controls" hidden>
+            <p class="game-carousel__status" aria-live="polite" aria-atomic="true"></p>
+            <button type="button" data-carousel-prev aria-controls="games" aria-label="Previous game">←</button>
+            <button type="button" data-carousel-next aria-controls="games" aria-label="Next game">→</button>
+          </div>
+        <ul id="games" class="game-grid" role="list" aria-label="Available games" tabindex="-1">
           <li>
             <article class="game-card" aria-labelledby="partition-title">
               <p class="game-card__art">
@@ -92,7 +98,28 @@
               </div>
             </article>
           </li>
+          <li>
+            <article class="game-card" aria-labelledby="smilefall-title">
+              <p class="game-card__art">
+                <img src="/covers/smilefall.png" width="960" height="540" decoding="async"
+                  alt="Smilefall gameplay: bright yellow smiles tumble past rocky hazards toward colorful buckets below." />
+              </p>
+              <div class="game-card__body">
+                <h2 class="game-card__title" id="smilefall-title">Smilefall</h2>
+                <p class="game-card__premise" id="smilefall-premise">Guide one sky of falling smiles past hazards and into buckets.</p>
+                <ul class="game-card__meta" id="smilefall-meta">
+                  <li>Shared steering · timed hops</li>
+                  <li>Handcrafted stages</li>
+                </ul>
+                <a class="game-card__play" href="/games/smilefall/" aria-describedby="smilefall-premise smilefall-meta">
+                  <span>Play Smilefall</span>
+                  <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+                </a>
+              </div>
+            </article>
+          </li>
         </ul>
+        </section>
 
         <!--
           The activity feed is platform-wide: every game that registers an
@@ -127,6 +154,7 @@
         </nav>
       </footer>
     </div>
+    <script type="module" src="/carousel.js"></script>
     <script type="module" src="/activity.js"></script>
   </body>
 </html>

@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@arcadebench/maltline": "0.1.0",
-    "@arcadebench/partition": "0.1.0"
+    "@arcadebench/partition": "0.1.0",
+    "@arcadebench/smilefall": "0.1.0"
   }
 }

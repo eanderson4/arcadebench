@@ -101,9 +101,10 @@ async function fixtureRepository(root: string): Promise<void> {
     ['games/maltline/package.json', JSON.stringify({ name: '@arcadebench/maltline', version: '0.1.0' })],
     ['games/maltline/tsconfig.json', JSON.stringify({ extends: '../../tsconfig.base.json' })],
     ['tsconfig.base.json', JSON.stringify({ compilerOptions: { strict: true } })],
-    ['package-lock.json', JSON.stringify({ packages: {
+    ['package-lock.json', JSON.stringify({ lockfileVersion: 3, packages: {
       'node_modules/typescript': { version: '7.0.2' },
-      'node_modules/tsx': { version: '4.23.12' },
+      'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+      'node_modules/esbuild': { version: '0.28.2', integrity: 'sha512-fixture' },
     } })],
   ]);
   for (const [relativePath, contents] of files) {
@@ -129,15 +130,15 @@ describe('P0-37 portable P108 offline artifact envelope', () => {
         mode: 'tsx-cli',
         logicalEntry: 'p1-08-tuning-experiment',
         source: {
-          fileCount: 24,
-          sha256: '99d4cafbe858cf905bb6fd59115ef2399b4d14b6e5a734ca216f48c5b019e28b',
+          fileCount: 25,
+          sha256: 'c50e0b6e3a06aa6f9aa55178b585b59c7e0825166b3c7f729e1b6c55b92e3132',
         },
         kernel: {
           fileCount: 21,
           sha256: 'e60cf9310d4cfea80a95d1929f6731e0d41affd70ece07f7140d5fd552a266c8',
         },
         build: {
-          sha256: '9bec8bbd85650d9a74044be48000b5dc506407855e864db5f442567559109c75',
+          sha256: '52685d6275f2dbf55673b44bc7c5c3a6182e6e218a2fbfc84ba06a0a362aebed',
           toolchain: { node: process.versions.node, typescript: '7.0.2', tsx: '4.23.12' },
         },
       },
@@ -160,10 +161,10 @@ describe('P0-37 portable P108 offline artifact envelope', () => {
       .resolves.toEqual(currentEnvelope);
     const formatted = formatP108ArtifactEnvelope(currentEnvelope);
     expect(currentEnvelope.integrity.canonicalEnvelopeSha256)
-      .toBe('9cf16f0426d6a386024471f91355d40a1e9d07289f690f1bdeb986bde8384f74');
+      .toBe('7f6420fee93f35bffde405452b81094647a8e052cb2eceed3686e85251555d14');
     expect(Buffer.byteLength(formatted)).toBe(1_899_811);
     expect(createHash('sha256').update(formatted).digest('hex'))
-      .toBe('088e8e284012e7595d4f43b5936e41d0840148072b91dac4d7c0b75a01d6f6bf');
+      .toBe('b954506924b680e3fbce9017cf74c54c7bdba437d907176e8d65e93a4c2e1f1d');
     expect(formatted.endsWith('\n')).toBe(true);
     expect(JSON.parse(formatted)).toEqual(currentEnvelope);
     await expect(parseP108ArtifactEnvelopeJson(formatted, { verifyCurrentSource: true }))
@@ -326,6 +327,44 @@ describe('P0-37 portable P108 offline artifact envelope', () => {
     await writeFile(resolve(secondRoot, 'unrelated.txt'), 'not imported\n');
     const unrelated = await createP108ArtifactEnvelope(quickPayload, { repositoryRoot: secondRoot });
     expect(unrelated.producer).toEqual(second.producer);
+
+    const unrelatedLock = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        'games/unrelated': { name: '@arcadebench/unrelated', version: '0.1.0' },
+        'node_modules/@arcadebench/unrelated': { resolved: 'games/unrelated', link: true },
+        'node_modules/typescript': { version: '7.0.2' },
+        'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+        'node_modules/esbuild': { version: '0.28.2', integrity: 'sha512-fixture' },
+      },
+    });
+    await writeFile(resolve(secondRoot, 'package-lock.json'), unrelatedLock);
+    const unrelatedWorkspace = await createP108ArtifactEnvelope(quickPayload, { repositoryRoot: secondRoot });
+    expect(unrelatedWorkspace.producer).toEqual(second.producer);
+
+    await writeFile(resolve(secondRoot, 'package-lock.json'), JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        'node_modules/typescript': { version: '7.0.2' },
+        'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+        'node_modules/esbuild': { version: '0.28.2', integrity: 'sha512-changed' },
+      },
+    }));
+    const changedToolchain = await createP108ArtifactEnvelope(quickPayload, { repositoryRoot: secondRoot });
+    expect(changedToolchain.producer.source).toEqual(second.producer.source);
+    expect(changedToolchain.producer.kernel).toEqual(second.producer.kernel);
+    expect(changedToolchain.producer.build.sha256).not.toBe(second.producer.build.sha256);
+
+    await writeFile(resolve(secondRoot, 'package-lock.json'), JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        'node_modules/typescript': { version: '7.0.2' },
+        'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+      },
+    }));
+    await expect(createP108ArtifactEnvelope(quickPayload, { repositoryRoot: secondRoot }))
+      .rejects.toThrow(/missing esbuild, required by node_modules\/tsx/u);
+    await writeFile(resolve(secondRoot, 'package-lock.json'), unrelatedLock);
 
     await writeFile(resolve(secondRoot, 'games/maltline/src/telemetry/kernel-dependency.ts'),
       'export const value = 2;\n');

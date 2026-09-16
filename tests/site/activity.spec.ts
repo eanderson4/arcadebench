@@ -6,7 +6,7 @@ import { expect, test, type Page } from '@playwright/test';
  * render from the same markup, a hostile record cannot introduce an element, a
  * link, or an off-site URL, a broken feed degrades to one quiet sentence, and
  * the section stays contained and reachable at every supported width — with the
- * two game cards still above it.
+ * three game cards still above it.
  */
 
 const ACTIVITY_PATH = '/api/v2/activity';
@@ -183,7 +183,7 @@ test('one feed renders two unrelated games without any per-game branch', async (
 
   // The section is generic: no per-game artwork, no image of any kind.
   await expect(page.locator('.recent img')).toHaveCount(0);
-  await expect(page.locator('.game-card')).toHaveCount(2);
+  await expect(page.locator('.game-card')).toHaveCount(3);
 
   // Exactly one platform request, and nothing off-origin.
   expect(activityRequestsByPage.get(page)).toEqual([`GET ${ACTIVITY_PATH}`]);
@@ -380,10 +380,10 @@ for (const viewport of [
       };
     });
     expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.innerWidth);
-    expect(measurements.games).toHaveLength(2);
+    expect(measurements.games).toHaveLength(3);
     for (const card of measurements.games) {
       expect(card.left).toBeGreaterThanOrEqual(0);
-      expect(card.right).toBeLessThanOrEqual(measurements.innerWidth);
+      expect(card.right - card.left).toBeLessThanOrEqual(measurements.innerWidth);
     }
     // The games come first; the activity feed sits underneath all of them.
     expect(measurements.recent.left).toBeGreaterThanOrEqual(0);
@@ -410,6 +410,6 @@ test('without JavaScript the section explains itself instead of loading forever'
   await expect(fallback).toContainText('Recent high scores need JavaScript.');
   await expect(fallback.locator('a')).toHaveAttribute('href', '#games');
   await expect(page.getByRole('heading', { level: 2, name: 'Recent high scores' })).toBeVisible();
-  await expect(page.locator('.game-card')).toHaveCount(2);
+  await expect(page.locator('.game-card')).toHaveCount(3);
   await context.close();
 });

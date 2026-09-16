@@ -24,6 +24,7 @@ import {
   type StaticSourceGraphIdentity,
   type StaticSourceGraphPolicy,
 } from './static-source-graph';
+import { artifactToolchainLockIdentity } from './artifact-toolchain-lock';
 
 export const P102_STAGE8_RELIEF_ENVELOPE_KIND = 'maltline-p102-stage8-relief-offline-artifact' as const;
 export const P102_STAGE8_RELIEF_ENVELOPE_SCHEMA_VERSION = 1 as const;
@@ -281,6 +282,7 @@ async function producerIdentity(
   const [packageInput, tsconfigInput, rootTsconfigInput, lockInput, nodeVersionInput] = buildInputs;
   const packageJson = JSON.parse(packageInput!.text) as { name: string; version: string };
   const lock = JSON.parse(lockInput!.text) as { packages: Record<string, { version?: string }> };
+  const toolchainLock = artifactToolchainLockIdentity(lock);
   const declaredNode = exactToolchainVersion(nodeVersionInput!.text.trim(), 'declared Node version');
   if (nodeVersionInput!.text !== `${declaredNode}\n`) {
     throw new Error('P102 Node version declaration must contain one exact semantic version and a newline');
@@ -343,7 +345,7 @@ async function producerIdentity(
       packageManifestSha256: sha256Bytes(packageInput!.text),
       tsconfigSha256: sha256Bytes(tsconfigInput!.text),
       rootTsconfigSha256: sha256Bytes(rootTsconfigInput!.text),
-      lockfileSha256: sha256Bytes(lockInput!.text),
+      toolchainLockSha256: canonicalSha256(toolchainLock),
       nodeVersionSha256: sha256Bytes(nodeVersionInput!.text),
     },
   } as const;
