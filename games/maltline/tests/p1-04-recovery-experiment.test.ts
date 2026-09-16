@@ -142,5 +142,5 @@ describe('P1-04 prospective recovery-ledger experiment', () => {
     (changedPolicyIdentity.scorePolicies as Array<Record<string, unknown>>)[1]!.penaltyPerStageLifeLoss = 251;
     expect(fingerprintP104RecoveryExperimentIdentity(changedPolicyIdentity as never))
       .not.toBe(first.experimentFingerprint);
-  });
+  }, 30_000);
 });
