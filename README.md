@@ -91,8 +91,9 @@ npm run dev --workspace=@arcadebench/maltline
 ```
 
 For Partition, open <http://127.0.0.1:5183/src/viewer/?seed=11> and choose
-**Play**. Arrow keys move along walls; hold Space with a direction to cut
-through the field. **Fit Screen** letterboxes the full 3:2 playfield, and
+**Play**. Arrow keys move along walls; press Space or tap TRACE, then steer
+into the field. Keep steering until the cut reconnects; no holding is needed.
+Held controls carry into the next stage. **Fit Screen** letterboxes the full 3:2 playfield, and
 **Watch Run** opens the attempt in Replay Lab.
 
 For Maltline, open <http://127.0.0.1:5184/src/viewer/> in a keyboard-equipped

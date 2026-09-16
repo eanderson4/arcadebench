@@ -77,7 +77,7 @@
         </div>
 
         <div class="home-lanes">
-          <article><span>01 / HUMAN PLAY</span><h3>Learn the field</h3><p>Arrow keys move the Spark. Hold Space while leaving a wall to open a partition.</p></article>
+          <article><span>01 / HUMAN PLAY</span><h3>Learn the field</h3><p>Arrow keys move the Spark. Press Space, then steer off a wall to open a partition. Keep steering until you reconnect.</p></article>
           <article><span>02 / MODEL CONTROL</span><h3>Program under pressure</h3><p>Controllers receive compact state ticks while the engine continues running in real time.</p></article>
           <article><span>03 / REPLAY EVIDENCE</span><h3>Inspect every signal</h3><p>Scrub deterministic runs tick by tick, jump between events, and share the replay artifact.</p></article>
         </div>
@@ -283,7 +283,7 @@
             <div id="play-intro" class="play-intro">
               <div class="intro-kicker"><span></span>HUMAN PLAY</div>
               <h2>Cut the field.<br />Box in the chaos.</h2>
-              <p>Travel the cyan boundary, then hold <kbd>Space</kbd> and steer into the field. Reach another wall to stabilize the side without an Anomaly.</p>
+              <p>Travel the cyan boundary. Press <kbd>Space</kbd> or tap TRACE to arm a cut, then steer into the field. No holding needed: keep steering until you reach another wall. Each new cut needs a new press.</p>
               <div class="intro-rules">
                 <span><b>01</b> ARROWS MOVE</span>
                 <span><b>02</b> SPACE + ARROW CUTS</span>
@@ -296,12 +296,12 @@
               <button class="direction left" data-direction="left" aria-label="Move left">←</button>
               <button class="direction down" data-direction="down" aria-label="Move down">↓</button>
               <button class="direction right" data-direction="right" aria-label="Move right">→</button>
-              <button class="trace-control" data-trace aria-label="Hold to trace">TRACE</button>
+              <button class="trace-control" data-trace aria-label="Tap to start a trace">TRACE</button>
             </div>
           </div>
 
           <div class="live-controls">
-            <p><kbd>ARROWS</kbd> MOVE <span>·</span> HOLD <kbd>SPACE</kbd> TO TRACE <span>·</span> <b id="control-target">CAPTURE 75%</b></p>
+            <p><kbd>ARROWS</kbd> MOVE <span>·</span> PRESS <kbd>SPACE</kbd> TO ARM A TRACE <span>·</span> <b id="control-target">CAPTURE 75%</b></p>
             <div class="actions">
               <button id="sound-toggle" class="quiet-button sound-toggle" type="button" aria-pressed="false" aria-label="Mute sound">SOUND ON</button>
               <button id="return-home" class="quiet-button" type="button">HOME</button>
