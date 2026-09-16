@@ -1,4 +1,5 @@
-import { SmilefallEngine } from './core/engine';
+import { rockRadius, SmilefallEngine } from './core/engine';
+import { BUCKET_HEIGHT, FIXED_SCALE, SMILEY_RADIUS } from './core/physics';
 import type { ControlInput } from './core/types';
 import { SMILEFALL_GAME_ID, SMILEFALL_GAME_VERSION } from './core/version';
 import {
@@ -13,6 +14,12 @@ const MAX_PROOF_STAGES = 10;
 const MAX_STAGE_TICKS = 5_000;
 const MAX_TOTAL_TICKS = 40_000;
 const MAX_STRING_LENGTH = 160;
+const MAX_RANKED_NONCE = 0xffff_ffff;
+const MAX_RANKED_WAVE_DELAY = 10;
+const DROP_WAVE_SHIFT_STEPS = 6;
+const DROP_WAVE_SHIFT_UNIT = 0.1;
+const ROCK_WAVE_SHIFT_STEPS = 4;
+const ROCK_WAVE_SHIFT_UNIT = 0.1;
 
 const AUTHORITY_DIFFICULTIES = Object.freeze(
   ['giggle', 'chuckle', 'guffaw', 'cackle'] as const,
@@ -30,7 +37,7 @@ const AUTHORITY_LEVELS: readonly Readonly<{ id: string; title: string }>[] = Obj
 export const SMILEFALL_CURRENT_RANKED_AUTHORITY = Object.freeze({
   gameId: SMILEFALL_GAME_ID,
   gameVersion: SMILEFALL_GAME_VERSION,
-  authorityId: 'smilefall-challenge-v1',
+  authorityId: 'smilefall-challenge-v2',
   difficulties: AUTHORITY_DIFFICULTIES,
   arcadeLevelIds: AUTHORITY_ARCADE_LEVEL_IDS,
   levels: AUTHORITY_LEVELS,
@@ -198,7 +205,7 @@ function sanitizeProof(value: unknown): SmilefallRankedProof {
     fail('Smilefall proof authority is invalid.');
   }
   const runId = boundedString(source.runId, 'Smilefall run identifier');
-  const nonce = boundedInteger(source.nonce, 'Smilefall run nonce', 0, Number.MAX_SAFE_INTEGER);
+  const nonce = boundedInteger(source.nonce, 'Smilefall run nonce', 0, MAX_RANKED_NONCE);
   if (source.boardId !== 'arcade' && source.boardId !== 'level') {
     fail('Smilefall proof board is invalid.');
   }
@@ -249,51 +256,133 @@ export function resolveOfficialSmilefallScenario(
   if (!stage) fail('Smilefall level identifier is not official.');
   if (!isMood(difficulty)) fail('Smilefall difficulty is invalid.');
   const scenario = structuredClone(applyMood(stage.scenario, difficulty));
-  if (nonce === undefined || !rankedMirror(nonce, levelId)) return scenario;
-  const mirrorX = (x: number, width = 0): number => scenario.width - x - width;
+  if (nonce === undefined) return scenario;
+  boundedInteger(nonce, 'Smilefall run nonce', 0, MAX_RANKED_NONCE);
+
+  const mirror = rankedMirror(nonce, levelId);
+  const mirrorX = (x: number, width = 0): number =>
+    clampUnits(scenario.width - x - width, 0, scenario.width - width);
+  const flipSide = (side: 'left' | 'right'): 'left' | 'right' => side === 'left' ? 'right' : 'left';
+  const rankedDropTicks = new Map<number, number>();
+  const rankedDropShifts = new Map<number, number>();
+  const dropWaveTicks = [...new Set(scenario.drops.map((drop) => drop.tick))].sort((a, b) => a - b);
+  for (const [index, tick] of dropWaveTicks.entries()) {
+    const label = `drop:${index}:${tick}`;
+    rankedDropTicks.set(
+      tick,
+      tick + rankedWord(nonce, levelId, `${label}:delay`) % (MAX_RANKED_WAVE_DELAY + 1),
+    );
+    rankedDropShifts.set(
+      tick,
+      signedStep(rankedWord(nonce, levelId, `${label}:x`), DROP_WAVE_SHIFT_STEPS)
+        * DROP_WAVE_SHIFT_UNIT,
+    );
+  }
+
+  // Treat rock waves less than a full jitter window apart as one schedule
+  // cluster. That preserves deliberate walls and prevents two nearby waves
+  // from collapsing into a surprise double wall.
+  const rockWaveTicks = [...new Set(scenario.rocks.map((rock) => rock.tick))].sort((a, b) => a - b);
+  const rockClusterByTick = new Map<number, number>();
+  const rockClusterFirstTick: number[] = [];
+  let cluster = -1;
+  let previousRockTick: number | undefined;
+  for (const tick of rockWaveTicks) {
+    if (previousRockTick === undefined || tick - previousRockTick > MAX_RANKED_WAVE_DELAY) {
+      cluster++;
+      rockClusterFirstTick.push(tick);
+    }
+    rockClusterByTick.set(tick, cluster);
+    previousRockTick = tick;
+  }
+  const rockClusterDelay = rockClusterFirstTick.map((tick, index) =>
+    rankedWord(nonce, levelId, `rock:${index}:${tick}:delay`) % (MAX_RANKED_WAVE_DELAY + 1));
+  const rockClusterShift = rockClusterFirstTick.map((tick, index) =>
+    signedStep(rankedWord(nonce, levelId, `rock:${index}:${tick}:y`), ROCK_WAVE_SHIFT_STEPS)
+      * ROCK_WAVE_SHIFT_UNIT);
+  const rockClusterFlip = rockClusterFirstTick.map((tick, index) =>
+    (rankedWord(nonce, levelId, `rock:${index}:${tick}:side`) & 1) === 1);
+
+  const smileyMargin = SMILEY_RADIUS / FIXED_SCALE;
+  const groundMouthY = scenario.height - BUCKET_HEIGHT / FIXED_SCALE;
   return {
     ...scenario,
+    timeLimitTicks: scenario.timeLimitTicks + MAX_RANKED_WAVE_DELAY,
     buckets: scenario.buckets.map((bucket) => ({
       ...bucket,
-      x: mirrorX(bucket.x, bucket.width),
+      x: mirror ? mirrorX(bucket.x, bucket.width) : bucket.x,
       ...(bucket.drift ? {
-        drift: {
-          speed: -bucket.drift.speed,
-          minX: mirrorX(bucket.drift.maxX, bucket.width),
-          maxX: mirrorX(bucket.drift.minX, bucket.width),
-        },
+        drift: mirror
+          ? {
+              speed: -bucket.drift.speed,
+              minX: mirrorX(bucket.drift.maxX, bucket.width),
+              maxX: mirrorX(bucket.drift.minX, bucket.width),
+            }
+          : { ...bucket.drift },
       } : {}),
     })),
     platforms: scenario.platforms?.map((platform) => ({
       ...platform,
-      x: mirrorX(platform.x, platform.width),
+      x: mirror ? mirrorX(platform.x, platform.width) : platform.x,
     })),
     spikes: scenario.spikes?.map((spike) => ({
       ...spike,
-      x: mirrorX(spike.x, spike.width),
+      x: mirror ? mirrorX(spike.x, spike.width) : spike.x,
     })),
     drops: scenario.drops.map((drop) => ({
       ...drop,
-      x: mirrorX(drop.x),
-      ...(drop.vx === undefined ? {} : { vx: -drop.vx }),
+      tick: rankedDropTicks.get(drop.tick)!,
+      x: clampUnits(
+        (mirror ? mirrorX(drop.x) : drop.x) + rankedDropShifts.get(drop.tick)!,
+        smileyMargin,
+        scenario.width - smileyMargin,
+      ),
+      ...(drop.vx === undefined ? {} : { vx: mirror ? -drop.vx : drop.vx }),
     })),
-    rocks: scenario.rocks.map((rock) => ({
-      ...rock,
-      from: rock.from === 'left' ? 'right' : 'left',
-    })),
+    rocks: scenario.rocks.map((rock) => {
+      const clusterIndex = rockClusterByTick.get(rock.tick)!;
+      const radius = rockRadius(rock.kind ?? 'boulder') / FIXED_SCALE;
+      const authoredSide = rock.from ?? 'right';
+      const mirroredSide = mirror ? flipSide(authoredSide) : authoredSide;
+      return {
+        ...rock,
+        tick: rock.tick + rockClusterDelay[clusterIndex]!,
+        y: clampUnits(
+          rock.y + rockClusterShift[clusterIndex]!,
+          radius,
+          groundMouthY - radius,
+        ),
+        from: rockClusterFlip[clusterIndex] ? flipSide(mirroredSide) : mirroredSide,
+      };
+    }),
   };
 }
 
-/** Stable per-level mirror bit that makes ranked inputs challenge-specific. */
-export function rankedMirror(nonce: number, levelId: string): boolean {
-  let hash = (nonce ^ 0x9e3779b9) >>> 0;
-  for (let index = 0; index < levelId.length; index++) {
-    hash = Math.imul(hash ^ levelId.charCodeAt(index), 16777619) >>> 0;
+function rankedWord(nonce: number, levelId: string, label: string): number {
+  let hash = 2166136261;
+  const material = `smilefall-ranked-v2\0${nonce}\0${levelId}\0${label}`;
+  for (let index = 0; index < material.length; index++) {
+    hash = Math.imul(hash ^ material.charCodeAt(index), 16777619) >>> 0;
   }
   hash ^= hash >>> 16;
   hash = Math.imul(hash, 2246822507) >>> 0;
   hash ^= hash >>> 13;
-  return (hash & 1) === 1;
+  hash = Math.imul(hash, 3266489909) >>> 0;
+  return (hash ^ (hash >>> 16)) >>> 0;
+}
+
+function signedStep(word: number, steps: number): number {
+  return word % (steps * 2 + 1) - steps;
+}
+
+function clampUnits(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
+}
+
+/** One component of the v2 ranked transform; schedules also vary by nonce. */
+export function rankedMirror(nonce: number, levelId: string): boolean {
+  boundedInteger(nonce, 'Smilefall run nonce', 0, MAX_RANKED_NONCE);
+  return (rankedWord(nonce, levelId, 'mirror') & 1) === 1;
 }
 
 /**

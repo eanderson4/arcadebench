@@ -109,10 +109,13 @@ Ranked submissions use a narrower, input-only proof. The server ignores any
 client-authored level or score, reconstructs the registered game version and
 difficulty, simulates the contiguous inputs, derives the result, and then
 compares it with the claimed score. Arcade proofs must follow the official
-ten-stage order and stop at the first failed stage. The run nonce chooses a
-per-level horizontal mirror of the complete field, including incoming rocks,
-so a proof's inputs are tied to that challenge while both layouts keep the same
-geometry and scoring opportunity.
+ten-stage order and stop at the first failed stage. The unsigned 32-bit run
+nonce feeds the challenge-v2 per-level transform: it may mirror the complete
+field, shifts each drop wave by at most 0.6 units and ten ticks, and similarly
+varies bounded rock-wave timing, height, and entry side. Same-tick formations
+stay together, nearby rock walls keep their spacing, and every ranked clock
+receives the same ten-tick extension. This binds the input stream to the issued
+challenge without changing the authored routes or response window.
 
 `ContinuousSmilefallSession` supplies the agent-facing runtime. A resident
 controller can keep acting while an external model thinks, `watchGameplay`

@@ -223,11 +223,16 @@ result. Arcade stages must follow the official order, stop at the first loss,
 and include all ten stages to claim completion. Tick and stage limits bound
 verification work. The claimed score must exactly match the derived summary.
 
-The challenge nonce deterministically chooses whether each ranked level uses
-its authored layout or a full horizontal mirror. Drops, pails, platforms,
-spikes, drift ranges, and rock entry direction mirror together. This preserves
-the geometry and scoring opportunity while making the required input stream
-specific to the issued challenge.
+Challenge-v2 accepts an unsigned 32-bit nonce and derives independent,
+deterministic variation for every level. The transform may horizontally mirror
+the complete field. It also applies a shared bounded offset to each same-tick
+drop formation (up to 0.6 field units and ten ticks) and to each rock-wave
+cluster (up to 0.4 vertical units and ten ticks), with a nonce-selected entry
+side. Nearby rock walls stay in the same cluster so their spacing cannot
+collapse. Static routes, capacities, hazard types, rock speeds, and formation
+shapes remain authored, while every ranked clock receives the same ten-tick
+extension. These bounds preserve the route and response window while making a
+cached or simply mirrored input stream specific to its issued challenge.
 
 The shared platform exposes two current board families:
 
