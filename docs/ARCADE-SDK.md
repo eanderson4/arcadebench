@@ -37,11 +37,12 @@ const feedback = await arcade.feedback.set({
 });
 ```
 
-The score form must disclose retention before submission: a replay qualifying
-for its board's Top 50 is kept privately even after displacement. Other new
-proofs expire after five days. The social checkbox starts unchecked for every
-run and affects only permission to publish social-media clips. It never affects
-ranking, retention, or the public activity event. There is no training permission.
+The Privacy Promise explains replay retention: a replay qualifying for its
+board's Top 50 is kept privately even after displacement, while other new
+proofs expire after five days. Game score forms stay concise. The social
+checkbox starts unchecked for every run and affects only permission to publish
+social-media clips. It never affects ranking, retention, or the public activity
+event. There is no training permission.
 
 `leaderboards.list<NormalizedEntry<MyResult>>({boardId, filters, limit, cursor})`
 returns normalized entries. Context/filter values are strings; each adapter
@@ -73,6 +74,16 @@ registered games. Display metadata and leaderboard links come from the server;
 the homepage does not merge separate game leaderboards. Historical scores count
 in ranking but are not presented as new activity. Event placement is the rank
 when submitted, not a claim about current placement.
+
+Scoring or gameplay changes that affect comparability must open a new
+leaderboard version. The completed version closes to submissions and remains
+available as a read-only historical board with its final standings. See the
+[leaderboard versioning policy](LEADERBOARD-VERSIONING.md).
+
+Games may also open a fresh season without changing rules. ArcadeBench's
+default for a main arcade board is monthly once scheduled rollover is enabled;
+specialized boards can use a longer cadence. Clients read the active season
+from the server and never manufacture season IDs.
 
 ## Adding a game
 

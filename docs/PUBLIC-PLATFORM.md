@@ -30,6 +30,12 @@ to the game version, board, seed, difficulty, and expiry. On submission:
    proofs are retained privately; other proofs expire after five days. Public
    score summaries and proof hashes remain after ordinary proof deletion.
 
+When a release changes scoring or gameplay enough to make old and new results
+incomparable, the active season is archived and a new board starts empty. The
+completed board must remain immutable and viewable with its final standings.
+Archive browsing and scheduled monthly rollover are tracked in issue #24; the
+[leaderboard versioning policy](LEADERBOARD-VERSIONING.md) defines the release gate.
+
 A SHA-256 digest detects changed bytes but does not prove an honest client: a
 client that fabricates data can also calculate a new digest. The one-time
 challenge and server-side replay verification provide the meaningful checks.

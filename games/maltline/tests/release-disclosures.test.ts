@@ -261,7 +261,9 @@ describe('Maltline release asset and privacy disclosures', () => {
     const cabinet = readFileSync(resolve(packageRoot, 'src/viewer/cabinet-leaderboard.ts'), 'utf8');
     expect(cabinet).toContain('createArcadeBenchGameClient');
     expect(cabinet).toContain("policyVersion: 'top50-social-v1', socialMedia: socialMedia === true");
-    expect(cabinet).toContain('Saved replays are private. No AI training.');
+    expect(cabinet).toContain('Allow ArcadeBench to use this replay or clips from it on social media.');
+    expect(cabinet).toContain("submitStatus.textContent = 'Score saved.';");
+    expect(cabinet).not.toContain('If this run reaches the Top 50');
     expect(cabinet).toContain('Local preview · unranked. Scores are not submitted.');
     expect(cabinet).toContain('MALTLINE · SECOND SHIFT');
     // Retain the archived generation-2 client's privacy contract independently.

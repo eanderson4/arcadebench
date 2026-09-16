@@ -6,8 +6,9 @@ browser behavior checked for release; it is not legal advice.
 ## Shipped assets and licenses
 
 Maltline's production visuals are code-native HTML, CSS, and Canvas drawing
-under the repository's MIT license. The production bundle currently ships no
-raster images, audio, or generated media. PNG visual baselines are test evidence
+under the repository's MIT license. Runtime sound is synthesized with the Web
+Audio API from MIT-licensed source code. The production bundle ships no raster
+images, audio files, or generated media. PNG visual baselines are test evidence
 and are not copied into the production route.
 
 The only separately licensed runtime assets are four self-hosted Noto Sans
@@ -26,6 +27,8 @@ release-test update before it can enter the assembled route.
 
 - Play and replay inspection execute in the browser. Maltline does not use
   local storage, session storage, or IndexedDB for run proofs.
+- The mute setting lasts for the current page only. No audio preference or
+  gameplay state is written to browser storage.
 - Starting a ranked attempt requests a same-origin, one-use challenge. The
   request contains the game version and board ID, not replay inputs or a
   callsign. The accountless service may set the signed anonymous cookie
@@ -47,6 +50,6 @@ runtime asset.
 
 ## Review boundary
 
-This review does not approve future generated audio, replace provider-specific
+This review does not approve future recorded or generated audio, replace provider-specific
 rights review, assess deployed WAF or capacity settings, validate a launcher,
 or substitute for counsel. Those boundaries remain separate release work.

@@ -439,14 +439,17 @@ test('live renderer follows mid-session reduced-motion changes without touching 
 const challenge = { id: 'run_browser_full_cabinet', seed: 8,
   gameVersion: MALTLINE_CABINET_AUTHORITY.gameVersion,
   expiresAt: '2099-09-10T20:30:00.000Z' };
-async function mockCabinetApi(page: Page, options: { rejectFirst?: boolean; unavailable?: boolean } = {}) {
+async function mockCabinetApi(page: Page, options: { rejectFirst?: boolean; unavailable?: boolean; runDelayMs?: number } = {}) {
   const submissions: Record<string, unknown>[] = [];
   let acceptedEntry: Record<string, unknown> | undefined;
   await page.route('**/api/v2/games/maltline/**', async route => {
     const request = route.request();
-    if (new URL(request.url()).pathname.endsWith('/runs')) return route.fulfill({
-      status: options.unavailable ? 503 : 201, json: options.unavailable ? { error: 'Ranked line unavailable.' } : challenge,
-    });
+    if (new URL(request.url()).pathname.endsWith('/runs')) {
+      if (options.runDelayMs) await new Promise(resolve => setTimeout(resolve, options.runDelayMs));
+      return route.fulfill({
+        status: options.unavailable ? 503 : 201, json: options.unavailable ? { error: 'Ranked line unavailable.' } : challenge,
+      });
+    }
     if (request.method() === 'GET') return route.fulfill({ json: { entries: acceptedEntry ? [acceptedEntry] : [] } });
     const body = request.postDataJSON() as Record<string, unknown>;
     submissions.push(body);
@@ -481,6 +484,30 @@ test('ranked public trigger has a reviewed live-shell visual', async ({ page }) 
   await expect(page).toHaveScreenshot('ranked-title-trigger.png');
 });
 
+test('sound control is visible, keyboard operable, and reports mute state', async ({ page }) => {
+  await mockCabinetApi(page); await openProduction(page, '?ranked=preview');
+  const sound = page.getByRole('button', { name: 'Mute sound' });
+  await expect(sound).toHaveText('SOUND ON');
+  await sound.focus(); await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Unmute sound' })).toHaveText('SOUND OFF');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Mute sound' })).toHaveText('SOUND ON');
+});
+
+test('first-stage input waits for ranked preflight instead of silently starting unranked', async ({ page }) => {
+  await mockCabinetApi(page, { runDelayMs: 250 }); await openProduction(page, '?ranked=preview');
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  await expect(page.locator('#overlay-hint')).toHaveText('Preparing ranked run…');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-maltline-screen', 'stage-card');
+  await expect(page.locator('#overlay-hint')).toContainText('start ranked');
+  await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-maltline-screen', 'playing');
+  expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
+    rankEligible: true, competition: { challenge: 'ready', proof: 'recording' },
+  });
+});
+
 test('the ranked board remains browseable below the gameplay width', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 720 });
   await mockCabinetApi(page); await openProduction(page, '?ranked=preview');
@@ -502,8 +529,6 @@ test('terminal cabinet proof submits through the live SDK panel with server veri
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({
     screen: 'gameover', engineTick: 1854, competition: { proof: 'eligible' },
   });
-  await expect(page.locator('#overlay-hint')).toContainText('review this ranked result');
-  await page.keyboard.press('r');
   const dialog = page.getByRole('dialog', { name: 'Shift Board' });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('checkbox')).not.toBeChecked();
@@ -514,7 +539,7 @@ test('terminal cabinet proof submits through the live SDK panel with server veri
   await expect(page.getByLabel('Callsign', { exact: true })).toHaveValue('BAD CALLSIGN');
   await page.getByLabel('Callsign', { exact: true }).fill('MALT TEST');
   await page.getByRole('button', { name: 'Submit score', exact: true }).click();
-  await expect(dialog).toContainText('Score saved at #1. Your Top 50 replay is saved privately.');
+  await expect(dialog).toContainText('Score saved.');
   await expect(dialog).toContainText('MALT TEST');
   expect(submissions).toHaveLength(2);
   expect(submissions.map(body => body.playerName)).toEqual(['BAD CALLSIGN', 'MALT TEST']);
@@ -537,7 +562,7 @@ test('losing window focus preserves the local replay while making the cabinet re
   await page.evaluate(() => window.dispatchEvent(new Event('focus'))); await playIdleLoss(page);
   expect(await page.evaluate(() => window.__maltlineReplays?.map(replay => ({ status: replay.finalState.status, ticks: replay.ticks.length }))))
     .toEqual([{ status: 'lost', ticks: 1854 }]);
-  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toBeVisible();
   await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('continues unranked');
   await expect(page.getByRole('button', { name: 'Submit score', exact: true })).not.toBeVisible();
 });
@@ -553,7 +578,7 @@ test('ranked preflight failure explicitly permits an unranked local replay', asy
   await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); await playIdleLoss(page);
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ screen: 'gameover', rankEligible: false });
   expect(await page.evaluate(() => window.__maltlineReplays?.[0]?.ticks.length)).toBe(1854);
-  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Submit score', exact: true })).not.toBeVisible();
 });
 
@@ -572,10 +597,10 @@ test('the complete two-button viewer campaign emits a verifier-accepted cabinet 
     if (index + 1 < VIEWER_WIN_TAPES.length) { await page.keyboard.press('Enter'); await page.keyboard.press('Enter'); }
   }
   expect(await page.evaluate(() => window.__maltlineViewerStatus)).toMatchObject({ screen: 'victory', competition: { proof: 'eligible' } });
-  await page.getByRole('button', { name: 'SHIFT BOARD', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toBeVisible();
   await page.getByLabel('Callsign', { exact: true }).fill('CLOSER');
   await page.getByRole('button', { name: 'Submit score', exact: true }).click();
-  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('Score saved at #1.');
+  await expect(page.getByRole('dialog', { name: 'Shift Board' })).toContainText('Score saved.');
   const proof = submissions[0]!.proof;
   const verified = verifyMaltlineCabinetProof(proof,
     { runId: challenge.id, nonce: challenge.seed }, MALTLINE_CABINET_AUTHORITY.gameVersion);

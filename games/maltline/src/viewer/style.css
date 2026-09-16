@@ -373,6 +373,14 @@ body {
   margin-right: 110px;
 }
 
+.topline:has(.sound-toggle:not([hidden])) .tagline {
+  margin-right: 95px;
+}
+
+.topline:has(.sound-toggle:not([hidden])):has(.competition-trigger:not([hidden])) .tagline {
+  margin-right: 205px;
+}
+
 @media (min-width: 700px) and (max-width: 900px) {
   .topline .tagline {
     display: none;
@@ -383,12 +391,19 @@ body {
   .topline:has(.competition-trigger:not([hidden])) .tagline {
     display: none;
   }
+
 }
 
-.competition-trigger {
+.topline-actions {
   position: absolute;
   top: -4px;
   right: 0;
+  display: flex;
+  gap: 7px;
+}
+
+.competition-trigger,
+.sound-toggle {
   min-height: 30px;
   padding: 5px 9px;
   border: 1px solid rgba(243, 233, 210, 0.24);
@@ -400,14 +415,18 @@ body {
   cursor: pointer;
 }
 
-.competition-trigger:hover {
+.competition-trigger:hover,
+.sound-toggle:hover {
   border-color: var(--accent);
 }
 
-.competition-trigger:focus-visible {
+.competition-trigger:focus-visible,
+.sound-toggle:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
+
+.sound-toggle[aria-pressed='true'] { color: var(--dim); }
 
 .stage-wrap {
   position: relative;

@@ -26,6 +26,7 @@ import {
   type SubmissionResult,
 } from './leaderboard';
 import { PartitionRenderer } from './renderer';
+import { PartitionAudio } from './audio';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
 import { resolveTimePressure } from './time-pressure';
@@ -44,6 +45,7 @@ function query<T extends Element>(selector: string): T {
 const canvas = query<HTMLCanvasElement>('#game');
 const stage = query<HTMLElement>('.stage');
 const renderer = new PartitionRenderer(canvas);
+const audio = new PartitionAudio();
 const captureEl = query<HTMLElement>('#capture');
 const integrityEl = query<HTMLElement>('#integrity');
 const tickEl = query<HTMLElement>('#tick');
@@ -59,6 +61,7 @@ const timePressureClock = query<HTMLElement>('#time-pressure-clock');
 const timePressureDetail = query<HTMLElement>('#time-pressure-detail');
 const timePressureFill = query<HTMLElement>('#time-pressure-fill');
 const fitScreenButton = query<HTMLButtonElement>('#fit-screen');
+const soundButton = query<HTMLButtonElement>('#sound-toggle');
 const messageEl = query<HTMLElement>('#message');
 const messageKicker = query<HTMLElement>('#message-kicker');
 const messageTitle = query<HTMLElement>('#message-title');
@@ -891,9 +894,8 @@ function prepareScoreEntry(submission: NonNullable<typeof pendingLeaderboardSubm
   const unrankedPublicRun = leaderboardService.mode === 'public' && !rankedRunId;
   submitScoreButton.innerHTML = unrankedPublicRun ? 'UNRANKED RUN' : 'ENTER SCORE <b>→</b>';
   submitScoreButton.disabled = unrankedPublicRun;
-  // The retention disclosure and its one optional permission belong to a public
-  // ranked submission. An unranked or local run makes no public claim, so it is
-  // asked for no permission either.
+  // The optional social-use permission belongs to a public ranked submission.
+  // An unranked or local run asks for no permission.
   const publicRankedRun = leaderboardService.mode === 'public' && Boolean(rankedRunId);
   scoreRetention.hidden = !publicRankedRun;
   scoreSocialConsent.disabled = !publicRankedRun;
@@ -934,6 +936,7 @@ function recordStageResult(state: PartitionState): void {
 }
 
 function startHumanPlay(): void {
+  audio.unlock();
   liveStarted = true;
   playIntro.classList.add('leaving');
   clearTimeout(introTimer);
@@ -1557,6 +1560,7 @@ function setMode(nextMode: ViewMode): void {
 }
 
 window.addEventListener('keydown', (event) => {
+  audio.unlock();
   const target = event.target as HTMLElement | null;
   if (event.code === 'Escape' && immersive) {
     event.preventDefault();
@@ -1684,6 +1688,17 @@ for (const tab of modeTabs()) {
 }
 
 startPlayButton.addEventListener('click', startHumanPlay);
+function syncSoundButton(): void {
+  const muted = audio.isMuted();
+  soundButton.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+  soundButton.setAttribute('aria-pressed', String(muted));
+  soundButton.setAttribute('aria-label', muted ? 'Unmute sound' : 'Mute sound');
+}
+soundButton.addEventListener('click', () => {
+  audio.toggleMuted();
+  syncSoundButton();
+});
+syncSoundButton();
 howToPlayButton.addEventListener('click', showHowToPlay);
 returnHomeButton.addEventListener('click', () => setMode('home'));
 function hasUnsavedGame(): boolean {
@@ -1801,6 +1816,8 @@ scoreEntry.addEventListener('submit', async (event) => {
     scoreEntryStatus.textContent = submissionOutcomeMessage(result, leaderboardService.mode);
     submitScoreButton.innerHTML = 'SCORE ENTERED <b>✓</b>';
     scoreBoardLink.hidden = false;
+    setMode('leaderboard');
+    showNotice(submissionOutcomeMessage(result, leaderboardService.mode));
   } catch (error) {
     if (pendingLeaderboardSubmission !== submission) return;
     submitScoreButton.disabled = false;
@@ -2007,6 +2024,7 @@ setInterval(() => {
         newlyStabilizedCells(applied, result.state),
       );
     }
+    audio.playEvents(result.events);
     recordStageResult(result.state);
     watchRunButton.disabled = false;
   }

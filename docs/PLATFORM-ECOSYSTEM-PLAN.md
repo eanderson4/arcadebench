@@ -10,13 +10,19 @@ Partition-specific activity prototype. Nothing from that prototype was deployed.
 - Game rules, verification, score meaning, and presentation remain game-owned.
 - ArcadeBench owns leaderboard ordering infrastructure, publication,
   replay retention, permissions, community feedback, and activity events.
-- New Top 50 submissions save the replay privately even after displacement.
-  Other proofs and explicit replay shares expire after five days. Earlier
-  submissions keep their earlier policy.
+- New shared-protocol Top 50 submissions save the replay privately even after
+  displacement. Other proofs, explicit replay shares, and compatibility-client
+  submissions expire after five days.
 - Optional social-media permission starts unchecked for each run and has no
   effect on rank, archival qualification, or on-site activity.
 - No AI-training permission or use. No automatic social posting.
 - Feedback means up/down voting and optional private notes, not public comments.
+- A competitively meaningful rules or scoring change opens a clean leaderboard.
+  The completed version becomes an immutable, viewable historical board; its
+  standings are never merged into the replacement.
+- Main arcade boards use labeled monthly seasons once scheduled rollover is
+  enabled. Weekly seasons are for sufficiently active games or featured events;
+  lower-volume and per-level boards may use longer seasons.
 - Preserve Partition rankings while integrating it with the shared service.
   The user also requested Maltline integration in this build: its updated
   two-button cabinet gets a distinct authority/game version and adapter,
@@ -103,8 +109,8 @@ Platform client (no game required):
 Publication:
 {policyVersion: "top50-social-v1", socialMedia: false}
 
-Submitting through the form with its explicit retention disclosure enrolls
-that run in this policy. The checkbox controls only social-media use.
+Submitting through the score form enrolls that run in this published policy.
+The checkbox controls only social-media use.
 Unknown policy fields (including training), wrong versions, and non-boolean
 consent are rejected. Absence on a legacy route preserves five-day retention.
 The new route requires the supported publication object.
