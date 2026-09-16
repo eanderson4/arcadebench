@@ -27,7 +27,7 @@
       "binding": "DB",
       "database_name": "arcadebench-platform",
       "database_id": "a1ae74c7-6583-4599-a626-4b6660199a65",
-      "migrations_dir": "./apps/platform/migrations"
+      "migrations_dir": "./apps/platform/production-migrations"
     }
   ],
   "r2_buckets": [

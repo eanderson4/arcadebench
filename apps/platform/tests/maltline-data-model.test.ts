@@ -142,14 +142,26 @@ beforeAll(async () => {
 });
 
 describe('Maltline generation-2 D1 model', () => {
-  it('adds an active Maltline season without changing the Partition season', async () => {
+  it('preserves the active generation-2 and Partition seasons while archiving the additional cabinet authority', async () => {
     const result = await env.DB.prepare(`
       SELECT id, game_id AS gameId, game_version AS gameVersion, state
       FROM seasons
-      ORDER BY game_id ASC
+      ORDER BY game_id ASC, id ASC
     `).all<{ id: string; gameId: string; gameVersion: string; state: string }>();
 
     expect(result.results).toEqual([
+      {
+        id: 'maltline-cabinet-1',
+        gameId: 'maltline',
+        gameVersion: 'cabinet-1',
+        state: 'archived',
+      },
+      {
+        id: 'maltline-cabinet-2',
+        gameId: 'maltline',
+        gameVersion: 'cabinet-2',
+        state: 'archived',
+      },
       {
         id: 'maltline-generation-2',
         gameId: 'maltline',

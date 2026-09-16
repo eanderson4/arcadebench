@@ -1,0 +1,175 @@
+/*
+ * ArcadeBench brand layer.
+ *
+ * Owns the two things every ArcadeBench page must agree on before any layout
+ * is applied: the licensed self-hosted typeface, and the token set that the
+ * catalog stylesheet consumes. It also carries the small number of primitives
+ * that are the brand itself — the bench mark lockup and the double-rule
+ * crossbar detail — so a page can show the identity without restating it.
+ *
+ * Loaded before arcade.css (or any other ArcadeBench stylesheet). No layout,
+ * no component styling, no animation.
+ *
+ * Fonts: Noto Sans, SIL Open Font License 1.1. See noto-sans-OFL-1.1.txt.
+ * Paths are relative so the same file resolves over HTTP from /brand/ and from
+ * disk when the internal guide opens it from docs/brand/.
+ */
+
+@font-face {
+  font-family: 'ArcadeBench Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('fonts/noto-sans-latin-400-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'ArcadeBench Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('fonts/noto-sans-latin-600-normal.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'ArcadeBench Sans';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('fonts/noto-sans-latin-800-normal.woff2') format('woff2');
+}
+
+:root {
+  color-scheme: light;
+
+  /* Colour. Large surfaces stay neutral: paper and surface are the page.
+     Ink carries every readable mark. Blue is the one saturated brand colour
+     and belongs to the bench mark and the play actions. Red is scarce. */
+  --ab-paper: #f4f1e7;
+  --ab-surface: #fffef9;
+  --ab-ink: #252824;
+  --ab-ink-soft: #45483f;
+  --ab-ink-muted: #5f625b;
+  --ab-blue: #2749a5;
+  --ab-blue-strong: #1e3a86;
+  --ab-red: #bf432e;
+  --ab-rule: #d4d2c8;
+  --ab-rule-strong: #b0aea4;
+  --ab-plate: #0d1417;
+  --ab-focus: #252824;
+  --ab-on-blue: #f4f1e7;
+
+  /* Type. Explicit real weights only — 400 body, 600 utility, 800 titles. */
+  --ab-font: 'ArcadeBench Sans', 'Noto Sans', 'Helvetica Neue', ui-sans-serif, system-ui, sans-serif;
+  --ab-weight-body: 400;
+  --ab-weight-utility: 600;
+  --ab-weight-title: 800;
+
+  /* Spacing: a 4px scale. */
+  --ab-space-1: 4px;
+  --ab-space-2: 8px;
+  --ab-space-3: 12px;
+  --ab-space-4: 16px;
+  --ab-space-5: 24px;
+  --ab-space-6: 32px;
+  --ab-space-7: 48px;
+
+  /* Radii: restrained, 6px by default. */
+  --ab-radius-sm: 4px;
+  --ab-radius: 6px;
+
+  --ab-content: 1120px;
+
+  /* Interaction. */
+  --ab-transition: 130ms ease;
+  --ab-target: 44px;
+
+  font-family: var(--ab-font);
+  font-synthesis: none;
+}
+
+/* The bench mark: one solid silhouette, no badge, no shadow, no outline box.
+   Authored at 24x24; the file at /brand/mark.svg is the same geometry. */
+.ab-mark {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
+/* Wordmark lockup: mark, then ARCADE stacked over BENCH, then an optional
+   quiet descriptor. The anchor keeps a plain accessible name, so the visible
+   lettering is free to be stacked and upper-cased. */
+.ab-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ab-ink);
+  text-decoration: none;
+}
+
+.ab-lockup__stack {
+  display: grid;
+  gap: 0;
+  font-size: 13px;
+  font-weight: var(--ab-weight-title);
+  line-height: 1.06;
+  text-transform: uppercase;
+}
+
+.ab-lockup__row:first-child {
+  letter-spacing: 0.05em;
+}
+
+/* BENCH carries wider letters than ARCADE; extra tracking squares the block
+   so neither row reads as the longer one. */
+.ab-lockup__row:last-child {
+  letter-spacing: 0.15em;
+}
+
+.ab-lockup__descriptor {
+  display: none;
+  padding-left: 10px;
+  border-left: 1px solid var(--ab-rule);
+  color: var(--ab-ink-muted);
+  font-size: 10px;
+  font-weight: var(--ab-weight-utility);
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+@media (min-width: 900px) {
+  .ab-lockup__descriptor {
+    display: block;
+  }
+}
+
+/* The double rule: two hairlines with a gap, echoing the crossbar that runs
+   through the mark. Used once per page at most — under the masthead. */
+.ab-crossbar-rule {
+  position: relative;
+  border-bottom: 1px solid var(--ab-rule);
+}
+
+.ab-crossbar-rule::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  height: 1px;
+  background: var(--ab-rule);
+}
+
+.ab-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

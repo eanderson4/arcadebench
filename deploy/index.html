@@ -3,95 +3,130 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#05070d" />
-    <meta name="description" content="Choose an ArcadeBench game: play Partition or Maltline, then inspect the deterministic run evidence." />
-    <meta property="og:title" content="ArcadeBench — Choose your cabinet" />
-    <meta property="og:description" content="Deterministic arcade games for humans and machines. Play Partition or Maltline and inspect every run." />
+    <meta name="theme-color" content="#f4f1e7" />
+    <meta name="description" content="Free browser games inspired by the early arcade era. No ads, microtransactions, or loot boxes. Choose a game and play." />
+    <meta property="og:title" content="ArcadeBench — Choose your game" />
+    <meta property="og:description" content="Free browser games inspired by the early arcade era. No ads, microtransactions, or loot boxes. Choose a game and play." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ArcadeBench" />
     <meta property="og:url" content="https://arcadebench.org/" />
     <meta name="twitter:card" content="summary" />
-    <title>ArcadeBench — Choose your cabinet</title>
+    <title>ArcadeBench — Choose your game</title>
     <link rel="canonical" href="https://arcadebench.org/" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/brand/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/brand/brand.css" />
     <link rel="stylesheet" href="/arcade.css" />
   </head>
   <body>
-    <a class="skip-link" href="#cabinets">Skip to cabinets</a>
-    <div class="arcade-glow arcade-glow--left" aria-hidden="true"></div>
-    <div class="arcade-glow arcade-glow--right" aria-hidden="true"></div>
+    <a class="skip-link" href="#games">Skip to games</a>
     <div class="page-shell">
-      <header class="site-nav">
-        <a class="wordmark" href="/" aria-current="page">
-          <span class="wordmark__mark" aria-hidden="true"></span>
-          <span>ARCADEBENCH</span>
+      <header class="site-nav ab-crossbar-rule">
+        <a class="ab-lockup wordmark" href="/" aria-label="ArcadeBench" aria-current="page">
+          <img class="ab-mark" src="/brand/mark.svg" alt="" width="32" height="32" decoding="async" />
+          <span class="ab-lockup__stack" aria-hidden="true">
+            <span class="ab-lockup__row">Arcade</span>
+            <span class="ab-lockup__row">Bench</span>
+          </span>
+          <span class="ab-lockup__descriptor" aria-hidden="true">Free play</span>
         </a>
-        <p>TWO CABINETS <span aria-hidden="true">/</span> OPEN PLAY</p>
+        <nav class="site-nav__links" aria-label="Primary">
+          <a href="#games">Games</a>
+          <a href="/about/">About</a>
+        </nav>
       </header>
 
-      <main class="launcher">
-        <header class="launcher__intro">
-          <div>
-            <p class="kicker"><span aria-hidden="true"></span> GAMES FOR HUMANS + MACHINES</p>
-            <h1>Choose your cabinet.</h1>
-          </div>
-          <p class="launcher__dek">Choose a game, play a run, and inspect its deterministic result.</p>
-        </header>
+      <main class="catalog">
+        <div class="catalog__intro">
+          <h1>Choose your game.</h1>
+          <p class="catalog__note">A free browser arcade for everyone, inspired by the early arcade era. Simple controls, quick rounds, and high scores worth chasing.</p>
+        </div>
 
-        <ul id="cabinets" class="cabinet-grid" aria-label="Available games" tabindex="-1">
+        <ul id="games" class="game-grid" aria-label="Available games" tabindex="-1">
           <li>
-            <a
-              class="cabinet cabinet--partition"
-              href="/partition/"
-              aria-labelledby="partition-name"
-              aria-describedby="partition-description partition-facts"
-            >
-              <span class="cabinet__meta"><b>01</b><span>REAL-TIME TERRITORY</span></span>
-              <span class="cabinet__glyph cabinet__glyph--partition" aria-hidden="true"><i></i></span>
-              <span class="cabinet__copy">
-                <span class="cabinet__genre">FIELD CONTROL</span>
-                <strong id="partition-name">PARTITION</strong>
-                <span id="partition-description" class="cabinet__description">Cut through a live field. Isolate the anomalies.</span>
-              </span>
-              <span id="partition-facts" class="cabinet__facts">
-                <span>KEYBOARD + TOUCH</span>
-                <span>20 AUTHORED FIELDS</span>
-              </span>
-              <span class="cabinet__action"><b>ENTER PARTITION</b><span aria-hidden="true">→</span></span>
-            </a>
+            <article class="game-card" aria-labelledby="partition-title">
+              <p class="game-card__art">
+                <img
+                  src="/covers/partition.png"
+                  width="960"
+                  height="540"
+                  decoding="async"
+                  alt="Partition gameplay: a cyan hatched region has claimed the lower-left of a dark grid playfield while a pink anomaly drifts above the claim."
+                />
+              </p>
+              <div class="game-card__body">
+                <h2 class="game-card__title" id="partition-title">Partition</h2>
+                <p class="game-card__premise" id="partition-premise">Draw boundaries, claim space, and dodge the anomalies.</p>
+                <ul class="game-card__meta" id="partition-meta">
+                  <li>Keyboard or touch</li>
+                  <li>20 authored fields</li>
+                </ul>
+                <a class="game-card__play" href="/games/partition/" aria-describedby="partition-premise partition-meta">
+                  <span>Play Partition</span>
+                  <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+                </a>
+              </div>
+            </article>
           </li>
           <li>
-            <a
-              class="cabinet cabinet--maltline"
-              href="/maltline/"
-              aria-labelledby="maltline-name"
-              aria-describedby="maltline-description maltline-facts"
-            >
-              <span class="cabinet__meta"><b>02</b><span>SHAKE-COUNTER ARCADE</span></span>
-              <span class="cabinet__glyph cabinet__glyph--maltline" aria-hidden="true"><i></i></span>
-              <span class="cabinet__copy">
-                <span class="cabinet__genre">COUNTER SERVICE</span>
-                <strong id="maltline-name">MALTLINE</strong>
-                <span id="maltline-description" class="cabinet__description">Blend each order. Slide shakes. Catch returning jars.</span>
-              </span>
-              <span id="maltline-facts" class="cabinet__facts">
-                <span>KEYBOARD · 700PX+ TO PLAY</span>
-                <span>VERIFIED SHIFT BOARD</span>
-              </span>
-              <span class="cabinet__action"><b>ENTER MALTLINE</b><span aria-hidden="true">→</span></span>
-            </a>
+            <article class="game-card" aria-labelledby="maltline-title">
+              <p class="game-card__art">
+                <img
+                  src="/covers/maltline.png"
+                  width="960"
+                  height="540"
+                  decoding="async"
+                  alt="Maltline gameplay: a bartender carries a strawberry shake past three numbered service lanes while customers hold up order bubbles and jars return on the belt."
+                />
+              </p>
+              <div class="game-card__body">
+                <h2 class="game-card__title" id="maltline-title">Maltline</h2>
+                <p class="game-card__premise" id="maltline-premise">Fill shakes, serve customers, and keep the counter moving.</p>
+                <ul class="game-card__meta" id="maltline-meta">
+                  <li>Keyboard</li>
+                  <li>Eight shifts · two buttons</li>
+                </ul>
+                <a class="game-card__play" href="/games/maltline/" aria-describedby="maltline-premise maltline-meta">
+                  <span>Play Maltline</span>
+                  <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+                </a>
+              </div>
+            </article>
           </li>
         </ul>
+
+        <!--
+          The activity feed is platform-wide: every game that registers an
+          adapter shows up here on its own, so this section names no game and
+          carries no per-game artwork or link. The status line ships with its
+          loading state so the section stays honest if the module never runs,
+          and the no-script fallback replaces it rather than stacking under it.
+        -->
+        <section class="recent" aria-labelledby="recent-title">
+          <div class="recent__head">
+            <h2 class="recent__title" id="recent-title">Recent high scores</h2>
+            <p class="recent__lede">The newest qualifying scores from every game on ArcadeBench.</p>
+          </div>
+          <p class="recent__status" id="recent-status" role="status" data-live>Loading recent high scores&#8230;</p>
+          <ol class="recent__list" id="recent-list" hidden></ol>
+          <noscript>
+            <style>.recent__status[data-live] { display: none; }</style>
+            <p class="recent__status">Recent high scores need JavaScript. <a href="#games">Choose a game</a> and set the first one.</p>
+          </noscript>
+        </section>
       </main>
 
       <footer class="site-footer">
-        <p>DETERMINISTIC PLAY <span aria-hidden="true">/</span> INSPECTABLE RUNS</p>
+        <p class="site-footer__promise">
+          <svg class="site-footer__mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" /></svg>
+          No ads. No microtransactions. No loot boxes. Just games.
+        </p>
         <nav aria-label="Site information">
-          <a href="/privacy/">PRIVACY</a>
-          <a href="/terms/">TERMS</a>
-          <a href="https://github.com/eanderson4/arcadebench">SOURCE</a>
+          <a href="/privacy/">Privacy</a>
+          <a href="/terms/">Terms</a>
+          <a href="https://github.com/eanderson4/arcadebench">Source</a>
         </nav>
       </footer>
     </div>
+    <script type="module" src="/activity.js"></script>
   </body>
 </html>

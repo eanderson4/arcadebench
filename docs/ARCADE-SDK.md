@@ -1,51 +1,97 @@
 # ArcadeBench game SDK
 
-`@arcadebench/sdk` is the small public bridge between independent games and
-ArcadeBench platform services. It deliberately does not contain a game engine,
-renderer, scoring rules, or privileged credential.
+`@arcadebench/sdk` provides a versioned, same-origin interface to shared
+leaderboards, private replay retention, and community feedback. It contains no
+credentials or game engine. Games keep their own rendering and scoring rules;
+the platform verifies proofs through registered server adapters and owns ranking.
 
-Each game owns its complete experience and treats score and replay proof as
-opaque game-defined values:
+## Game client (v2)
 
 ```ts
-import { createArcadeBenchClient } from '@arcadebench/sdk';
+import { createArcadeBenchGameClient } from '@arcadebench/sdk';
 
-const arcade = createArcadeBenchClient({
+const arcade = createArcadeBenchGameClient({
   gameId: 'partition',
-  gameVersion: 'dev-0',
+  gameVersion: '0.1.0', // use the game's exported version constant
 });
-
 const run = await arcade.runs.begin({
   boardId: 'level',
   context: { levelId: 'event-horizon', difficulty: 'hard' },
 });
-
-await arcade.leaderboards.submit({
+const submitted = await arcade.leaderboards.submit({
   boardId: 'level',
   runId: run.id,
   playerName: 'SPARK',
   score: partitionScore,
   proof: { replays: partitionReplays },
+  publication: { policyVersion: 'top50-social-v1', socialMedia: false },
 });
+// submitted.entry contains identity, board metadata, and the verified result.
+// submitted.publication contains rankAtSubmission, replaySaved, and expiresAt.
 
-await arcade.social.vote({ kind: 'level', id: 'event-horizon' }, 1);
+const feedback = await arcade.feedback.set({
+  subject: { kind: 'level', id: 'event-horizon' },
+  channel: 'overall',
+  vote: 1,
+  note: 'The final corner felt too tight.',
+});
 ```
 
-The current surface covers:
+The score form must disclose retention before submission: a replay qualifying
+for its board's Top 50 is kept privately even after displacement. Other new
+proofs expire after five days. The social checkbox starts unchecked for every
+run and affects only permission to publish social-media clips. It never affects
+ranking, retention, or the public activity event. There is no training permission.
 
-- `runs.begin` for one-time ranked challenges
-- `leaderboards.list` and `leaderboards.submit`
-- `replays.publish`, with a five-day default expiry request
-- `social.get` and `social.vote` for games and levels
+`leaderboards.list<NormalizedEntry<MyResult>>({boardId, filters, limit, cursor})`
+returns normalized entries. Context/filter values are strings; each adapter
+registers accepted keys and validates their values. Omitted list limit is 25;
+the server caps it at 50. Begin a challenge before ranked gameplay; late or
+expired challenges cannot upgrade an unranked run.
 
-Partition consumes the shared client but retains its local leaderboard fallback
-and all validation/ranking logic. The future Cloudflare service must replay and
-verify submitted proof; it must never trust scores merely because they came
-through the SDK.
+Feedback subjects and channels are game-owned and registered on the server.
+Votes are -1, 0 (clear), or +1. An omitted note preserves the existing note and
+its expiry; empty text clears it. A note update starts a 90-day deadline. Notes
+are private to maintainers and the originating anonymous session; public
+aggregates expose only counts. There is no public comment system. Clearing the
+browser's cookie loses access to that session's feedback.
 
-The browser client sends same-origin cookies and an SDK version header. It does
-not accept or transmit a Cloudflare API token. Platform credentials remain in
-the Worker environment and the protected GitHub deployment environment.
+`replays.publish` is an optional adapter capability for explicitly shared replay
+links with a five-day lifetime. It does not expose private leaderboard archives.
+Maltline currently supports ranked proof submission, not this sharing capability.
 
-Cloud saves and account-backed achievements can be added later without changing
-game ownership. Arcade mode intentionally has no saved progression today.
+## Platform client
+
+```ts
+import { createArcadeBenchPlatformClient } from '@arcadebench/sdk';
+const platform = createArcadeBenchPlatformClient();
+const page = await platform.activity.list({ limit: 8 });
+```
+
+One session-free `/api/v2/activity` read returns new verified Top 50 events across
+registered games. Display metadata and leaderboard links come from the server;
+the homepage does not merge separate game leaderboards. Historical scores count
+in ranking but are not presented as new activity. Event placement is the rank
+when submitted, not a claim about current placement.
+
+## Adding a game
+
+Implement `GameAdapter` in `apps/platform/src/shared/types.ts`, register it in
+`shared/registry.ts`, and seed a versioned season. The adapter defines board
+contexts, replay verification, immutable authority, ascending numeric rank
+components, challenges, and optional feedback subjects. Common transactions own
+eligibility, rank snapshots, publication, events, and replay cleanup. Partition's
+legacy score projection is a compatibility bridge; new games use the common
+entry insertion helper directly. Maltline's `cabinet-2` adapter is an example.
+
+The original `createArcadeBenchClient` remains available for v1 callers. New
+integrations use the v2 factories; v1 submission does not silently opt into the
+new retention policy. See [ecosystem architecture](PLATFORM-ECOSYSTEM-PLAN.md)
+and [release plan](PLATFORM-RELEASE-PLAN.md).
+
+## Browser-local player page (planned)
+
+A future “Your arcade” page can show games played and references to public
+scores from local storage. It must clearly say it is browser-local, offer a
+clear-data action, and never treat storage as authoritative identity or score
+proof. Accounts, cloud saves, and cross-device identity are outside this release.

@@ -1,10 +1,14 @@
 import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MALTLINE_CAMPAIGN } from '../src/core/campaign';
+import { normalizeMaltlineScenario } from '../src/core/scenario';
 import { FIXED_SCALE, MaltlineEngine } from '../src/core/engine';
 import { mulberry32 } from '../src/core/rng';
 import type { GameEvent, MaltlineScenario, MaltlineState } from '../src/core/types';
-import { MaltlineRenderer } from '../src/viewer/renderer';
+import {
+  deriveMaltlineCustomerWalkPose,
+  MaltlineRenderer,
+} from '../src/viewer/renderer';
 import {
   deriveMaltlineRendererLayout,
   MALTLINE_RENDERER_FRAME,
@@ -47,6 +51,7 @@ function commandRecorder(): { context: CanvasRenderingContext2D; commands: Comma
   const context = new Proxy({}, {
     get(_target, property) {
       if (values.has(property)) return values.get(property);
+      if (property === 'measureText') return (text: string) => ({ width: text.length * 8 });
       if (property === 'createLinearGradient' || property === 'createRadialGradient') {
         return (...args: unknown[]) => gradient(String(property), args);
       }
@@ -72,19 +77,6 @@ function renderedText(commands: Command[]): string[] {
   return commands
     .filter((command) => command[0] === 'fillText')
     .map((command) => String(command[1]));
-}
-
-function strokedRoundRects(commands: Command[]): Array<{ color: string; rect: number[] }> {
-  const results: Array<{ color: string; rect: number[] }> = [];
-  let strokeStyle = '';
-  let path: number[] | null = null;
-  for (const command of commands) {
-    if (command[0] === 'set' && command[1] === 'strokeStyle') strokeStyle = String(command[2]);
-    if (command[0] === 'beginPath') path = null;
-    if (command[0] === 'roundRect') path = command.slice(1, 5).map(Number);
-    if (command[0] === 'stroke' && path !== null) results.push({ color: strokeStyle, rect: path });
-  }
-  return results;
 }
 
 function filledRects(commands: Command[]): Array<{ color: string; rect: number[] }> {
@@ -113,6 +105,93 @@ afterEach(() => {
 });
 
 describe('MaltlineRenderer presentation dependencies', () => {
+  it('plants customer steps by distance and turns departing customers toward the door', () => {
+    const base = {
+      id: 7,
+      x: 40 * FIXED_SCALE,
+      phase: 'marching' as const,
+    };
+    const entering = deriveMaltlineCustomerWalkPose(base, false);
+    const leaving = deriveMaltlineCustomerWalkPose(
+      { ...base, phase: 'leaving' },
+      false,
+    );
+    const drinking = deriveMaltlineCustomerWalkPose(
+      { ...base, phase: 'drinking' },
+      false,
+    );
+    const halfCycleLater = deriveMaltlineCustomerWalkPose(
+      { ...base, x: base.x + 3.75 * FIXED_SCALE },
+      false,
+    );
+    const fullCycleLater = deriveMaltlineCustomerWalkPose(
+      { ...base, x: base.x + 7.5 * FIXED_SCALE },
+      false,
+    );
+    const leavingCycleLater = deriveMaltlineCustomerWalkPose(
+      { ...base, phase: 'leaving', x: base.x + 7.5 * FIXED_SCALE },
+      false,
+    );
+
+    expect(entering.walking).toBe(true);
+    expect(entering.facing).toBe(-1);
+    expect(leaving).toMatchObject({ walking: true, facing: 1 });
+    expect(leaving.stride).toBeCloseTo(entering.stride, 10);
+    expect(halfCycleLater.stride).toBeCloseTo(-entering.stride, 10);
+    expect(fullCycleLater.stride).toBeCloseTo(entering.stride, 10);
+    expect(leavingCycleLater.stride).toBeCloseTo(leaving.stride, 10);
+    expect(drinking).toMatchObject({
+      walking: false,
+      stride: 0,
+      leftFootLift: 0,
+      rightFootLift: 0,
+      bob: 0,
+    });
+    expect(deriveMaltlineCustomerWalkPose(base, true)).toMatchObject({
+      walking: true,
+      facing: -1,
+      stride: 0,
+      leftFootLift: 0,
+      rightFootLift: 0,
+      bob: 0,
+    });
+    expect(Object.isFrozen(entering)).toBe(true);
+  });
+
+  it('mirrors and animates a departing customer in the real draw path', () => {
+    const scenario = MALTLINE_CAMPAIGN[0]!;
+    const baseline = new MaltlineEngine(scenario).snapshot();
+    const leavingCustomer = {
+      id: 19,
+      lane: 0,
+      x: 55 * FIXED_SCALE,
+      flavor: 'vanilla' as const,
+      phase: 'leaving' as const,
+      timer: 0,
+      fulfilled: true,
+      requeues: 0,
+      catchBonusEligible: false,
+      exitAfterDrink: true,
+    };
+    const state: MaltlineState = {
+      ...baseline,
+      customers: [leavingCustomer],
+      spawned: 1,
+    };
+    const renderer = new MaltlineRenderer({ reducedMotion: false });
+    const layout = renderer.setScenario(scenario);
+    const tape = render(renderer, state);
+    const centerX = layout.project(
+      leavingCustomer.x,
+      layout.counterFrontY(leavingCustomer.lane),
+    ).x;
+
+    expect(tape).toContainEqual(['translate', centerX * 2, 0]);
+    expect(tape).toContainEqual(['scale', -1, 1]);
+    expect(deriveMaltlineCustomerWalkPose(leavingCustomer, false).stride)
+      .not.toBe(0);
+  });
+
   it('fails closed before canvas or effect mutation when unbound or state-mismatched', () => {
     const firstEngine = new MaltlineEngine(MALTLINE_CAMPAIGN[0]!);
     const secondEngine = new MaltlineEngine(MALTLINE_CAMPAIGN[1]!);
@@ -154,9 +233,9 @@ describe('MaltlineRenderer presentation dependencies', () => {
     const laterLayout = renderer.setScenario(laterEngine.scenario);
 
     expect(firstLayout.scenario).toBe(firstEngine.scenario);
-    expect(firstLayout.stations).toHaveLength(1);
+    expect(firstLayout.scenario.stations).toHaveLength(1);
     expect(laterLayout.scenario).toBe(laterEngine.scenario);
-    expect(laterLayout.stations).toHaveLength(3);
+    expect(laterLayout.scenario.stations).toHaveLength(3);
     expect(() => render(renderer, firstEngine.snapshot())).toThrow(/scenario mismatch/u);
     expect(render(renderer, laterEngine.snapshot()).length).toBeGreaterThan(500);
   });
@@ -169,6 +248,14 @@ describe('MaltlineRenderer presentation dependencies', () => {
 
     expect(() => renderer.setScenario({ ...engine.scenario }))
       .toThrow(/normalized frozen scenario/u);
+    expect(digest(render(renderer, engine.snapshot()))).toBe(before);
+
+    const fiveLaneScenario = normalizeMaltlineScenario({
+      ...MALTLINE_CAMPAIGN[2]!,
+      lanes: 5,
+    });
+    expect(() => renderer.setScenario(fiveLaneScenario))
+      .toThrow(/room renderer supports 1–4 lanes/u);
     expect(digest(render(renderer, engine.snapshot()))).toBe(before);
   });
 
@@ -235,7 +322,7 @@ describe('MaltlineRenderer presentation dependencies', () => {
     }
   });
 
-  it('ignores wall-clock passage while an injected presentation clock is frozen', () => {
+  it('advances presentation only through update, independently of wall-clock passage', () => {
     const scenario = MALTLINE_CAMPAIGN[0]!;
     const state: MaltlineState = {
       ...new MaltlineEngine(scenario).snapshot(),
@@ -258,7 +345,7 @@ describe('MaltlineRenderer presentation dependencies', () => {
 
     presentationTime += 300;
     const afterExactPresentationAdvance = render(renderer, state);
-    expect(digest(afterExactPresentationAdvance)).not.toBe(digest(before));
+    expect(digest(afterExactPresentationAdvance)).toBe(digest(before));
   });
 
   it('uses authoritative event points and names zero-point rescues honestly', () => {
@@ -582,291 +669,132 @@ describe('MaltlineRenderer presentation dependencies', () => {
     expect(digest(render(renderer, state))).toBe(digest(render(fresh, state)));
   });
 
-  it('renders peripheral text cues for lane, flavor, action, and jar economy', () => {
+  it('puts truthful progress, readiness and blocked status beside the active motor', () => {
     const scenario = MALTLINE_CAMPAIGN[2]!;
-    const baseline = new MaltlineEngine(scenario).snapshot();
-    const blendingState: MaltlineState = {
-      ...baseline,
-      player: {
-        lane: 1,
-        station: 1,
-        x: 0,
-        holding: null,
-        blending: 'chocolate',
-        blendProgress: Math.floor(scenario.blendTicks / 2),
-      },
-      customers: [{
-        id: 80,
-        lane: 2,
-        x: 60 * 1024,
-        flavor: 'strawberry',
-        phase: 'marching',
-        timer: 0,
-        fulfilled: false,
-        requeues: 0,
-        catchBonusEligible: false,
-        exitAfterDrink: false,
-      }],
-      jarsAvailable: 0,
-      washing: [30, 60],
-    };
-    const renderer = new MaltlineRenderer({ random: mulberry32(104), nowMs: () => 0 });
-    renderer.setScenario(scenario);
-    const text = renderedText(render(renderer, blendingState));
-
-    expect(text).toContain('BLENDING · 50%');
-    expect(text).toContain('VANILLA');
-    expect(text).toContain('CHOCOLATE');
-    expect(text).toContain('STRAWBERRY');
-    expect(text).toContain('CLEAN 0');
-    expect(text).toContain('WASH 2 · IN PLAY 3');
-    expect(text).toContain('CATCH A RETURN');
-    for (const letter of ['V', 'C', 'S']) expect(text).not.toContain(letter);
-
-    const readyState: MaltlineState = {
-      ...blendingState,
-      player: { ...blendingState.player, holding: 'strawberry', blending: null, blendProgress: 0 },
-    };
-    expect(renderedText(render(renderer, readyState)))
-      .toContain('READY · F / ENTER');
+    const initial = new MaltlineEngine(scenario).snapshot();
+    const renderer = new MaltlineRenderer({ nowMs: () => 0, reducedMotion: true });
+    const layout = renderer.setScenario(scenario);
+    for (const [lane, station] of [[0, 0], [1, 1], [2, 2]]) {
+      const bank = layout.workstation(lane!, station!);
+      const state = { ...initial, player: { ...initial.player, lane: lane!, station: station! } };
+      expect(renderedText(render(renderer, state))).not.toContain('READY');
+      const blend = render(renderer, { ...state, player: { ...state.player,
+        blending: 'strawberry', blendProgress: scenario.blendTicks / 2 } });
+      expect(renderedText(blend)).toContain('BLEND 50%');
+      expect(blend).toContainEqual(['roundRect', bank.status.bounds.x, bank.status.bounds.y,
+        bank.status.bounds.width, bank.status.bounds.height, 12]);
+      expect(renderedText(render(renderer, { ...state, player: { ...state.player, holding: 'strawberry' } }))).toContain('READY');
+      const blocked = render(renderer, { ...state, jarsAvailable: 0 });
+      expect(renderedText(blocked)).toContain('NO CLEAN CUPS');
+      expect(blocked).toContainEqual(['set', 'fillStyle', MALTLINE_VISUAL_THEME.station.blocked]);
+      expect(renderedText(blocked).join(' ')).not.toMatch(/CLEAN 0|WASH|IN PLAY/);
+    }
   });
 
   it('keeps returning-jar cue geometry and draw transcript shape exact across motion modes', () => {
     const scenario = MALTLINE_CAMPAIGN[0]!;
     const baseline = new MaltlineEngine(scenario).snapshot();
-    const threshold = scenario.laneLength * FIXED_SCALE * 0.25;
-    const state: MaltlineState = {
-      ...baseline,
-      tick: 37,
-      player: { ...baseline.player, lane: 0 },
-      jars: [
-        { id: 61, customerId: 41, lane: 0, x: threshold, catchBonusEligible: true },
-        { id: 62, customerId: 42, lane: 1, x: threshold + 1, catchBonusEligible: false },
-      ],
-      jarsAvailable: scenario.jarPoolSize - 2,
-    };
-    const normal = new MaltlineRenderer({ random: mulberry32(401), nowMs: () => 0, reducedMotion: false });
-    const reduced = new MaltlineRenderer({ random: mulberry32(401), nowMs: () => 0, reducedMotion: true });
-    normal.setScenario(scenario);
-    reduced.setScenario(scenario);
-    const normalCommands = render(normal, state);
-    const reducedCommands = render(reduced, state);
-    const cueRects = (commands: Command[]) => commands.filter((command) =>
-      command[0] === 'roundRect' && command[3] === 70 && command[4] === 19);
-
+    const threshold = scenario.laneLength * FIXED_SCALE * .25;
+    const state = { ...baseline, jars: [
+      { id: 61, customerId: 41, lane: 0, x: threshold, catchBonusEligible: true },
+      { id: 62, customerId: 42, lane: 1, x: threshold + 1, catchBonusEligible: false },
+    ] };
+    const commands = [false, true].map(reducedMotion => {
+      const renderer = new MaltlineRenderer({ nowMs: () => 0, reducedMotion });
+      renderer.setScenario(scenario); return render(renderer, state);
+    });
     const cue = deriveMaltlineRendererLayout(scenario).projectReturningJar(threshold, 0).catchCue!;
-    expect(cueRects(normalCommands)).toEqual([['roundRect', cue.x, cue.y, 70, 19, 9]]);
-    expect(cueRects(reducedCommands)).toEqual(cueRects(normalCommands));
-    expect(renderedText(normalCommands)).toContain('◀ CATCH');
-    expect(renderedText(normalCommands)).not.toContain('WINDOW 2');
-    expect(normalCommands.map(([method]) => method)).toEqual(
-      reducedCommands.map(([method]) => method),
-    );
+    for (const tape of commands) {
+      expect(tape.filter(c => c[0] === 'roundRect' && c[1] === cue.x && c[2] === cue.y))
+        .toEqual([['roundRect', cue.x, cue.y, cue.width, cue.height, 9]]);
+      expect(renderedText(tape)).toContain('◀ CATCH');
+      expect(renderedText(tape)).not.toContain('WINDOW 2');
+    }
+    expect(commands[0]!.map(([method]) => method)).toEqual(commands[1]!.map(([method]) => method));
   });
 
-  it('puts exact pour progress in the bartender cup and freezes decorative pour motion', () => {
+  it('fills only the processing pitcher, including a different selected flavor, and freezes reduced-motion art', () => {
+    const scenario = MALTLINE_CAMPAIGN[2]!;
+    const initial = new MaltlineEngine(scenario).snapshot();
+    const renderer = new MaltlineRenderer({ nowMs: () => 0, reducedMotion: true });
+    const layout = renderer.setScenario(scenario);
+    const state = { ...initial, player: { ...initial.player, lane: 1, station: 1, blending: 'strawberry' as const } };
+    let previousTop = Infinity;
+    for (const fraction of [.25, .5, .75]) {
+      const progress = Math.floor(scenario.blendTicks * fraction);
+      const commands = render(renderer, { ...state, player: { ...state.player, blendProgress: progress } });
+      const liquid = filledRects(commands).filter(({color, rect}) => color === MALTLINE_VISUAL_THEME.flavors.strawberry.base && rect[0] === -16);
+      expect(liquid).toHaveLength(1);
+      expect(liquid[0]!.rect[1]).toBeLessThan(previousTop); previousTop = liquid[0]!.rect[1]!;
+      const bank = layout.workstation(1, 1);
+      expect(bank.pitchers.find(p => p.stationIndex === 1)!.dock).toBe(1);
+      expect(bank.pitchers.find(p => p.stationIndex === 2)!.dock).toBe(0);
+      expect(filledRects(commands)).toContainEqual({color:MALTLINE_VISUAL_THEME.station.selectedKeyline, rect:[-7,-30,14,2]});
+      expect(filledRects(commands)).toContainEqual({color:MALTLINE_VISUAL_THEME.station.processing, rect:[-7,-30,14,2]});
+      expect(digest(render(renderer, { ...state, tick: 123, player: { ...state.player, blendProgress: progress } }))).toBe(digest(commands));
+    }
+    const held = render(renderer, { ...initial, player: { ...initial.player, station: 1, holding: 'strawberry' } });
+    expect(filledRects(held)).toContainEqual({color:MALTLINE_VISUAL_THEME.station.ready, rect:[-7,-30,14,2]});
+    expect(renderedText(held)).toContain('READY');
+  });
+
+  it('paints exactly one active motor with its pitchers left of the serving track', () => {
     const scenario = MALTLINE_CAMPAIGN[2]!;
     const baseline = new MaltlineEngine(scenario).snapshot();
     const renderer = new MaltlineRenderer({ nowMs: () => 0, reducedMotion: true });
-    renderer.setScenario(scenario);
-    for (const requestedFraction of [0, 0.25, 0.5, 0.75]) {
-      const blendProgress = Math.floor(scenario.blendTicks * requestedFraction);
-      const fraction = blendProgress / scenario.blendTicks;
-      const state: MaltlineState = {
-        ...baseline,
-        player: { ...baseline.player, lane: 1, x: 0, blending: 'strawberry', blendProgress },
-      };
-      const commands = render(renderer, state);
-      expect(filledRects(commands)).toContainEqual({
-        color: MALTLINE_VISUAL_THEME.flavors.strawberry.base,
-        rect: [-9, 12 - 27 * fraction, 18, 27 * fraction],
-      });
-      expect(digest(render(renderer, { ...state, tick: 123 }))).toBe(digest(commands));
-    }
-    const held = render(renderer, {
-      ...baseline,
-      player: { ...baseline.player, holding: 'strawberry', blending: null, blendProgress: 0 },
-    });
-    expect(filledRects(held).filter(({ rect }) => rect[0] === -9 && rect[2] === 18)).toEqual([]);
-  });
-
-  it('shows the available ingredient selector at the service end with truthful selection', () => {
-    const scenario = MALTLINE_CAMPAIGN[2]!;
-    const baseline = new MaltlineEngine(scenario).snapshot();
-    const renderer = new MaltlineRenderer({ nowMs: () => 0, reducedMotion: true });
-    renderer.setScenario(scenario);
-    const state: MaltlineState = {
-      ...baseline,
-      player: { ...baseline.player, station: 1, blending: 'strawberry', blendProgress: 10 },
-    };
-    const commands = render(renderer, state);
-    expect(renderedText(commands)).toContain('A / D  FLAVOR');
-    const selected = strokedRoundRects(commands).filter(({ color, rect }) =>
-      color === '#ffe39a' && rect[2] === 25 && rect[3] === 27);
-    expect(selected).toEqual([{ color: '#ffe39a', rect: [84, -63, 25, 27] }]);
-    for (const letter of ['V', 'C', 'S']) expect(renderedText(commands)).not.toContain(letter);
-  });
-
-  it('occludes customers behind each counter and paints sliding vessels on its surface', () => {
-    const scenario = MALTLINE_CAMPAIGN[2]!;
-    const baseline = new MaltlineEngine(scenario).snapshot();
-    const state: MaltlineState = {
-      ...baseline,
-      customers: [{
-        id: 80, lane: 0, x: 60 * FIXED_SCALE, flavor: 'strawberry', phase: 'marching',
-        timer: 0, fulfilled: false, requeues: 0, catchBonusEligible: false, exitAfterDrink: false,
-      }],
-      slides: [{ id: 81, lane: 0, x: 35 * FIXED_SCALE, flavor: 'vanilla' }],
-    };
-    const before = JSON.stringify(state);
-    const renderer = new MaltlineRenderer({ nowMs: () => 0, reducedMotion: true });
-    renderer.setScenario(scenario);
-    const commands = render(renderer, state);
-    const customer = commands.findIndex((command) => command[0] === 'set'
-      && command[1] === 'strokeStyle' && command[2] === MALTLINE_VISUAL_THEME.customerOrder.silhouetteKeyline);
-    const front = commands.findIndex((command) => command[0] === 'set'
-      && command[1] === 'fillStyle' && command[2] === '#d96b50');
-    const vessel = commands.findIndex((command) => command[0] === 'set'
-      && command[1] === 'fillStyle' && command[2] === MALTLINE_VISUAL_THEME.outgoingShake.shadow);
-    expect(customer).toBeGreaterThan(-1);
-    expect(front).toBeGreaterThan(customer);
-    expect(vessel).toBeGreaterThan(front);
-    expect(JSON.stringify(state)).toBe(before);
-  });
-
-  it('keeps the active counter lip and its perspective static in both motion modes', () => {
-    const scenario = MALTLINE_CAMPAIGN[2]!;
-    const state = new MaltlineEngine(scenario).snapshot();
-    const layout = deriveMaltlineRendererLayout(scenario);
-    const near = layout.project(0, layout.counterFrontY(0), -12);
-    const far = layout.project(scenario.laneLength * FIXED_SCALE, layout.counterFrontY(0), -12);
-
-    for (const reducedMotion of [false, true]) {
-      const renderer = new MaltlineRenderer({
-        random: mulberry32(402), nowMs: () => 0, reducedMotion,
-      });
-      renderer.setScenario(scenario);
-      const commands = render(renderer, state);
-      expect(commands).toContainEqual([
-        'set', 'strokeStyle', MALTLINE_VISUAL_THEME.ambience.activeLane,
-      ]);
-      expect(commands).toContainEqual([
-        'moveTo', near.x, near.y,
-      ]);
-      expect(commands).toContainEqual([
-        'lineTo', far.x, far.y,
-      ]);
+    const layout = renderer.setScenario(scenario);
+    for (let lane = 0; lane < scenario.lanes; lane++) {
+      const bank = layout.workstation(lane, 1);
+      const commands = render(renderer, { ...baseline, player: { ...baseline.player, lane, station: 1 } });
+      expect(commands.filter(c => c[0] === 'translate' && c[1] === bank.motor.anchor.x && c[2] === bank.motor.anchor.y)).toHaveLength(1);
+      for (const pitcher of bank.pitchers) expect(commands).toContainEqual(['translate',pitcher.anchor.x,pitcher.anchor.y+29*pitcher.scale]);
+      expect(bank.motor.bounds.x + bank.motor.bounds.width).toBeLessThan(layout.project(0,layout.counterFrontY(lane)).x);
     }
   });
 
-  it('paints selection, processing, blocked, and held readiness on truthful surfaces', () => {
+  it('paints customers before their counter and vessels after it without altering state', () => {
     const scenario = MALTLINE_CAMPAIGN[2]!;
     const baseline = new MaltlineEngine(scenario).snapshot();
-    const crossStationBlend: MaltlineState = {
-      ...baseline,
-      jarsAvailable: scenario.jarPoolSize - 1,
-      player: {
-        lane: 1,
-        station: 1,
-        x: 0,
-        holding: null,
-        blending: 'strawberry',
-        blendProgress: Math.floor(scenario.blendTicks / 2),
-      },
-    };
-    const renderer = new MaltlineRenderer({ random: mulberry32(107), nowMs: () => 0 });
-    renderer.setScenario(scenario);
-    const crossCommands = render(renderer, crossStationBlend);
-    const crossFrames = strokedRoundRects(crossCommands);
-    const selected = crossFrames.find(({ color, rect }) =>
-      color === MALTLINE_VISUAL_THEME.station.selectedKeyline
-      && Math.abs(rect[0]! - 463) < 0.01 && rect[2] === 78 && rect[3] === 74);
-    const processing = crossFrames.find(({ color, rect }) =>
-      color === MALTLINE_VISUAL_THEME.station.processing
-      && Math.abs(rect[0]! - 742.3333333333333) < 0.01 && rect[2] === 70 && rect[3] === 66);
-    expect(selected).toBeDefined();
-    expect(processing).toBeDefined();
-    expect(renderedText(crossCommands)).toContain('BLENDING · 50%');
-
-    const blockedState: MaltlineState = {
-      ...baseline,
-      jarsAvailable: 0,
-      player: { ...baseline.player, station: 1 },
-    };
-    const blockedCommands = render(renderer, blockedState);
-    const blockedFrames = strokedRoundRects(blockedCommands);
-    expect(blockedFrames.some(({ color, rect }) =>
-      color === MALTLINE_VISUAL_THEME.station.blocked
-      && Math.abs(rect[0]! - 463) < 0.01 && rect[2] === 78 && rect[3] === 74)).toBe(true);
-    expect(blockedCommands.some((command) =>
-      command[0] === 'set'
-      && (command[1] === 'fillStyle' || command[1] === 'strokeStyle')
-      && command[2] === MALTLINE_VISUAL_THEME.station.ready)).toBe(false);
-
-    const holdingState: MaltlineState = {
-      ...baseline,
-      jarsAvailable: scenario.jarPoolSize - 1,
-      player: { ...baseline.player, station: 1, holding: 'strawberry' },
-    };
-    const holdingCommands = render(renderer, holdingState);
-    const holdingFrames = strokedRoundRects(holdingCommands);
-    expect(holdingFrames.some(({ color, rect }) =>
-      color === MALTLINE_VISUAL_THEME.station.ready
-      && rect[0] === 112 && rect[1] === 353 && rect[2] === 276 && rect[3] === 30)).toBe(true);
-    expect(holdingFrames.some(({ color, rect }) =>
-      color === MALTLINE_VISUAL_THEME.station.ready
-      && Math.abs(rect[0]! - 463) < 0.01 && rect[2] === 78 && rect[3] === 74)).toBe(false);
-    expect(renderedText(holdingCommands)).toContain('READY · F / ENTER');
+    const state: MaltlineState = { ...baseline,
+      customers: [{id:80,lane:0,x:60*FIXED_SCALE,flavor:'strawberry',phase:'marching',timer:0,fulfilled:false,requeues:0,catchBonusEligible:false,exitAfterDrink:false}],
+      slides:[{id:81,lane:0,x:35*FIXED_SCALE,flavor:'vanilla'}] };
+    const saved = JSON.stringify(state), renderer = new MaltlineRenderer({ nowMs:()=>0,reducedMotion:true });
+    const layout = renderer.setScenario(scenario), commands = render(renderer,state);
+    const customer = commands.findIndex(c => c[0]==='set'&&c[1]==='strokeStyle'&&c[2]===MALTLINE_VISUAL_THEME.customerOrder.silhouetteKeyline);
+    const front = layout.counter(0).top[3];
+    const counter = commands.findIndex((c,index) => index>customer&&c[0]==='moveTo'&&c[1]===front.x&&c[2]===front.y);
+    const vessel = commands.findIndex(c=>c[0]==='set'&&c[1]==='fillStyle'&&c[2]===MALTLINE_VISUAL_THEME.outgoingShake.shadow);
+    expect(customer).toBeGreaterThan(-1); expect(counter).toBeGreaterThan(customer);expect(vessel).toBeGreaterThan(counter);
+    expect(JSON.stringify(state)).toBe(saved);
   });
 
-  it('fills the processing meter continuously from exact progress in both motion modes', () => {
-    const scenario: MaltlineScenario = { ...MALTLINE_CAMPAIGN[2]!, blendTicks: 100 };
-    const engine = new MaltlineEngine(scenario);
-    const baseline = engine.snapshot();
-    const stateAt = (blendProgress: number): MaltlineState => ({
-      ...baseline,
-      player: {
-        ...baseline.player,
-        station: 1,
-        blending: 'strawberry',
-        blendProgress,
-      },
-    });
-    const meterFill = (commands: Command[]): number[] => filledRects(commands).find(({ color, rect }) =>
-      color === MALTLINE_VISUAL_THEME.station.processing && rect[2] === 6)!.rect;
-    const meterDividers = (commands: Command[]): number[][] => commands
-      .filter((command) => command[0] === 'moveTo'
-        && Math.abs(Number(command[1]) - 726.3333333333333) < 0.01
-        && Number(command[2]) > 415 && Number(command[2]) < 469)
-      .map((command) => command.slice(1, 3).map(Number));
-
-    for (const [progress, expectedY, expectedHeight] of [
-      [0, 469, 0],
-      [50, 442, 27],
-      [99, 415.54, 53.46],
-      [100, 415, 54],
-    ] as const) {
-      const renderer = new MaltlineRenderer({ random: mulberry32(108), nowMs: () => 0 });
-      renderer.setScenario(engine.scenario);
-      const commands = render(renderer, stateAt(progress));
-      const fill = meterFill(commands);
-      expect(fill[0]).toBeCloseTo(726.3333333333333);
-      expect(fill[1]).toBeCloseTo(expectedY);
-      expect(fill[2]).toBe(6);
-      expect(fill[3]).toBeCloseTo(expectedHeight);
-      expect(renderedText(commands)).toContain(`BLENDING · ${Math.round(progress / 5) * 5}%`);
+  it('moves the real station queue in 200ms independently of frame partition, wraps both directions and resets', () => {
+    const scenario=MALTLINE_CAMPAIGN[2]!, initial=new MaltlineEngine(scenario).snapshot();
+    const at=(station:number)=>({...initial,player:{...initial.player,station}});
+    const make=(reducedMotion=false)=>{const r=new MaltlineRenderer({nowMs:()=>0,random:()=>.5,reducedMotion});r.setScenario(scenario);return r;};
+    for(const [from,to] of [[0,1],[2,0],[0,2]]){
+      const a=make(),b=make();render(a,at(from!));render(b,at(from!));render(a,at(to!));render(b,at(to!));
+      a.update(100);for(const dt of [25,25,50])b.update(dt);
+      expect(digest(render(a,at(to!)))).toBe(digest(render(b,at(to!))));
+      const settled=make();const final=digest(render(settled,at(to!)));
+      expect(digest(render(a,at(to!)))).not.toBe(final);
+      a.update(100);expect(digest(render(a,at(to!)))).toBe(final);
+      const reduced=make(true);render(reduced,at(from!));expect(digest(render(reduced,at(to!)))).toBe(digest(render(make(true),at(to!))));
+      b.resetPresentation();expect(digest(render(b,at(to!)))).toBe(final);
+      render(b,at(from!));b.update(50);b.setScenario(scenario);expect(digest(render(b,at(to!)))).toBe(final);
     }
+  });
 
-    const full = new MaltlineRenderer({ random: mulberry32(109), nowMs: () => 0, reducedMotion: false });
-    const reduced = new MaltlineRenderer({ random: mulberry32(109), nowMs: () => 0, reducedMotion: true });
-    full.setScenario(engine.scenario);
-    reduced.setScenario(engine.scenario);
-    const fullCommands = render(full, stateAt(50));
-    const reducedCommands = render(reduced, stateAt(50));
-    expect(meterFill(reducedCommands)).toEqual(meterFill(fullCommands));
-    expect(meterDividers(fullCommands).map(([, y]) => y))
-      .toEqual([425.8, 436.6, 447.4, 458.2]);
-    expect(meterDividers(reducedCommands)).toEqual(meterDividers(fullCommands));
+  it('renders physical clean stock with six bounded seats and an explicit overflow count', () => {
+    const scenario=normalizeMaltlineScenario({...MALTLINE_CAMPAIGN[0]!,jarPoolSize:999});
+    const initial=new MaltlineEngine(scenario).snapshot(),renderer=new MaltlineRenderer({nowMs:()=>0,reducedMotion:true});
+    const layout=renderer.setScenario(scenario);
+    for(const available of [0,1,4,6,999]){
+      const commands=render(renderer,{...initial,jarsAvailable:available});
+      const painted=layout.cleanRack.slots.filter(slot=>commands.some(c=>c[0]==='translate'&&c[1]===slot.center.x&&c[2]===slot.center.y));
+      expect(painted).toHaveLength(Math.min(available,6));
+      expect(renderedText(commands).filter(text=>/^\+\d+$/.test(text))).toEqual(available>6?[`+${available-6}`]:[]);
+    }
   });
 
   it('keeps top-lane order tickets below the HUD with balanced canvas state', () => {

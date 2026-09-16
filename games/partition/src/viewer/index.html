@@ -9,10 +9,10 @@
     <meta property="og:description" content="A real-time territory game for humans and machines. Play free, program a controller, and inspect every run." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="ArcadeBench" />
-    <meta property="og:url" content="https://arcadebench.org/partition/" />
+    <meta property="og:url" content="https://arcadebench.org/games/partition/" />
     <meta name="twitter:card" content="summary" />
     <title>Partition — ArcadeBench</title>
-    <link rel="canonical" href="https://arcadebench.org/partition/" />
+    <link rel="canonical" href="https://arcadebench.org/games/partition/" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./style.css" />
   </head>
@@ -22,7 +22,7 @@
     <main class="shell">
       <section id="home-screen" class="home-screen" aria-label="Partition home">
         <header class="home-nav">
-          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
+          <div class="brand-line"><span class="brand-mark"></span><a class="arcade-home" href="/" aria-label="Back to ArcadeBench">ARCADEBENCH</a> <i>/</i> PARTITION</div>
           <div class="home-nav-actions">
             <button id="open-leaderboard" class="quiet-button leaderboard-link" type="button">HIGH SCORES <span>↗</span></button>
             <button id="open-catalog" class="quiet-button catalog-link" type="button">EXPLORE 20 FIELDS <span>→</span></button>
@@ -86,7 +86,7 @@
       <section id="level-catalog" class="level-catalog" aria-label="Partition level catalog">
         <header class="catalog-nav">
           <button id="catalog-home" class="text-button" type="button"><span>←</span> PARTITION HOME</button>
-          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> FIELD CATALOG</div>
+          <div class="brand-line"><span class="brand-mark"></span><a class="arcade-home" href="/" aria-label="Back to ArcadeBench">ARCADEBENCH</a> <i>/</i> FIELD CATALOG</div>
           <div class="catalog-nav-actions">
             <button id="catalog-leaderboard" class="quiet-button" type="button">HIGH SCORES <span>↗</span></button>
             <button id="catalog-replay" class="quiet-button" type="button">REPLAY LAB <span>↗</span></button>
@@ -132,7 +132,7 @@
       <section id="leaderboard-screen" class="leaderboard-screen" aria-label="Partition high scores">
         <header class="leaderboard-nav">
           <button id="leaderboard-home" class="text-button" type="button"><span>←</span> PARTITION HOME</button>
-          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> HIGH SCORES</div>
+          <div class="brand-line"><span class="brand-mark"></span><a class="arcade-home" href="/" aria-label="Back to ArcadeBench">ARCADEBENCH</a> <i>/</i> HIGH SCORES</div>
           <button id="leaderboard-catalog" class="quiet-button" type="button">FIELD CATALOG <span>→</span></button>
         </header>
 
@@ -182,7 +182,7 @@
 
       <header class="masthead">
         <div class="identity">
-          <div class="brand-line"><span class="brand-mark"></span>ARCADEBENCH <i>/</i> PARTITION</div>
+          <div class="brand-line"><span class="brand-mark"></span><a class="arcade-home" href="/" aria-label="Back to ArcadeBench">ARCADEBENCH</a> <i>/</i> PARTITION</div>
           <h1>PARTITION</h1>
           <p class="dek">Divide the live field. Isolate the unknown.</p>
         </div>
@@ -204,9 +204,9 @@
       <section class="workspace">
           <div class="field-column">
           <div class="stage">
-            <button id="stage-home" class="stage-home" type="button" aria-label="Return to Partition home">
-              <i aria-hidden="true">←</i><span>PARTITION HOME</span>
-            </button>
+            <a id="stage-home" class="stage-home arcade-home" href="/" aria-label="Back to ArcadeBench">
+              <i aria-hidden="true">←</i><span>ARCADEBENCH</span>
+            </a>
             <div class="stage-label"><span class="live-dot"></span><b id="stage-field-label">STAGE 01</b><em id="stage-field-name">FIRST LIGHT</em></div>
             <div class="stage-stats" aria-hidden="true">
               <span><small>STABLE / GOAL</small><b id="stage-capture">0 / 75%</b></span>
@@ -262,6 +262,23 @@
                   <div class="score-entry-control">
                     <input id="player-name" name="player-name" type="text" maxlength="16" autocomplete="nickname" spellcheck="false" placeholder="SPARK PILOT" />
                     <button id="submit-score" class="primary-button" type="submit">ENTER SCORE <b>→</b></button>
+                  </div>
+                  <!--
+                    Public ranked runs only. The disclosure states the
+                    retention policy this score is entered under, and the one
+                    optional permission beside it starts unchecked for every
+                    run: declining changes neither the score nor the ranking.
+                  -->
+                  <div id="score-retention" class="score-retention" hidden>
+                    <p class="score-retention__terms" id="score-retention-terms">
+                      If this run reaches the Top 50 on its leaderboard, its replay is saved even if later overtaken. Other replays expire after five days. Saved replays are private. No AI training.
+                      <a href="/privacy/">Privacy</a>
+                    </p>
+                    <div class="score-consent">
+                      <input id="score-social-consent" type="checkbox" />
+                      <label for="score-social-consent">Allow ArcadeBench to share this replay or clips from it on social media.</label>
+                    </div>
+                    <p class="score-consent__helper" id="score-consent-helper">Optional. Your choice won’t affect your score or ranking.</p>
                   </div>
                   <p id="score-entry-status" aria-live="polite">PUBLIC-FRIENDLY NAMES ONLY · SCORE VERIFIED FROM REPLAY</p>
                   <button id="score-board-link" class="text-button" type="button" hidden>VIEW HIGH SCORES →</button>
@@ -368,6 +385,31 @@
         <span>30 HZ AUTHORITATIVE CLOCK</span>
       </footer>
     </main>
+    <!--
+      One dialog, shared by all twenty catalog fields: a field's "leave a
+      private note" button binds it to that field while it is open. A note is
+      private to ArcadeBench's maintainers, expires on its own, and never
+      appears in a public count, so the dialog says exactly that and offers
+      explicit save, clear, and cancel.
+    -->
+    <dialog id="feedback-note" class="note-dialog" aria-labelledby="feedback-note-title">
+      <form id="feedback-note-form" class="note-dialog-card" novalidate>
+        <div class="note-dialog-heading">
+          <small>PRIVATE NOTE</small>
+          <h2 id="feedback-note-title">Field feedback</h2>
+          <p id="feedback-note-subject" class="note-dialog-subject"></p>
+        </div>
+        <p class="note-dialog-terms" id="feedback-note-terms">Only ArcadeBench's maintainers can read this. Notes expire after 90 days. Please don't include personal information.</p>
+        <label for="feedback-note-text">YOUR NOTE</label>
+        <textarea id="feedback-note-text" name="note" rows="5" maxlength="1000" spellcheck="true"></textarea>
+        <p id="feedback-note-status" class="note-dialog-status" role="status"></p>
+        <div class="note-dialog-actions">
+          <button id="feedback-note-save" class="primary-button" type="submit">SAVE NOTE</button>
+          <button id="feedback-note-clear" class="quiet-button" type="button">CLEAR NOTE</button>
+          <button id="feedback-note-cancel" class="quiet-button" type="button">CANCEL</button>
+        </div>
+      </form>
+    </dialog>
     <div id="notice" class="notice" role="status"></div>
     <script type="module" src="./main.ts"></script>
   </body>

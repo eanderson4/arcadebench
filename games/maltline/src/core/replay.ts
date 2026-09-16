@@ -6,6 +6,30 @@ import { IDLE_INPUT } from './types';
 /** Rich local replay generation. Version 2 includes fulfillment-aware state and events. */
 export const MALTLINE_REPLAY_VERSION = 2 as const;
 
+export interface MaltlineCabinetReplay extends Omit<MaltlineReplay, 'version'> {
+  version: 3;
+  controlMode: 'two-button-v1';
+}
+
+/** Unranked control experiment, explicitly distinct from retained ranked replays. */
+export function replayMaltlineCabinet(
+  scenario: MaltlineScenario, run: RunContext, inputs: MaltlineInput[],
+): MaltlineCabinetReplay {
+  const engine = new MaltlineEngine(scenario, run, 'two-button-v1');
+  const ticks = [];
+  for (const [index, value] of inputs.entries()) {
+    const input = normalizeMaltlineInput(value, `Maltline cabinet input ${index + 1}`);
+    engine.setInput(input);
+    const result = engine.step();
+    ticks.push({ tick: result.state.tick, input: { ...input }, events: result.events });
+    if (result.state.status !== 'running') break;
+  }
+  return {
+    version: 3, controlMode: 'two-button-v1', scenario: structuredClone(scenario),
+    run: { ...run }, ticks, finalState: engine.snapshot(),
+  };
+}
+
 /** Runs a scenario from recorded inputs and returns the resulting replay. */
 export function replayMaltline(scenario: MaltlineScenario, run: RunContext, inputs: MaltlineInput[]): MaltlineReplay {
   const engine = new MaltlineEngine(scenario, run);

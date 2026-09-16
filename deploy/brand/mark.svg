@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" role="img" aria-labelledby="arcadebench-mark-title">
+  <title id="arcadebench-mark-title">ArcadeBench</title>
+  <!--
+    The bench A. Authored on a 24x24 grid:
+      top slab   4,2 16x4
+      legs       4,6 4x16 and 16,6 4x16
+      crossbar   2,12 20x4
+    The slab and both legs are one closed outline; the crossbar is a second
+    subpath. A single solid silhouette, no badge box and no shadow.
+  -->
+  <path fill="#2749a5" d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" />
+</svg>

@@ -1,5 +1,10 @@
 # Partition leaderboard contract
 
+The current viewer uses the [shared v2 SDK](ARCADE-SDK.md). The HTTP examples
+below document the retained v1 compatibility API and its original retention.
+New v2 submissions include explicit Top 50 retention/social permission and emit
+qualifying events through the common ArcadeBench activity stream.
+
 Partition exposes two human-play scoreboards:
 
 - **Arcade run** — deepest stage reached, completed-run status, elapsed
@@ -13,7 +18,7 @@ against Medium, Hard, or Impossible.
 
 Production uses the same-origin ArcadeBench API automatically. Local Vite
 development uses local storage and labels the board **Local preview · this
-device** unless `VITE_ARCADEBENCH_API_URL=/api/v1` points it at a Worker dev
+device** unless `VITE_ARCADEBENCH_API_URL=/api/v2` points it at a Worker dev
 server. `VITE_ARCADEBENCH_API_URL=local` explicitly forces the local adapter.
 
 ## Public HTTP surface

@@ -217,21 +217,96 @@ async function exercise(origin) {
   assertHeader(launcher, 'cache-control', 'public, max-age=0, must-revalidate');
   assertHeader(launcher, 'content-type', 'text/html; charset=utf-8');
   assertSecurityHeaders(launcher);
-  assert.match(launcher.body.toString('utf8'), /<h1>Choose your cabinet\.<\/h1>/u);
+  assert.match(launcher.body.toString('utf8'), /<h1>Choose your game\.<\/h1>/u);
+  for (const cover of ['/covers/partition.png', '/covers/maltline.png']) {
+    const asset = await probe(origin, `Cover ${cover}`, cover);
+    assertStatus(asset, 200);
+    assert.ok(
+      (asset.headers['content-type'] ?? '').startsWith('image/png'),
+      `Cover ${cover} content-type was ${asset.headers['content-type']}`,
+    );
+    assertSecurityHeaders(asset);
+  }
 
-  const slashRedirect = await probe(origin, 'Slash redirect', '/maltline?probe=1&tick=7');
+  const slashRedirect = await probe(origin, 'Slash redirect', '/games/maltline?probe=1&tick=7');
   assertStatus(slashRedirect, 307);
-  assertHeader(slashRedirect, 'location', '/maltline/?probe=1&tick=7');
+  assertHeader(slashRedirect, 'location', '/games/maltline/?probe=1&tick=7');
   assertSecurityHeaders(slashRedirect);
   assertNoHeader(slashRedirect, 'cache-control');
   assertEmptyBody(slashRedirect);
 
+  const about = await probe(origin, 'About page', '/about/');
+  assertStatus(about, 200);
+  assertHeader(about, 'cache-control', 'public, max-age=0, must-revalidate');
+  assertHeader(about, 'content-type', 'text/html; charset=utf-8');
+  assertSecurityHeaders(about);
+  const aboutHtml = about.body.toString('utf8');
+  assert.match(aboutHtml, /<h1>An arcade for everyone\.<\/h1>/u);
+  assert.match(aboutHtml, /<link\s+rel="canonical"\s+href="https:\/\/arcadebench\.org\/about\/"\s*\/?>/u);
+  assert.match(aboutHtml, /href="https:\/\/mathvsvibes\.com"/u);
+  assert.match(aboutHtml, /<a href="\/about\/" aria-current="page">About<\/a>/u);
+  assert.match(aboutHtml, /<link\s+rel="stylesheet"\s+href="\/about\.css"\s*\/?>/u);
+
+  const aboutStylesheet = await probe(origin, 'About stylesheet', '/about.css');
+  assertStatus(aboutStylesheet, 200);
+  assertHeader(aboutStylesheet, 'cache-control', 'public, max-age=0, must-revalidate');
+  assert.ok(
+    (aboutStylesheet.headers['content-type'] ?? '').startsWith('text/css'),
+    `About stylesheet content-type was ${aboutStylesheet.headers['content-type']}`,
+  );
+  assertSecurityHeaders(aboutStylesheet);
+
+  // A legacy game path resolves through its exact redirect rule, not the
+  // automatic trailing-slash behavior the permanent route keeps.
+  const legacyGamePaths = [
+    { request: '/partition', location: '/games/partition/' },
+    { request: '/partition/', location: '/games/partition/' },
+    { request: '/partition/index.html', location: '/games/partition/' },
+    { request: '/maltline', location: '/games/maltline/' },
+    { request: '/maltline/', location: '/games/maltline/' },
+    { request: '/maltline/index.html', location: '/games/maltline/' },
+  ];
+  for (const entry of legacyGamePaths) {
+    const response = await probe(origin, `Legacy ${entry.request}`, `${entry.request}?probe=1&tick=7`);
+    assertStatus(response, 301);
+    assertHeader(response, 'location', `${entry.location}?probe=1&tick=7`);
+    assertSecurityHeaders(response);
+    assertNoHeader(response, 'cache-control');
+    assertEmptyBody(response);
+  }
+
   const legacyRedirect = await probe(origin, 'Legacy redirect', '/src/viewer?probe=1&tick=7');
   assertStatus(legacyRedirect, 301);
-  assertHeader(legacyRedirect, 'location', '/partition/?probe=1&tick=7');
+  assertHeader(legacyRedirect, 'location', '/games/partition/?probe=1&tick=7');
   assertSecurityHeaders(legacyRedirect);
   assertNoHeader(legacyRedirect, 'cache-control');
   assertEmptyBody(legacyRedirect);
+
+  // Root Partition share links keep working: a launcher-shaped pathname that
+  // carries a known game query key forwards to the permanent game route with
+  // its query intact, while an unrelated query still serves the catalog.
+  const rootGameQuery = await probe(
+    origin,
+    'Root game query',
+    '/?mode=replay&replay=%2Fapi%2Fv1%2Fgames%2Fpartition%2Freplays%2Freplay_7M4K2Q9D',
+  );
+  assertStatus(rootGameQuery, 302);
+  assertHeader(
+    rootGameQuery,
+    'location',
+    `${origin}/games/partition/?mode=replay&replay=%2Fapi%2Fv1%2Fgames%2Fpartition%2Freplays%2Freplay_7M4K2Q9D`,
+  );
+  assertHeader(rootGameQuery, 'cache-control', 'no-store');
+  assertEmptyBody(rootGameQuery);
+  // The authored security headers travel with asset-layer responses; a
+  // Worker-built redirect, like the existing /r/ viewer redirect, answers
+  // before that layer. The launcher and asset probes above still pin them.
+  assertNoHeader(rootGameQuery, 'set-cookie');
+  assertNoHeader(rootGameQuery, 'content-type');
+
+  const rootPlainQuery = await probe(origin, 'Root plain query', '/?utm_source=probe');
+  assertStatus(rootPlainQuery, 200);
+  assert.match(rootPlainQuery.body.toString('utf8'), /<h1>Choose your game\.<\/h1>/u);
 
   const hiddenHeaders = await probe(origin, 'Hidden _headers', '/_headers');
   const hiddenRedirects = await probe(origin, 'Hidden _redirects', '/_redirects');
@@ -259,7 +334,7 @@ async function exercise(origin) {
   assertEmptyBody(headLauncher);
   assertEmptyBody(headNotFound);
 
-  const www = await probe(origin, 'WWW Host redirect capability', '/partition/?mode=replay&tick=7', {
+  const www = await probe(origin, 'WWW Host redirect capability', '/games/partition/?mode=replay&tick=7', {
     headers: { host: `www.${SITE_CONTRACT.canonicalHost}` },
   });
   let wwwHostRedirect;
@@ -267,7 +342,7 @@ async function exercise(origin) {
     assertHeader(
       www,
       'location',
-      `https://${SITE_CONTRACT.canonicalHost}/partition/?mode=replay&tick=7`,
+      `https://${SITE_CONTRACT.canonicalHost}/games/partition/?mode=replay&tick=7`,
     );
     assertEmptyBody(www);
     wwwHostRedirect = Object.freeze({ supported: true, observed: reportProbe(www) });
@@ -284,8 +359,11 @@ async function exercise(origin) {
   return Object.freeze({
     health: reportProbe(health),
     launcher: reportProbe(launcher),
+    about: reportProbe(about),
     slashRedirect: reportProbe(slashRedirect),
     legacyRedirect: reportProbe(legacyRedirect),
+    rootGameQuery: reportProbe(rootGameQuery),
+    rootPlainQuery: reportProbe(rootPlainQuery),
     hiddenHeaders: reportProbe(hiddenHeaders),
     hiddenRedirects: reportProbe(hiddenRedirects),
     notFound: reportProbe(notFound),

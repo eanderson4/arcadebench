@@ -12,7 +12,7 @@
   "screenshots": [
     {
       "name": "blend-half.png",
-      "sha256": "8ea4f15df304ad316c1271beb2fc73f17039f738223d249f8c0696f1bc711c85"
+      "sha256": "96f0efd7772b96973ad04882c56f8bb1136cfc0fe074de94170e118db092448f"
     },
     {
       "name": "competition-accepted-700.png",
@@ -24,15 +24,15 @@
     },
     {
       "name": "competition-inspected-controls-700.png",
-      "sha256": "eae0bacf1acb1f86e6c2a878b99006510021815c82554d8de3a2a9c21ccff8d5"
+      "sha256": "e82c645dd6d65476bb145174dec85bec9411195cbcb5424dfbe09a9adc70579f"
     },
     {
       "name": "competition-inspected.png",
-      "sha256": "37a813cd7a6ed6346c598856f7de3fd7f1517ab6b28f3332ed1fc57666576031"
+      "sha256": "09e06869a5f179bbfe7a52093a3b5bbe5e0ad17bec128a959c680cc95365bd76"
     },
     {
       "name": "competition-live-empty-390.png",
-      "sha256": "12243ceb4521a24f12219b01b5584fb154022b7cd69bf6c732a1d882135fe7bb"
+      "sha256": "467879b7da65c10bb5d7cf7b66fc5ebd349964648fe8b77cefe7d26029e09e44"
     },
     {
       "name": "competition-ranked-390.png",
@@ -40,172 +40,172 @@
     },
     {
       "name": "countdown.png",
-      "sha256": "243e53abfcd1c3855aa3be1499e74ca0c86ea85a9bc29c91e1acb45b7696590d"
+      "sha256": "5860528d6938326fc204baf6b1a0e674b466ab60379697f9db40b7537881e4f2"
     },
     {
       "name": "first-pour-idle.png",
-      "sha256": "a1ab9b42aa2e7ecb1a5dbe3465f43e10ad1c821217c943c701b9bd9a55d55e1d"
+      "sha256": "63fe30dc0f41a3e58e6dab84eda5d5521ae82053516e805afb0f5c7af0d3aaab"
     },
     {
       "name": "game-over.png",
-      "sha256": "7d93ec27d88e2955d7114644b5055478f14947bdd73d4560d169e334dcf9bb12"
+      "sha256": "59eb6cf0f7a2a854211019bbe80d4974127f5a8ecf2ed3fc732659af1fec3398"
     },
     {
       "name": "human-lab-active-700.png",
-      "sha256": "0c29e9fda99a0ecce03fa8d68b709f120e4fc1693bdbff93a133388e360173d6"
+      "sha256": "78e5422e87ae64ac9b357bec56b5e1448aaf3b3ed0aa11c57c55fd4f11a06f31"
     },
     {
       "name": "human-lab-countdown-1280.png",
-      "sha256": "8284585c59c264f94b2509f028d82c442b009bf7a1184b59e6a75b2272007dd0"
+      "sha256": "30d3c6d74acd3e45ecc1bf9b1dbef4175472dd2d427102fafaec1d66e968830f"
     },
     {
       "name": "human-lab-countdown-700.png",
-      "sha256": "bf3cfd56c2a2f8f7c943f8c7e7a2333c7f28f7caed8ec3da1aff53be3d0e1e24"
+      "sha256": "4d5ae4d5b60d47f19aff0ebc5e3c7778463ebf8ed818bbf8614f86609d1dc701"
     },
     {
       "name": "human-lab-final-700.png",
-      "sha256": "ad618ca8f8f8117aef03c3e683b82f6c3aabb53aa4cf9487c88b13e38435a16f"
+      "sha256": "39efc9ed4534647bd1ebe3dc778dba5a10c77121528f55e4f4015e21b3d1c61e"
     },
     {
       "name": "human-lab-stage-pulse-1280.png",
-      "sha256": "e28e48e990ae6839d39ae499191b8556a3e1e56601945b312572921458855461"
+      "sha256": "dba11c701e7ee780a57c4de4b9066a044310a93effcf002f8a1f35ea9c1d03c2"
     },
     {
       "name": "human-lab-welcome-1280.png",
-      "sha256": "7c3e3ab4d1fbdbb58ea1779502f6394dd9d311d63baf9112c88e2c1a99b1f554"
+      "sha256": "7a9cfcc1e0d5e2fc7589093cc6dfbcfbbe89e0d05dd29a77291e179ab7f370bf"
     },
     {
       "name": "instructions.png",
-      "sha256": "829e68a08ab458bb7f3f515dd22add7f10a6a5e5285f70e6b0f3493d6a276f16"
+      "sha256": "857358a26627f0400583eafeb05ce35a648d857a65304f9431594235ad9820c4"
     },
     {
       "name": "jar-catch.png",
-      "sha256": "9c86c2a8a0e720d85ba59bc7392e7d662be782be12b884cf2c04e1e5948da544"
+      "sha256": "0a098c024179f3dac412f8ae1a2a65f13e791326759cb0121fb19b7124cc1067"
     },
     {
       "name": "jar-miss.png",
-      "sha256": "b96b95373da2f627009f22eed67b8d7a1a35c73f9f66f475f5a1a1fac8098e66"
+      "sha256": "256ed2f2bbc8c223e6f9b0a1ecdd318649f1884b1510bb394a452b0a89dd3d83"
     },
     {
       "name": "keyboard-focus.png",
-      "sha256": "d5380ed486cca205b3e467de9e8e6245f8be4f232e2c66242d37dabf8ffc04a9"
+      "sha256": "62e6fd552386c1384a8b496b6084ea501fa3f9c171670bff968c029577344dd2"
     },
     {
       "name": "no-clean-jars-700.png",
-      "sha256": "7cdbe76110d934b3c5b0653a2271bbf3c55c8285ecb67eec6fc9a02e4f513026"
+      "sha256": "cb5090cd85ce7f69f89d0c4dd62c0d6e0a1fa012c944c044cb87a0bb04a7185b"
     },
     {
       "name": "no-clean-jars.png",
-      "sha256": "d8a4480c2f26c79186871cc61b3666c8edc4ce245d305b8fc7330c5bfd193ea2"
+      "sha256": "8dc246e61e4c169de5714c0c37bb754c63535c0aa7f318883c1acf477f14f308"
     },
     {
       "name": "ranked-title-trigger.png",
-      "sha256": "59bce56b71f7024761bf71ad70aa1022fdd8368927854fe2f3c0fbc7fd5b2ef1"
+      "sha256": "17c810af0830d5fbeea17fe2197bd785831936abb4de40fd6bcc0194a220e3b8"
     },
     {
       "name": "ready.png",
-      "sha256": "b656899430b166cb4e0bab963bc9d32211ab1eb618c659b54d7c7e89c9b44bf1"
+      "sha256": "4766108f738ecdc9bd085ed914687754c38743efb44e2281458aaa663ee47f7f"
     },
     {
       "name": "reduced-motion.png",
-      "sha256": "e34a0a51b5e4dab287a9c47cc09b8c48888a510625c4c92c443270b92c121de9"
+      "sha256": "22b0b3f35155fc7c9cc09d92c2713b7d61f33483771ae8206a2a7e5332f700cc"
     },
     {
       "name": "repeat-rescue.png",
-      "sha256": "df532b40fb5458932d12dc5bb2dd467eb63dd3ff8919d1dcff1426fedef68393"
+      "sha256": "e500bee5def3de3205764377099779dad77786e487568c098db7b9c7293df1f2"
     },
     {
       "name": "return-window-700.png",
-      "sha256": "c03a8c634f764d5ff0d0a47e85a21579b434894743e8b0a634fea329032fe62a"
+      "sha256": "d959f6461a6547c2b3ed58eec81a8f89c4c15f5f45619c673b13bd8918f32972"
     },
     {
       "name": "rush-three-lane.png",
-      "sha256": "e26a148594213f9492fa8611abb74c5a2d85d11d7667ee2b4511c432a9ab1060"
+      "sha256": "8a18b83c5e87939f9822f38bb88deafbc94443fb6370864bc4591b8a46470c4c"
     },
     {
       "name": "serve-feedback.png",
-      "sha256": "5fbea1fe8019394ae81fde50e9d64543d8de67d22ee0ef321e0191d533bd5ee6"
+      "sha256": "a8e6de3ae077914a4db3b26fad0f9fcbb1fc7ec6dbe9ca7f8b48a8668f0fe823"
     },
     {
       "name": "shake-launch.png",
-      "sha256": "fd09c70fbe1996de6f2b0bb2272560ac5fc55aa3a56e3147b1264123ef91c173"
+      "sha256": "159ba0ce2a0191dfeb6e7ced479158f6f1ec348b6d41a0aadc7d518ebc5e90d8"
     },
     {
       "name": "shake-miss.png",
-      "sha256": "0a347e8762ee02a1cefce93ac230ec7b052f7c189c36de3a20a0693c96dcbbd3"
+      "sha256": "d6ea1f4323e54eeea3d1545fcb3bc827ec099f318e94f9aa20a86aacdf66e08c"
     },
     {
       "name": "stage-4-lunch-rush-pressure-700.png",
-      "sha256": "cd3958cd9c732ace3a7e2f98e10338a24e4b6c6a8b582c5cfae4a61d81f42015"
+      "sha256": "7c6ec49581a281bc97dabaf64bdf7369be5b65247c9feb4d4971b2d73602459d"
     },
     {
       "name": "stage-4-lunch-rush-pressure.png",
-      "sha256": "778eb698d1d7a90296977602b245df75235661cf73a0edac5321d25b39dc91e8"
+      "sha256": "c9070488298c62161ce3dd2c50a13120c30db0be71d5b2959ade453f9e7588dd"
     },
     {
       "name": "stage-4-traffic-corridor-700.png",
-      "sha256": "77d0b7bcba4287a149fb31bf5c416bfffed03b4c152c3927b20bf6edfada6596"
+      "sha256": "281cf563060df1e851d9fa54512dc96b1cea4862f2d19e55ad8bbbe2d4548c7b"
     },
     {
       "name": "stage-4-traffic-corridor-reduced-700.png",
-      "sha256": "dd1c681ef30ed083b94d1be4edc3dec23e80abf3116b01a6e699834c951069ae"
+      "sha256": "00c95fef75ac9ebeef5d867c976ac3fff4557367b84122b0aeeb09b01468f1fc"
     },
     {
       "name": "stage-5-jar-shortage-pressure-700.png",
-      "sha256": "40562e83aa449890f1c4e5f223a6f479207c6857f1e39f4feea83e09ca391ee3"
+      "sha256": "96f095fae45e59ee7444c0fab611a8c5bd2f68aa1ed125ff6ec0cf6815ee6b0b"
     },
     {
       "name": "stage-5-jar-shortage-pressure.png",
-      "sha256": "f4eb881e2257ef821402240d3210c45fe2e921ebd0ee9361f5a2dd568df69861"
+      "sha256": "18c22d5c675333f40df2f6f5c9ddd12be5543a7d14892ed4d2512fb64119558b"
     },
     {
       "name": "stage-6-station-tool-split-700.png",
-      "sha256": "eac4c150a694c7a7b198325a9b90b4cc40229e293384486d09fa78060b5ff75b"
+      "sha256": "b381cc98f9aec579722fa7bb635dbc2dd1ff5822f5f2266d7aef6370037d4120"
     },
     {
       "name": "stage-6-station-tool-split-reduced-700.png",
-      "sha256": "92b6b902d87a9f4cda442529e488b60e105cd0024ef17987835c1b687012f835"
+      "sha256": "44105c2f4091bdf30b4f912ed9fb5383ed09969b33c35c303dee8529ca0e4bb6"
     },
     {
       "name": "stage-6-station-tool-split.png",
-      "sha256": "1a0c9ffb783d42b9ca7503e1cdf8eab87f792b1dc7489bc73cc7662c5b42ba01"
+      "sha256": "5559e354216c464cad463c39b07ea178903ccc42f4495f0b989ad67ab4bce4db"
     },
     {
       "name": "stage-6-thick-shakes-pressure.png",
-      "sha256": "42a34f1cf88807f0c564f41119d207e4165d993cab65613e98c7ebabaa84230c"
+      "sha256": "3ff14545ea563e437c078179a23b41d87ff3fefdf032daaf28952217fbf4072f"
     },
     {
       "name": "stage-7-happy-hour-pressure-700.png",
-      "sha256": "1762577327818d0808bf176bd194ebfd5d85297d6a3fadc421df527799cfacb8"
+      "sha256": "b7194c20029546a771e8191fca4aa0518814d2e06e0c14a72d03e9ec791ea094"
     },
     {
       "name": "stage-7-happy-hour-pressure.png",
-      "sha256": "f8d5778aed74f07c6273d1959aa9eb447230dbf4faa2b74ff56cfdd081d6739d"
+      "sha256": "c45e154145414d5ab6d2ac0e277ac9f3b347671fe56cb64c4d3b12f2c5637538"
     },
     {
       "name": "stage-card.png",
-      "sha256": "0789ec5de712b8deab73473fcf8dd1c9f8fbad17e0cf50d4185c07adda4a8d4b"
+      "sha256": "3611456e236bdf417055e72faed004d248a7547cc386b72442731725b9cbd2d2"
     },
     {
       "name": "stage-clear-walkout.png",
-      "sha256": "011a8577c31bd640ed5dfea5f0ba20b684ad9bfc1af6e70abc452422b1c72170"
+      "sha256": "dde2c576610555e899cba8d93ab6609f8c6f26658b7e4e92231a13fd2498a98d"
     },
     {
       "name": "title.png",
-      "sha256": "51445a9784d70f54714a83f10708bba98aca70161765691dd64c4d1bfc27ecee"
+      "sha256": "17641f590347d8f6432119a594fc306c0bd9afda796771a44d40c351cca09148"
     },
     {
       "name": "unsupported-portrait.png",
-      "sha256": "4a1ed59eb3be12697730e2d8cc743e659e7b9428f88e6371a9d0f138381e08a9"
+      "sha256": "7e408304ff75c542a839d04b24c4963a09ed83f41bf136327cc5b2b83be7fa62"
     },
     {
       "name": "victory.png",
-      "sha256": "69bc2360833876ab4fb9efe5b576c12c6e6c01af13bfb989140fa0d13553a689"
+      "sha256": "813f57dff8caad4853b23b39104de766155e52735733b89de1b5cbeb0e8a1cb6"
     },
     {
       "name": "walkout.png",
-      "sha256": "a2761bd769debd96a2e38bd1eb02d1c5435e43f37c504c90b40ef876df1c169f"
+      "sha256": "35c7e3039b710a000cc95780903b71e5ceea5ae3e7d306dd563c88eb89a70815"
     }
   ],
-  "orderedRawPngSha256": "a9296bc8c8698ea1072b118f98ff111f3d554d20a94dd27e05145d695e8a5359"
+  "orderedRawPngSha256": "f0f5e7e2dfb9c7d216d1e143e6a2a62a14fdf0d00b71c6cb6ef5a3a7210e2b2b"
 }

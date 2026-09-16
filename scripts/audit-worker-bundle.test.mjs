@@ -8,6 +8,10 @@ import { auditWorkerBundle, MAX_WORKER_JAVASCRIPT_BYTES } from './audit-worker-b
 const temporaryDirectories = [];
 const requiredSources = [
   '../../apps/platform/src/worker.ts',
+  '../../apps/platform/src/production.ts',
+  '../../apps/platform/src/v2-api.ts',
+  '../../games/maltline/src/core/cabinet-authority.ts',
+  '../../games/maltline/src/core/cabinet-proof.ts',
   '../../apps/platform/src/partition-verifier.ts',
   '../../games/partition/src/core/engine.ts',
   '../../games/partition/src/core/version.ts',
@@ -81,5 +85,5 @@ test('rejects malformed maps and oversized Worker code before parsing sources', 
   await assert.rejects(() => auditWorkerBundle(malformed), /not valid JSON/u);
 
   const oversized = await fixture(requiredSources, 'x'.repeat(MAX_WORKER_JAVASCRIPT_BYTES + 1));
-  await assert.rejects(() => auditWorkerBundle(oversized), /over 262144/u);
+  await assert.rejects(() => auditWorkerBundle(oversized), new RegExp(`over ${MAX_WORKER_JAVASCRIPT_BYTES}`, 'u'));
 });

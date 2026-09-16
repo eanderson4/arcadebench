@@ -1,4 +1,4 @@
-import { MALTLINE_CAMPAIGN } from '../core/campaign';
+import { MALTLINE_CURRENT_CABINET_AUTHORITY } from '../core/cabinet-authorities';
 import { FIXED_SCALE, MaltlineEngine } from '../core/engine';
 import { mulberry32 } from '../core/rng';
 import type {
@@ -11,13 +11,19 @@ import { prepareMaltlineFonts } from './fonts';
 import {
   countdownPresentation,
   gameOverPresentation,
+  intermissionPresentation,
+  MALTLINE_INTERMISSION_MS,
   instructionPresentation,
   stageCardPresentation,
   stageClearPresentation,
   titlePresentation,
   victoryPresentation,
 } from './gameplay-flow';
-import { MaltlineRenderer } from './renderer';
+import { drawMaltlineIntermission } from './intermission';
+import {
+  deriveMaltlineCustomerWalkPose,
+  MaltlineRenderer,
+} from './renderer';
 import {
   MALTLINE_RENDERER_FRAME,
   type MaltlineRendererLayout,
@@ -28,12 +34,14 @@ import { MALTLINE_VISUAL_THEME } from './visual-theme';
 import './visual-fixtures.css';
 
 export const VISUAL_FIXTURE_RUNTIME_MARKER = 'maltline-visual-fixture-runtime';
+const MALTLINE_CAMPAIGN = MALTLINE_CURRENT_CABINET_AUTHORITY.campaign;
 
 type FixtureName =
   | 'title'
   | 'instructions'
   | 'stage-card'
   | 'countdown'
+  | 'intermission'
   | 'game-over'
   | 'victory'
   | 'first-pour-idle'
@@ -140,6 +148,7 @@ const FIXTURE_NAMES: readonly FixtureName[] = [
   'instructions',
   'stage-card',
   'countdown',
+  'intermission',
   'game-over',
   'victory',
   'first-pour-idle',
@@ -385,6 +394,14 @@ function makeFixtures(): Record<FixtureName, VisualFixture> {
       overlay: countdownPresentation(3, firstPour, 0, MALTLINE_CAMPAIGN.length),
       presentationTimeMs: 120_000,
       randomSeed: 1015,
+    },
+    intermission: {
+      name: 'intermission',
+      scenarioIndex: 3,
+      state: makeState(lunchRush),
+      overlay: intermissionPresentation(),
+      presentationTimeMs: 120_000,
+      randomSeed: 1018,
     },
     'game-over': {
       name: 'game-over',
@@ -905,73 +922,66 @@ function fixtureMetadata(
   if (reachability === 'engine-reachable') assertReachableFixtureState(fixture, scenario);
   const stationAction = deriveMaltlineStationActionPresentation(scenario, state);
   const visibleRegions: VisibleFixtureRegion[] = [];
-  const laneObjectY = (lane: number): number => layout.laneCenterY(lane) + 13;
   for (const customer of state.customers) {
-    const point = layout.project(customer.x, layout.floorY(customer.lane));
-    const x = point.x;
+    const row = layout.project(customer.x, layout.counterFrontY(customer.lane));
+    const point = { ...row, y: row.y + 2 * row.scale };
+    const scale = layout.actorScale * point.scale;
+    const walk = deriveMaltlineCustomerWalkPose(
+      customer,
+      fixture.reducedMotion ?? false,
+    );
+    const headY = point.y - (42 + walk.bob) * scale;
     visibleRegions.push({
       label: `customer-${customer.id}`,
-      x: x - 17,
-      y: layout.laneCenterY(customer.lane) - 35,
-      width: 34,
-      height: 66,
+      x: point.x - 17 * scale,
+      y: headY - 17 * scale,
+      width: 34 * scale,
+      height: layout.counter(customer.lane).groundY - (headY - 17 * scale),
       colors: [FIXTURE_SKIN_COLORS[(customer.id * 2 + 2) % FIXTURE_SKIN_COLORS.length]!],
     });
     if (customer.phase === 'marching') {
-      const groundY = point.y;
-      const actorScale = layout.actorScale * layout.project(customer.x, 0).scale;
-      const walking = !fixture.reducedMotion;
-      const bob = walking ? Math.abs(Math.cos((state.tick + customer.id * 7) / 4.5)) * 2 : 0;
-      const headY = groundY - 14 - bob - 28;
       const sway = fixture.reducedMotion ? 0 : Math.sin((state.tick + customer.id * 13) / 30) * 2;
-      const ticketY = headY - 4 + sway;
-      const ticketX = x - 33;
-      const scaledRect = (localX: number, localY: number, width: number, height: number) => ({
-        x: x + (localX - x) * actorScale,
-        y: groundY + (localY - groundY) * actorScale,
-        width: width * actorScale,
-        height: height * actorScale,
-      });
+      const ticketX = point.x - 33 * scale;
+      const ticketY = headY + (-4 + sway) * scale;
       visibleRegions.push({
         label: `order-${customer.id}-${customer.flavor}`,
-        ...scaledRect(ticketX - 22, ticketY - 16, 44, 34),
+        x: ticketX - 22 * scale,
+        y: ticketY - 16 * scale,
+        width: 44 * scale,
+        height: 34 * scale,
         colors: [
           FIXTURE_FLAVOR_COLORS[customer.flavor],
           MALTLINE_VISUAL_THEME.customerOrder.ticketKeyline,
           MALTLINE_VISUAL_THEME.customerOrder.ticketConnector,
         ],
       });
-      visibleRegions.push({
-        label: `ticket-leader-${customer.id}`,
-        ...scaledRect(ticketX - 3, ticketY + 14, 6, 11),
-        colors: [MALTLINE_VISUAL_THEME.customerOrder.ticketConnector],
-      });
+      // A neighboring actor can naturally occlude the decorative ticket stem.
+      // The order region above tracks the visible flavor/card identity instead.
     }
   }
   for (const slide of state.slides) {
     const point = layout.project(slide.x, layout.vesselY(slide.lane));
     const vesselScale = 1.35 * point.scale;
+    const unit = scenario.laneLength * FIXED_SCALE / 100;
+    const head = layout.project(slide.x - 2 * unit, layout.vesselY(slide.lane) - 10);
+    const tail = layout.project(slide.x - 8 * unit, layout.vesselY(slide.lane) - 10);
     visibleRegions.push({
       label: `slide-body-${slide.id}-${slide.flavor}`,
-      x: point.x - 11 * vesselScale,
-      y: point.y - 42 * vesselScale,
-      width: 22 * vesselScale,
-      height: 45 * vesselScale,
+      x: point.x - 17 * vesselScale,
+      y: point.y - 43 * vesselScale,
+      width: 34 * vesselScale,
+      height: 64 * vesselScale,
       colors: [
         MALTLINE_VISUAL_THEME.outgoingShake.edge,
         FIXTURE_FLAVOR_COLORS[slide.flavor],
       ],
     });
-    const unit = layout.scenario.laneLength * FIXED_SCALE / 100;
-    const trailY = layout.vesselY(slide.lane) - 10;
-    const trailHead = layout.project(slide.x - 2 * unit, trailY);
-    const trailTail = layout.project(slide.x - 8 * unit, trailY);
     visibleRegions.push({
       label: `slide-trail-${slide.id}`,
-      x: Math.min(trailHead.x, trailTail.x) - 6,
-      y: Math.min(trailHead.y, trailTail.y) - 6,
-      width: Math.abs(trailHead.x - trailTail.x) + 12,
-      height: Math.abs(trailHead.y - trailTail.y) + 12,
+      x: Math.min(head.x, tail.x) - 6,
+      y: Math.min(head.y, tail.y) - 6,
+      width: Math.abs(head.x - tail.x) + 12,
+      height: Math.abs(head.y - tail.y) + 12,
       colors: [MALTLINE_VISUAL_THEME.outgoingShake.edge, MALTLINE_VISUAL_THEME.outgoingShake.trail],
     });
   }
@@ -980,10 +990,10 @@ function fixtureMetadata(
     const jarX = projection.anchorX;
     visibleRegions.push({
       label: `jar-${jar.id}`,
-      x: jarX - 18,
-      y: laneObjectY(jar.lane) - 25,
-      width: 82,
-      height: 48,
+      x: jarX - 18 * projection.scale,
+      y: projection.groundY - 42 * projection.scale,
+      width: 36 * projection.scale,
+      height: 48 * projection.scale,
       colors: [MALTLINE_VISUAL_THEME.returnJar.rim, MALTLINE_VISUAL_THEME.returnJar.trail],
     });
     if (projection.catchCue !== null) {
@@ -998,88 +1008,56 @@ function fixtureMetadata(
       });
     }
   }
+  const playerRow = layout.project(state.player.x, layout.counterFrontY(state.player.lane), -53.5);
+  const playerPoint = { ...playerRow, y: playerRow.y + 16 * playerRow.scale };
+  const playerScale = layout.actorScale * playerPoint.scale;
   visibleRegions.push({
     label: 'player',
-    x: 46,
-    y: layout.laneCenterY(state.player.lane) - 35,
-    width: 36,
-    height: 68,
-    colors: ['#2a8a67', '#f3e9d2'],
+    x: playerPoint.x - 17 * playerScale,
+    y: playerPoint.y - 57 * playerScale,
+    width: 36 * playerScale,
+    height: 63 * playerScale,
+    colors: ['#ef6756', '#f3e9d2'],
   });
-  const selectedStation = layout.stations[stationAction.selectedStation.index]!;
-  const selectionFrame = selectedStation.selectionFrame;
-  const selectionTab = selectedStation.selectionTab;
-  const selectionColor = stationAction.mode === 'blocked-no-jars'
-    ? MALTLINE_VISUAL_THEME.station.blocked
-    : MALTLINE_VISUAL_THEME.station.selectedKeyline;
+  const bank = layout.workstation(state.player.lane, state.player.station);
+  const selected = bank.pitchers.find(pitcher => pitcher.stationIndex === state.player.station)!;
   visibleRegions.push({
     label: `selected-station-${state.player.station}`,
-    x: selectionFrame.x,
-    y: Math.min(selectionFrame.y, selectionTab.y),
-    width: selectionTab.x + selectionTab.width - selectionFrame.x,
-    height: Math.max(
-      selectionFrame.y + selectionFrame.height,
-      selectionTab.y + selectionTab.height,
-    ) - Math.min(selectionFrame.y, selectionTab.y),
-    colors: [selectionColor, MALTLINE_VISUAL_THEME.station.selectedTab],
+    ...selected.bounds,
+    colors: [MALTLINE_VISUAL_THEME.station.selectedKeyline,
+      MALTLINE_VISUAL_THEME.flavors[scenario.stations[state.player.station]!].base],
   });
-  visibleRegions.push({
-    label: `selected-station-tab-${state.player.station}-${stationAction.selectedStation.flavor}`,
-    ...selectionTab,
-    colors: [selectionColor, MALTLINE_VISUAL_THEME.station.selectedTab],
-  });
-  if (stationAction.mode === 'blending' && stationAction.processingFlavor !== null) {
-    const processingIndex = scenario.stations.indexOf(stationAction.processingFlavor);
-    const processingStation = layout.stations[processingIndex]!;
+  for (const [role, flavor] of [['processing', state.player.blending], ['held', state.player.holding]] as const) {
+    if (flavor === null) continue;
+    const pitcher = bank.pitchers.find(item => item.stationIndex === scenario.stations.indexOf(flavor))!;
+    visibleRegions.push({ label: `${role}-cup-${flavor}`, ...pitcher.bounds,
+      colors: [MALTLINE_VISUAL_THEME.flavors[flavor].base] });
+  }
+  if (state.player.blending !== null || state.player.holding !== null || state.jarsAvailable === 0) {
     visibleRegions.push({
-      label: `processing-station-${processingIndex}-${stationAction.processingFlavor}`,
-      ...processingStation.processingFrame,
-      colors: [MALTLINE_VISUAL_THEME.station.processing],
-    });
-    visibleRegions.push({
-      label: `processing-meter-${processingIndex}-${stationAction.quantizedPercent}`,
-      ...processingStation.processingMeter,
-      colors: [
-        MALTLINE_VISUAL_THEME.station.processing,
-        MALTLINE_VISUAL_THEME.station.progressTrack,
-      ],
+      label: `action-status-${stationAction.mode}`,
+      ...bank.status.bounds,
+      colors: ['#fff3d9', state.player.holding !== null
+        ? MALTLINE_VISUAL_THEME.station.ready
+        : state.player.blending !== null ? MALTLINE_VISUAL_THEME.flavors[state.player.blending].base
+          : MALTLINE_VISUAL_THEME.station.blocked],
     });
   }
+  const rack = layout.cleanRack.bounds;
+  const rackLeft = Math.max(0, rack.x);
+  const rackTop = Math.max(0, rack.y);
   visibleRegions.push({
-    label: `action-status-${stationAction.mode}`,
-    ...MALTLINE_RENDERER_FRAME.actionStatus,
-    colors: [
-      MALTLINE_VISUAL_THEME.station.statusText,
-      stationAction.mode === 'holding'
-        ? MALTLINE_VISUAL_THEME.station.ready
-        : stationAction.mode === 'blending'
-          ? MALTLINE_VISUAL_THEME.station.processing
-          : stationAction.mode === 'blocked-no-jars'
-            ? MALTLINE_VISUAL_THEME.station.blocked
-            : MALTLINE_VISUAL_THEME.station.selectedKeyline,
-    ],
+    label: 'clean-cup-rack',
+    x: rackLeft,
+    y: rackTop,
+    width: Math.min(MALTLINE_RENDERER_FRAME.canvasWidth, rack.x + rack.width) - rackLeft,
+    height: Math.min(MALTLINE_RENDERER_FRAME.canvasHeight, rack.y + rack.height) - rackTop,
+    colors: ['#637661', '#b7bea0'],
   });
-  visibleRegions.push({
-    label: `action-badge-${stationAction.mode}-${stationAction.actionFlavor}`,
-    ...MALTLINE_RENDERER_FRAME.actionBadge,
-    colors: [MALTLINE_VISUAL_THEME.station.statusText,
-      stationAction.mode === 'holding'
-        ? MALTLINE_VISUAL_THEME.station.ready
-        : stationAction.mode === 'blending'
-          ? MALTLINE_VISUAL_THEME.station.processing
-          : stationAction.mode === 'blocked-no-jars'
-            ? MALTLINE_VISUAL_THEME.station.blocked
-            : MALTLINE_VISUAL_THEME.station.selectedKeyline],
-  });
-  visibleRegions.push({
-    label: state.jarsAvailable === 0 ? 'no-clean-jar-gauge' : 'jar-gauge',
-    ...layout.jarGauge,
-    colors: [state.jarsAvailable === 0
-      ? MALTLINE_VISUAL_THEME.feedback.blocked
-      : MALTLINE_VISUAL_THEME.scene.cream,
-    MALTLINE_VISUAL_THEME.scene.creamDim,
-    MALTLINE_VISUAL_THEME.returnJar.rim],
-  });
+  for (const [index, slot] of layout.cleanRack.slots.entries()) {
+    if (index >= state.jarsAvailable) break;
+    visibleRegions.push({ label: `clean-cup-${index}`, ...slot.bounds, colors: [MALTLINE_VISUAL_THEME.returnJar.rim] });
+  }
   visibleRegions.push({
     label: `orders-role-${Math.max(0, scenario.customerCount - state.resolved)}`,
     ...MALTLINE_RENDERER_FRAME.hudOrders,
@@ -1266,6 +1244,27 @@ async function renderFixture(): Promise<void> {
 
   if (fixture.overlay) {
     shell.showOverlay(fixture.overlay);
+  }
+
+  if (fixture.name === 'intermission') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 150;
+    canvas.className = 'maltline-intermission-art';
+    canvas.setAttribute('aria-hidden', 'true');
+    shell.overlayHint.before(canvas);
+    const intermissionContext = canvas.getContext('2d');
+    if (intermissionContext === null) throw new Error('Intermission preview needs a 2D canvas');
+    const startedAt = performance.now();
+    const animate = (now: number): void => {
+      drawMaltlineIntermission(
+        intermissionContext,
+        Math.max(0, now - startedAt) % MALTLINE_INTERMISSION_MS,
+        false,
+      );
+      requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
   }
 
   const metadataNode = document.createElement('script');

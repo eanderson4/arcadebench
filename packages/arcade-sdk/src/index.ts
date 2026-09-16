@@ -1,4 +1,7 @@
-export const ARCADEBENCH_SDK_VERSION = '0.1.0';
+import { ArcadeBenchApiError, requestJson, requiredIdentifier, segment } from './transport';
+
+export { ARCADEBENCH_SDK_VERSION, ArcadeBenchApiError } from './transport';
+export * from './v2';
 
 export type LeaderboardFilterValue = string | number | boolean;
 
@@ -93,26 +96,11 @@ export interface ArcadeSocialApi {
   vote(subject: SocialSubject, value: VoteValue): Promise<VoteSummary>;
 }
 
-export class ArcadeBenchApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = 'ArcadeBenchApiError';
-  }
-}
-
-function requiredIdentifier(value: string, label: string): string {
-  const normalized = value.trim();
-  if (!normalized) throw new Error(`${label} is required`);
-  return normalized;
-}
-
-function segment(value: string, label: string): string {
-  return encodeURIComponent(requiredIdentifier(value, label));
-}
-
+/**
+ * The v1 client. It stays source and wire compatible for existing games; new
+ * publication-policy work uses `createArcadeBenchGameClient`, which defaults to
+ * /api/v2 and requires an explicit publication object.
+ */
 export class ArcadeBenchClient {
   readonly runs: ArcadeRunApi;
   readonly leaderboards: ArcadeLeaderboardApi;
@@ -203,31 +191,7 @@ export class ArcadeBenchClient {
   }
 
   private async request<ResponseBody>(path: string, init: RequestInit = {}): Promise<ResponseBody> {
-    const headers = new Headers(init.headers);
-    headers.set('accept', 'application/json');
-    headers.set('x-arcadebench-client', ARCADEBENCH_SDK_VERSION);
-    if (init.body !== undefined) headers.set('content-type', 'application/json');
-    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
-      ...init,
-      headers,
-      credentials: 'same-origin',
-    });
-    const text = await response.text();
-    let body: unknown = null;
-    if (text) {
-      try {
-        body = JSON.parse(text);
-      } catch {
-        if (response.ok) throw new ArcadeBenchApiError(response.status, 'ArcadeBench returned invalid JSON.');
-      }
-    }
-    if (!response.ok) {
-      const reason = body && typeof body === 'object' && typeof (body as { error?: unknown }).error === 'string'
-        ? (body as { error: string }).error
-        : `ArcadeBench request failed (${response.status}).`;
-      throw new ArcadeBenchApiError(response.status, reason);
-    }
-    return body as ResponseBody;
+    return requestJson<ResponseBody>(this.fetchImpl, this.baseUrl, path, init);
   }
 }
 

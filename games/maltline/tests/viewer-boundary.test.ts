@@ -6,8 +6,10 @@ import { describe, expect, it } from 'vitest';
 describe('Maltline production viewer boundary', () => {
   it('takes its default campaign directly from the registered authority', () => {
     const main = readFileSync(resolve(import.meta.dirname, '../src/viewer/main.ts'), 'utf8');
-    expect(main).toContain("import { MALTLINE_GENERATION_2_AUTHORITY } from '../core/authority'");
-    expect(main).toContain('MALTLINE_GENERATION_2_AUTHORITY.campaign');
+    expect(main).toContain(
+      "MALTLINE_CURRENT_CABINET_AUTHORITY as MALTLINE_CABINET_AUTHORITY } from '../core/cabinet-authorities'",
+    );
+    expect(main).toContain('MALTLINE_CABINET_AUTHORITY.campaign');
     expect(main).not.toContain("from '../core/campaign'");
   });
 

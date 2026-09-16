@@ -1,8 +1,21 @@
-import type { ArcadeBenchClient } from '@arcadebench/sdk';
 import type { DifficultyId, PartitionReplay } from '../core/types';
+import type {
+  NormalizedScoreEntry,
+  NormalizedSubmission,
+  PartitionGameClient,
+  ScorePublication,
+  SubmissionPublicationPolicy,
+} from './game-client';
 
 export const PLAYER_NAME_MAX_LENGTH = 16;
 export const LOCAL_LEADERBOARD_KEY = 'arcadebench.partition.leaderboard.v1';
+
+/**
+ * The retention policy a public score form enrolls a run in: a qualifying
+ * replay is archived privately, everything else expires, and the social choice
+ * is the player's alone. Unknown versions are the server's to reject.
+ */
+export const TOP50_SOCIAL_POLICY_VERSION = 'top50-social-v1';
 
 export interface LeaderboardStageResult {
   levelId: string;
@@ -57,6 +70,48 @@ export interface PlayerNameReview {
 
 export interface LeaderboardSubmitProof {
   replays: PartitionReplay[];
+}
+
+/**
+ * The one thing a public submission has to state: which retention policy it is
+ * being made under, and whether the player allowed social sharing. The object
+ * is always sent, even when sharing is declined, so a server can never be asked
+ * to infer consent from an absent field.
+ */
+export function publicationFor(socialMedia: boolean): SubmissionPublicationPolicy {
+  return { policyVersion: TOP50_SOCIAL_POLICY_VERSION, socialMedia: socialMedia === true };
+}
+
+/**
+ * The social-media permission for one run. It starts unchecked, belongs to the
+ * run it was given for, and is cleared between runs — it is never stored,
+ * carried forward, or read back from a previous attempt.
+ */
+export class RunConsent {
+  private socialMedia = false;
+
+  reset(): void {
+    this.socialMedia = false;
+  }
+
+  set(allowed: boolean): void {
+    this.socialMedia = allowed === true;
+  }
+
+  get allowed(): boolean {
+    return this.socialMedia;
+  }
+
+  publication(): SubmissionPublicationPolicy {
+    return publicationFor(this.socialMedia);
+  }
+}
+
+/** What the platform reported about the submission as it was accepted. */
+export interface SubmissionResult {
+  entry: LeaderboardEntry;
+  /** Null in local preview, or when the response carried no usable envelope. */
+  publication: ScorePublication | null;
 }
 
 interface StorageLike {
@@ -170,6 +225,76 @@ export function isLeaderboardEntry(value: unknown): value is LeaderboardEntry {
     && isFiniteNonNegative(entry.capturedFraction);
 }
 
+function isScorePublication(value: unknown): value is ScorePublication {
+  if (!value || typeof value !== 'object') return false;
+  const publication = value as Partial<ScorePublication>;
+  if (
+    !Number.isInteger(publication.rankAtSubmission)
+    || (publication.rankAtSubmission ?? 0) < 1
+    || typeof publication.replaySaved !== 'boolean'
+  ) return false;
+  const expiresAt = publication.expiresAt;
+  if (expiresAt === null || expiresAt === undefined) return true;
+  return typeof expiresAt === 'string' && Number.isFinite(Date.parse(expiresAt));
+}
+
+/**
+ * Adapt one normalized platform entry into this game's view model. The verified
+ * result fields are the game's own, but they arrive from the server, so they are
+ * re-validated here rather than trusted: a malformed record is dropped instead
+ * of rendered.
+ */
+export function adaptLeaderboardEntry<Result>(
+  entry: NormalizedScoreEntry<Result> | null | undefined,
+): LeaderboardEntry | null {
+  if (!entry || typeof entry !== 'object') return null;
+  if (typeof entry.id !== 'string' || entry.id.length === 0) return null;
+  // The envelope owns identity: a record without an id, a callsign, or a
+  // timestamp has nothing to show and is dropped rather than rendered.
+  if (typeof entry.playerName !== 'string' || entry.playerName.length === 0) return null;
+  if (typeof entry.createdAt !== 'string' || entry.createdAt.length === 0) return null;
+  if (!entry.result || typeof entry.result !== 'object' || Array.isArray(entry.result)) return null;
+  const candidate: unknown = {
+    ...entry.result,
+    id: entry.id,
+    name: entry.playerName,
+    createdAt: entry.createdAt,
+  };
+  return isLeaderboardEntry(candidate) ? candidate : null;
+}
+
+/** Read the publication envelope defensively; a missing one claims nothing. */
+export function adaptPublication(value: unknown): ScorePublication | null {
+  return isScorePublication(value) ? value : null;
+}
+
+/** Retention is quoted from the response's own deadline, never assumed. */
+export function replayRetentionLabel(expiresAt: string | null, now = Date.now()): string {
+  if (!expiresAt) return 'REPLAY NOT ARCHIVED';
+  const days = Math.max(0, Math.round((Date.parse(expiresAt) - now) / 86_400_000));
+  if (days === 0) return 'REPLAY EXPIRES TODAY';
+  return `REPLAY EXPIRES IN ${days} ${days === 1 ? 'DAY' : 'DAYS'}`;
+}
+
+/**
+ * Say exactly what the platform reported and nothing it did not: the placement
+ * the submission itself carried, an archive only when the response said the
+ * replay was saved, and otherwise the retention deadline that came back.
+ */
+export function submissionOutcomeMessage(
+  result: SubmissionResult,
+  mode: 'public' | 'local',
+  now = Date.now(),
+): string {
+  if (mode !== 'public') return 'SCORE SAVED ON THIS DEVICE';
+  const publication = result.publication;
+  if (!publication) return 'SCORE VERIFIED · CALLSIGN ACCEPTED';
+  const placement = `SCORE VERIFIED · RANK #${publication.rankAtSubmission}`;
+  return publication.replaySaved
+    ? `${placement} · REPLAY SAVED PRIVATELY`
+    : `${placement} · ${replayRetentionLabel(publication.expiresAt, now)}`;
+}
+
 function entryTieBreak(first: LeaderboardEntry, second: LeaderboardEntry): number {
   return first.elapsedMs - second.elapsedMs
     || first.partitions - second.partitions
@@ -246,19 +371,26 @@ export class LocalLeaderboardStore {
   }
 }
 
+export interface LeaderboardSubmitOptions {
+  /** A one-time server challenge; absent means the run cannot rank publicly. */
+  runId?: string;
+  /** The run's social-media permission. Ignored by the local store. */
+  consent?: RunConsent;
+}
+
 export class LeaderboardService {
   readonly mode: 'public' | 'local';
 
   constructor(
     private readonly localStore: LocalLeaderboardStore,
-    private readonly client?: ArcadeBenchClient,
+    private readonly client?: PartitionGameClient,
   ) {
     this.mode = this.client ? 'public' : 'local';
   }
 
   async list(query: LeaderboardQuery, limit = 25): Promise<LeaderboardEntry[]> {
     if (!this.client) return this.localStore.list(query, limit);
-    const page = await this.client.leaderboards.list<unknown>({
+    const page = await this.client.leaderboards.list<NormalizedScoreEntry<unknown>>({
       boardId: query.scope,
       filters: {
         difficulty: query.difficulty,
@@ -266,27 +398,40 @@ export class LeaderboardService {
       },
       limit,
     });
-    return rankLeaderboardEntries(page.entries.filter(isLeaderboardEntry), query).slice(0, limit);
+    const entries = (page?.entries ?? [])
+      .map((entry) => adaptLeaderboardEntry(entry))
+      .filter((entry): entry is LeaderboardEntry => entry !== null);
+    // The shared platform owns public ordering, including binary ID ties.
+    // Re-sorting here with localeCompare can disagree with its placement.
+    return entries.filter((entry) => entry.scope === query.scope && entry.difficulty === query.difficulty
+      && (query.scope !== 'level' || entry.scope === 'level' && entry.levelId === query.levelId))
+      .slice(0, limit);
   }
 
   async submit(
     name: string,
     draft: LeaderboardDraft,
     proof: LeaderboardSubmitProof,
-    runId?: string,
-  ): Promise<LeaderboardEntry> {
+    options: LeaderboardSubmitOptions = {},
+  ): Promise<SubmissionResult> {
     const review = reviewPlayerName(name);
     if (!review.allowed || !review.normalizedName) throw new Error(review.reason ?? 'Callsign was rejected.');
-    if (!this.client) return this.localStore.submit(review.normalizedName, draft);
-    if (!runId) throw new Error('This was an unranked run. Start a new ranked attempt.');
-    const { entry } = await this.client.leaderboards.submit<LeaderboardDraft, LeaderboardSubmitProof, unknown>({
+    // Local preview keeps the same shape as the platform, with no publication
+    // to report: it never claims a replay was archived or a policy applied.
+    if (!this.client) {
+      return { entry: this.localStore.submit(review.normalizedName, draft), publication: null };
+    }
+    if (!options.runId) throw new Error('This was an unranked run. Start a new ranked attempt.');
+    const submission: NormalizedSubmission<unknown> = await this.client.leaderboards.submit({
       boardId: draft.scope,
-      runId,
+      runId: options.runId,
       playerName: review.normalizedName,
       score: draft,
       proof,
+      publication: options.consent?.publication() ?? publicationFor(false),
     });
-    if (!isLeaderboardEntry(entry)) throw new Error('Leaderboard returned an invalid score.');
-    return entry;
+    const entry = adaptLeaderboardEntry(submission?.entry);
+    if (!entry) throw new Error('Leaderboard returned an invalid score.');
+    return { entry, publication: adaptPublication(submission?.publication) };
   }
 }

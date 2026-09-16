@@ -1,23 +1,24 @@
-import { MALTLINE_GENERATION_2_AUTHORITY } from '../core/authority';
+import { MALTLINE_CURRENT_CABINET_AUTHORITY as MALTLINE_CABINET_AUTHORITY } from '../core/cabinet-authorities';
 import { MaltlineEngine } from '../core/engine';
-import { replayMaltline } from '../core/replay';
+import { replayMaltlineCabinet, type MaltlineCabinetReplay } from '../core/replay';
 import type {
   LifeLossReason,
   MaltlineInput,
-  MaltlineReplay,
   MaltlineState,
   RunContext,
 } from '../core/types';
 import { FixedStepClock, MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS } from './fixed-step-clock';
 import { prepareMaltlineFonts } from './fonts';
-import { MaltlineCompetitionClient } from './competition-client';
 import {
-  createMaltlineCompetitionController,
-  maltlineCompetitionServicesEnabled,
-  type MaltlineCompetitionControllerStatus,
-} from './competition-controller';
+  cabinetLeaderboardDeepLinkRequested,
+  cabinetServicesEnabled,
+  mountMaltlineCabinetLeaderboard,
+  type MaltlineCabinetBoardStatus,
+} from './cabinet-leaderboard';
 import {
   countdownPresentation,
+  intermissionPresentation,
+  MALTLINE_INTERMISSION_MS,
   gameOverPresentation,
   instructionPresentation,
   MALTLINE_COUNTDOWN_SERVE_MS,
@@ -29,6 +30,7 @@ import {
   titlePresentation,
   victoryPresentation,
 } from './gameplay-flow';
+import { drawMaltlineIntermission } from './intermission';
 import { MaltlineRenderer } from './renderer';
 import { MaltlineEventAnnouncer, semanticPlayStatus } from './semantic-status';
 import { mountMaltlineShell, type OverlayPresentation } from './shell';
@@ -38,7 +40,7 @@ import {
   MaltlineRunEligibility,
   type MaltlineRunEligibilitySnapshot,
 } from './viewer-session';
-import { MaltlineViewerInputAdapter } from './viewer-input-adapter';
+import { MaltlineCabinetInputAdapter } from './cabinet-input-adapter';
 import {
   MaltlineViewerFlowController,
   type MaltlineViewerFlowEffect,
@@ -49,9 +51,17 @@ import {
   browserMaltlineMotionPreference,
 } from './viewer-motion-preference';
 
-const MALTLINE_CAMPAIGN = MALTLINE_GENERATION_2_AUTHORITY.campaign;
+const MALTLINE_CAMPAIGN = MALTLINE_CABINET_AUTHORITY.campaign;
 
 const shell = mountMaltlineShell();
+const intermissionCanvas = document.createElement('canvas');
+intermissionCanvas.width = 640;
+intermissionCanvas.height = 150;
+intermissionCanvas.setAttribute('aria-hidden', 'true');
+intermissionCanvas.className = 'maltline-intermission-art';
+intermissionCanvas.style.display = 'none';
+shell.overlayHint.before(intermissionCanvas);
+const intermissionContext = intermissionCanvas.getContext('2d')!;
 const fontPreparation = await prepareMaltlineFonts();
 const { canvas } = shell;
 const ctx = canvas.getContext('2d')!;
@@ -60,25 +70,24 @@ const renderer = new MaltlineRenderer({ reducedMotion: motionPreference.current(
 bindMaltlineMotionPreference(renderer, motionPreference, window);
 const eventAnnouncer = new MaltlineEventAnnouncer(shell.liveEvents);
 const runEligibility = new MaltlineRunEligibility();
-const competition = createMaltlineCompetitionController({
-  enabled: maltlineCompetitionServicesEnabled(window.location, import.meta.env.DEV),
-  client: new MaltlineCompetitionClient(window.fetch.bind(window)),
-  shellRoot: shell.root,
+const competition = mountMaltlineCabinetLeaderboard({
+  enabled: cabinetServicesEnabled(window.location, import.meta.env.DEV),
+  root: shell.root,
   trigger: shell.competitionButton,
-  onDiscardAttempt: () => startFreshRun(),
-  onStatusChange: () => publishViewerStatus(),
+  onRestart: () => startFreshRun(),
+  onChange: () => publishViewerStatus(),
 });
 
-let engine = new MaltlineEngine(MALTLINE_CAMPAIGN[0]!);
+let engine = new MaltlineEngine(MALTLINE_CAMPAIGN[0]!, undefined, 'two-button-v1');
 let stageInputs: MaltlineInput[] = [];
 let stageRunStart: RunContext = { lives: MALTLINE_CAMPAIGN[0]!.lives, score: 0 };
 let carriedRun: RunContext = { lives: MALTLINE_CAMPAIGN[0]!.lives, score: 0 };
-const stageReplays: MaltlineReplay[] = [];
+const stageReplays: MaltlineCabinetReplay[] = [];
 const simulationClock = new FixedStepClock(
   MALTLINE_CAMPAIGN[0]!.ticksPerSecond,
   MALTLINE_VIEWER_MAXIMUM_CATCH_UP_TICKS,
 );
-const inputAdapter = new MaltlineViewerInputAdapter(MALTLINE_CAMPAIGN[0]!);
+const inputAdapter = new MaltlineCabinetInputAdapter(MALTLINE_CAMPAIGN[0]!);
 // Deterministic replays of finished stages, handy while tuning gameplay and
 // the seed for the future benchmark plugin.
 declare global {
@@ -90,19 +99,23 @@ declare global {
     playerStation: number;
     playerX: number;
     recordedInputs: number;
-    competition: Readonly<MaltlineCompetitionControllerStatus>;
+    competition: Readonly<MaltlineCabinetBoardStatus>;
   }
 
   interface Window {
-    __maltlineReplays?: MaltlineReplay[];
+    __maltlineReplays?: MaltlineCabinetReplay[];
     __maltlineViewerStatus?: MaltlineViewerStatus;
   }
 }
 window.__maltlineReplays = stageReplays;
 let lastSemanticStatus = '';
 let windowFocused = document.hasFocus();
+let confirmingHomeNavigation = false;
+let homeNavigationApproved = false;
 const flow = new MaltlineViewerFlowController({
   stageCount: MALTLINE_CAMPAIGN.length,
+  intermissionAfterStage: 4,
+  intermissionDurationMs: MALTLINE_INTERMISSION_MS,
   countdownStepMs: MALTLINE_COUNTDOWN_STEP_MS,
   countdownServeMs: MALTLINE_COUNTDOWN_SERVE_MS,
   scheduler: {
@@ -116,6 +129,9 @@ const flow = new MaltlineViewerFlowController({
 function publishViewerStatus(state: MaltlineState = engine.snapshot()): void {
   const { screen } = flow.snapshot();
   competition.setScreen(screen);
+  if (screen === 'stage-card' && flow.snapshot().stageIndex === 0) {
+    shell.overlayHint.textContent = competition.startHint();
+  }
   const timingEligibility = runEligibility.snapshot();
   const competitionStatus = competition.snapshot();
   window.__maltlineViewerStatus = Object.freeze({
@@ -128,8 +144,7 @@ function publishViewerStatus(state: MaltlineState = engine.snapshot()): void {
     recordedInputs: stageInputs.length,
     competition: competitionStatus,
     ...timingEligibility,
-    rankEligible: timingEligibility.rankEligible
-      && (!competitionStatus.enabled || competitionStatus.proof !== 'ineligible'),
+    rankEligible: timingEligibility.rankEligible && competitionStatus.rankEligible,
   });
   document.documentElement.dataset.maltlineScreen = screen;
   document.documentElement.dataset.maltlineRunEligible = String(
@@ -178,19 +193,18 @@ function beginStage(index: number, run: RunContext): void {
   const scenario = MALTLINE_CAMPAIGN[index]!;
   const startRunContext = index === 0 ? { lives: scenario.lives, score: 0 } : run;
   stageRunStart = startRunContext;
-  engine = new MaltlineEngine(scenario, startRunContext);
+  engine = new MaltlineEngine(scenario, startRunContext, 'two-button-v1');
   simulationClock.setTicksPerSecond(scenario.ticksPerSecond);
   inputAdapter.setCadence(scenario);
   renderer.resetPresentation();
   renderer.setScenario(engine.scenario);
   eventAnnouncer.reset();
   stageInputs = [];
-  competition.beginStage(scenario.id);
 }
 
 function recordStageReplay(): void {
   if (stageInputs.length === 0) return;
-  stageReplays.push(replayMaltline(engine.scenario, stageRunStart, stageInputs));
+  stageReplays.push(replayMaltlineCabinet(engine.scenario, stageRunStart, stageInputs));
 }
 
 function renderStageCard(): void {
@@ -238,7 +252,7 @@ function finishStage(bonus: number): void {
   resetPresentationAnchor();
   recordStageReplay();
   const state = engine.snapshot();
-  competition.completeStage(state, stageIndex + 1 === MALTLINE_CAMPAIGN.length);
+  if (stageIndex + 1 === MALTLINE_CAMPAIGN.length) competition.complete(stageReplays);
   carriedRun = { lives: state.lives, score: state.score };
   const finalStage = stageIndex + 1 === MALTLINE_CAMPAIGN.length;
   showOverlay(stageClearPresentation(state, bonus, {
@@ -253,7 +267,7 @@ function gameOver(fatalReason: LifeLossReason | null): void {
   resetPresentationAnchor();
   recordStageReplay();
   const state = engine.snapshot();
-  competition.completeStage(state, true);
+  competition.complete(stageReplays);
   showTerminalOverlay(gameOverPresentation(
     state,
     stageIndex,
@@ -312,7 +326,14 @@ function renderInterruptedResume(): void {
 }
 
 function applyFlowEffect(effect: MaltlineViewerFlowEffect, transition: MaltlineViewerFlowTransition): void {
+  intermissionCanvas.style.display = effect.type === 'show-intermission' ? 'block' : 'none';
   switch (effect.type) {
+    case 'show-intermission':
+      resetPresentationAnchor();
+      showOverlay(intermissionPresentation());
+      drawMaltlineIntermission(intermissionContext, 0, motionPreference.current());
+      publishViewerStatus();
+      return;
     case 'show-instructions':
       resetPresentationAnchor();
       showOverlay(instructionPresentation());
@@ -368,12 +389,78 @@ function interruptRun(
   flow.dispatch({ type: 'interrupt', reason, droppedMs });
 }
 
-function suspendLiveClockWithoutModal(): void {
+function suspendLiveClockWithoutModal(reason: 'window_blur' | 'document_hidden'): void {
+  if (flow.snapshot().screen === 'playing') {
+    runEligibility.interrupt(reason);
+    competition.invalidate(`${interruptionCopy(reason)} This run continues unranked.`);
+  }
   inputAdapter.reset();
   simulationClock.reset();
   lastFrameTime = null;
   publishViewerStatus();
 }
+
+function hasUnsavedRun(): boolean {
+  if (competition.snapshot().proof === 'submitted') return false;
+  const { screen } = flow.snapshot();
+  return screen === 'countdown' || screen === 'playing'
+    || stageInputs.length > 0 || stageReplays.length > 0;
+}
+
+// The shared shell also serves local labs and archived fixtures. Only the live
+// cabinet owns this navigation guard; their session policies stay independent.
+shell.root.querySelector<HTMLAnchorElement>('.arcade-home')!.addEventListener('click', event => {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+    || !hasUnsavedRun()) return;
+  event.preventDefault();
+  confirmingHomeNavigation = true;
+  let leave = false;
+  try {
+    leave = window.confirm('Leave this game? Your current run will be lost.');
+  } finally {
+    // A native dialog blocks animation frames and can steal window focus.
+    // Canceling must neither produce catch-up ticks nor release a held shake.
+    resetPresentationAnchor();
+    windowFocused = document.hasFocus();
+    confirmingHomeNavigation = false;
+  }
+  if (leave) {
+    homeNavigationApproved = true;
+    window.location.assign('/');
+  } else {
+    shell.focusCurrentSurface();
+    publishViewerStatus();
+  }
+});
+
+window.addEventListener('beforeunload', event => {
+  if (homeNavigationApproved || !hasUnsavedRun()) return;
+  confirmingHomeNavigation = true;
+  resetPresentationAnchor();
+  // The browser owns this dialog. This task resumes only if navigation was
+  // canceled; time and key releases spent in the prompt are not gameplay.
+  window.setTimeout(() => {
+    confirmingHomeNavigation = false;
+    windowFocused = document.hasFocus();
+    resetPresentationAnchor();
+    publishViewerStatus();
+  }, 0);
+  event.preventDefault();
+  event.returnValue = '';
+});
+
+window.addEventListener('pageshow', () => {
+  // A page restored from the back/forward cache still has its previous JS state.
+  homeNavigationApproved = false;
+  confirmingHomeNavigation = false;
+  resetPresentationAnchor();
+});
+
+shell.startButton.addEventListener('click', () => {
+  if (shell.isSupportedDevice() && flow.snapshot().screen === 'title') {
+    flow.dispatch({ type: 'advance' });
+  }
+});
 
 shell.root.addEventListener('keydown', (event) => {
   if (isEditableOrInteractiveTarget(event.target) || !shell.isSupportedDevice()) return;
@@ -409,6 +496,7 @@ shell.root.addEventListener('keydown', (event) => {
   }
   if (currentScreen === 'stage-card' && advance) {
     event.preventDefault();
+    if (flow.snapshot().stageIndex === 0) competition.lockForPlay();
     flow.dispatch({ type: 'advance' });
     return;
   }
@@ -417,7 +505,7 @@ shell.root.addEventListener('keydown', (event) => {
     flow.dispatch({ type: 'advance' });
     return;
   }
-  if (currentScreen === 'cleared' && advance) {
+  if ((currentScreen === 'cleared' || currentScreen === 'intermission') && advance) {
     event.preventDefault();
     flow.dispatch({ type: 'advance' });
     return;
@@ -432,7 +520,7 @@ shell.root.addEventListener('keydown', (event) => {
     return;
   }
   if (currentScreen !== 'playing') return;
-  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(event.code)) {
+  if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Enter', 'KeyX'].includes(event.code)) {
     event.preventDefault();
   }
   inputAdapter.keyDown(event.code);
@@ -453,11 +541,13 @@ shell.root.addEventListener('focusout', (event) => {
 });
 
 window.addEventListener('blur', () => {
+  if (confirmingHomeNavigation) return;
   windowFocused = false;
-  suspendLiveClockWithoutModal();
+  suspendLiveClockWithoutModal('window_blur');
 });
 
 window.addEventListener('focus', () => {
+  if (confirmingHomeNavigation) return;
   windowFocused = true;
   inputAdapter.reset();
   simulationClock.reset();
@@ -467,8 +557,9 @@ window.addEventListener('focus', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
+  if (confirmingHomeNavigation) return;
   if (document.hidden) {
-    suspendLiveClockWithoutModal();
+    suspendLiveClockWithoutModal('document_hidden');
   } else {
     inputAdapter.reset();
     simulationClock.reset();
@@ -508,13 +599,16 @@ function frame(now: number): void {
 
   if (flow.snapshot().screen === 'playing' && !document.hidden && windowFocused) {
     const advance = simulationClock.advance(now);
+    if (advance.droppedMs > 0) {
+      runEligibility.interrupt('clock_backlog_dropped', advance.droppedMs);
+      competition.invalidate('The browser fell behind. This run continues unranked.');
+    }
     for (let stepped = 0; stepped < advance.ticks && flow.snapshot().screen === 'playing'; stepped++) {
         const flowBeforeStep = flow.snapshot();
         const preStepState = engine.snapshot();
         const input = inputAdapter.inputForTick(preStepState.tick + 1, preStepState);
         engine.setInput(input);
         stageInputs.push({ ...input });
-        competition.recordTickInput(input);
         const result = engine.step();
         renderer.pushEvents(result.events, result.state);
         const fatalReason = terminalLifeLossReason(result.events);
@@ -540,6 +634,15 @@ function frame(now: number): void {
     }
   }
 
+  if (flow.snapshot().screen === 'title') {
+    publishViewerStatus();
+    requestAnimationFrame(frame);
+    return;
+  }
+  flow.advancePresentation(dtMs);
+  if (flow.snapshot().screen === 'intermission') {
+    drawMaltlineIntermission(intermissionContext, flow.intermissionTime(), motionPreference.current());
+  }
   renderer.update(dtMs);
   const state = engine.snapshot();
   renderer.draw(ctx, state, {
@@ -555,4 +658,7 @@ const initialState = engine.snapshot();
 updateSemanticStatus(initialState);
 publishViewerStatus(initialState);
 document.documentElement.dataset.maltlineViewerReady = 'true';
+if (flow.snapshot().screen === 'title' && cabinetLeaderboardDeepLinkRequested(window.location)) {
+  competition.openPanel();
+}
 requestAnimationFrame(frame);

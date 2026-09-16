@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { expect, test, type Page } from '@playwright/test';
-import { MaltlineEngine } from '../../src/core/engine';
-import type { MaltlineInput, MaltlineScenario, RunContext } from '../../src/core/types';
+import { FIXED_SCALE, MaltlineEngine } from '../../src/core/engine';
+import type { MaltlineScenario, MaltlineState, RunContext } from '../../src/core/types';
 import {
   advanceP108HumanLabObservation,
   P108_HUMAN_LAB_ZERO_OBSERVATION,
@@ -16,8 +16,7 @@ import {
   materializeCanonicalP108Campaign,
   type P108CanonicalLabCandidateId,
 } from '../../src/experiments/p1-08-candidates';
-import { REACTIVE_MALTLINE_CONTROLLER } from '../../src/telemetry/reactive-controller';
-import { MaltlineViewerInputAdapter } from '../../src/viewer/viewer-input-adapter';
+import { MaltlineCabinetInputAdapter } from '../../src/viewer/cabinet-input-adapter';
 
 type AssignmentOrder = readonly [P108CanonicalLabCandidateId, P108CanonicalLabCandidateId];
 
@@ -48,12 +47,10 @@ const FRESH_RUN = Object.freeze({ lives: 4, score: 0 });
 const STAGE_TICK_LIMIT = 10_000;
 const TICKS_PER_FRAME = 5;
 const KEY_BITS = Object.freeze([
-  [1, 'KeyA'],
-  [2, 'KeyD'],
   [4, 'ArrowUp'],
   [8, 'ArrowDown'],
   [16, 'Space'],
-  [32, 'KeyF'],
+  [32, 'Enter'],
 ] as const);
 const A = 'a-registered-control' as const;
 const D = 'd-combined' as const;
@@ -68,15 +65,51 @@ const browserAudits = new WeakMap<Page, BrowserAudit>();
 let practiceTapes: readonly StageTape[];
 let candidateTapes: Readonly<Record<P108CanonicalLabCandidateId, readonly StageTape[]>>;
 
-function inputLevelMask(input: MaltlineInput): number {
-  return (input.stationDir < 0 ? 1 : input.stationDir > 0 ? 2 : 0)
-    | (input.laneDir < 0 ? 4 : input.laneDir > 0 ? 8 : 0)
-    | (input.blend ? 16 : 0)
-    | (input.serve ? 32 : 0);
+/** Current-state reference player: no future spawns, state injection, or engine inputs. */
+function cabinetKeyMask(state: Readonly<MaltlineState>, scenario: Readonly<MaltlineScenario>): number {
+  const reserved = new Set<number>();
+  for (const slide of state.slides) {
+    const customer = state.customers
+      .filter((candidate) => candidate.phase === 'marching' && candidate.lane === slide.lane
+        && candidate.flavor === slide.flavor && candidate.x > slide.x)
+      .sort((left, right) => left.x - right.x || left.id - right.id)[0];
+    if (customer) reserved.add(customer.id);
+  }
+  const waiting = state.customers
+    .filter((customer) => customer.phase === 'marching' && !reserved.has(customer.id))
+    .sort((left, right) => left.x - right.x || left.id - right.id);
+  const target = (state.player.holding === null ? undefined
+    : waiting.find((customer) => customer.flavor === state.player.holding)) ?? waiting[0];
+  const returnSpeed = Math.round(scenario.returnSpeed * FIXED_SCALE);
+  const urgentJar = [...state.jars]
+    .sort((left, right) => left.x - right.x || left.id - right.id)
+    .find((jar) => Math.ceil(jar.x / returnSpeed)
+      <= (Math.abs(jar.lane - state.player.lane) + 1) * scenario.laneRepeatTicks + 3);
+  const destination = urgentJar?.lane ?? target?.lane ?? state.player.lane;
+  const nextTick = state.tick + 1;
+  // Tap on eligible ticks, so every lane step uses the same physical key edge
+  // and bounded lane behavior as the browser, without held-repeat delay.
+  let mask = nextTick % scenario.laneRepeatTicks === 0
+    ? (destination < state.player.lane ? 4 : destination > state.player.lane ? 8 : 0)
+    : 0;
+  if (state.player.holding !== null) {
+    const readyToToss = !urgentJar && target?.flavor === state.player.holding
+      && target.lane === state.player.lane;
+    // A remains held after filling until its release can serve the chosen lane.
+    if (!readyToToss) mask |= 16;
+    if (target && target.flavor !== state.player.holding
+      && nextTick % scenario.stationRepeatTicks === 0) mask |= 32;
+  } else if (state.player.blending !== null) {
+    mask |= 16;
+  } else if (target && state.jarsAvailable > 0) {
+    if (scenario.stations[state.player.station] === target.flavor) mask |= 16;
+    else if (nextTick % scenario.stationRepeatTicks === 0) mask |= 32;
+  }
+  return mask;
 }
 
 function applyLevel(
-  adapter: MaltlineViewerInputAdapter,
+  adapter: MaltlineCabinetInputAdapter,
   previousMask: number,
   nextMask: number,
 ): void {
@@ -99,15 +132,8 @@ function buildStageTape(
   startingRun: Readonly<RunContext>,
   stage: number,
 ): StageTape {
-  const engine = new MaltlineEngine(scenario, startingRun);
-  const controller = REACTIVE_MALTLINE_CONTROLLER.create();
-  // This retained generation-2 lab tape predates the shipped viewer's bounded
-  // lane edges, so omit the optional lane count and preserve its reviewed
-  // wraparound comparison route byte-for-byte.
-  const adapter = new MaltlineViewerInputAdapter({
-    stationRepeatTicks: engine.scenario.stationRepeatTicks,
-    laneRepeatTicks: engine.scenario.laneRepeatTicks,
-  });
+  const engine = new MaltlineEngine(scenario, startingRun, 'two-button-v1');
+  const adapter = new MaltlineCabinetInputAdapter(engine.scenario);
   const runs: LevelRun[] = [];
   let heldMask = 0;
   let observation = P108_HUMAN_LAB_ZERO_OBSERVATION;
@@ -117,7 +143,7 @@ function buildStageTape(
     if (before.tick >= STAGE_TICK_LIMIT) {
       throw new Error(`Real-engine tape exceeded ${STAGE_TICK_LIMIT} ticks in stage ${stage}`);
     }
-    const nextMask = inputLevelMask(controller(before, engine.scenario));
+    const nextMask = cabinetKeyMask(before, engine.scenario);
     applyLevel(adapter, heldMask, nextMask);
     heldMask = nextMask;
     appendLevelRun(runs, nextMask);
@@ -205,19 +231,19 @@ test.beforeAll(async () => {
   expect(stageSummary(practiceTapes)).toEqual([
     { stage: 1, status: 'won', ticks: 1_558, score: 2_280, lives: 4 },
     { stage: 2, status: 'won', ticks: 1_621, score: 4_980, lives: 4 },
-    { stage: 3, status: 'won', ticks: 1_889, score: 8_130, lives: 4 },
+    { stage: 3, status: 'won', ticks: 1_876, score: 8_130, lives: 4 },
   ]);
   expect(stageSummary(candidateTapes[A])).toEqual([
     { stage: 4, status: 'won', ticks: 3_120, score: 4_950, lives: 4 },
-    { stage: 5, status: 'won', ticks: 4_143, score: 8_420, lives: 1 },
-    { stage: 6, status: 'won', ticks: 3_112, score: 11_945, lives: 1 },
-    { stage: 7, status: 'lost', ticks: 2_184, score: 15_170, lives: 0 },
+    { stage: 5, status: 'won', ticks: 3_771, score: 9_900, lives: 4 },
+    { stage: 6, status: 'won', ticks: 3_099, score: 14_175, lives: 4 },
+    { stage: 7, status: 'won', ticks: 3_316, score: 20_700, lives: 4 },
   ]);
   expect(stageSummary(candidateTapes[D])).toEqual([
     { stage: 4, status: 'won', ticks: 3_120, score: 4_950, lives: 4 },
-    { stage: 5, status: 'won', ticks: 3_121, score: 9_900, lives: 4 },
-    { stage: 6, status: 'won', ticks: 3_112, score: 14_175, lives: 4 },
-    { stage: 7, status: 'won', ticks: 3_351, score: 20_175, lives: 2 },
+    { stage: 5, status: 'won', ticks: 3_125, score: 9_900, lives: 4 },
+    { stage: 6, status: 'won', ticks: 3_099, score: 14_175, lives: 4 },
+    { stage: 7, status: 'won', ticks: 3_321, score: 21_150, lives: 4 },
   ]);
 });
 
@@ -498,7 +524,7 @@ function assertArtifact(
     kind: 'maltline-human-lab-test-driver-session',
     schemaVersion: 3,
     experimentId: 'EXP-049',
-    experimentRevision: 12,
+    experimentRevision: 13,
     policy: {
       rankEligibility: 'unranked',
       authorityRegistration: null,
@@ -588,14 +614,14 @@ for (const matrixCase of CASES) {
       phase: 'round2', surface: 'stage-card', activeStage: 4, engineTick: 0,
     });
     clockTick = await playRound(page, matrixCase.order[1], 2, clockTick);
-    expect(clockTick).toBe(30_331);
+    expect(clockTick).toBe(31_026);
     await finishQuestions(page);
     const { raw, artifact } = await downloadArtifact(page);
     assertArtifact(artifact, raw, matrixCase);
 
     const browserState = await page.evaluate(() => ({
       prohibited: (window as typeof window & { __labProhibitedCalls?: string[] })
-        .__labProhibitedCalls?.filter((call) => !/^websocket:ws:\/\/127\.0\.0\.1:\d+\//u.test(call)),
+        .__labProhibitedCalls?.filter((call) => !call.startsWith('websocket:ws://127.0.0.1:5184/')),
       local: localStorage.length,
       session: sessionStorage.length,
       cookie: document.cookie,

@@ -4,10 +4,13 @@
     <loc>https://arcadebench.org/</loc>
   </url>
   <url>
-    <loc>https://arcadebench.org/partition/</loc>
+    <loc>https://arcadebench.org/games/partition/</loc>
   </url>
   <url>
-    <loc>https://arcadebench.org/maltline/</loc>
+    <loc>https://arcadebench.org/games/maltline/</loc>
+  </url>
+  <url>
+    <loc>https://arcadebench.org/about/</loc>
   </url>
   <url>
     <loc>https://arcadebench.org/privacy/</loc>

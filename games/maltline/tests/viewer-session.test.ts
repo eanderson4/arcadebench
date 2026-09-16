@@ -111,7 +111,7 @@ describe('semantic play status and live events', () => {
       player: { ...blending.player, blending: null, holding: 'vanilla' as const },
     };
     expect(semanticPlayStatus(scenario, ready, { stageIndex: 0, stageCount: 8 }))
-      .toContain('Vanilla shake ready. Press F or Enter to slide.');
+      .toContain('Vanilla shake ready. Release button 1 (Space) to toss. Press button 2 (Enter) to replace it and switch flavor.');
   });
 
   it('keeps the numeric life count equivalent for zero through four', () => {

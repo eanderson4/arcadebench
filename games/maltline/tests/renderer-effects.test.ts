@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { MALTLINE_CAMPAIGN } from '../src/core/campaign';
-import { MaltlineEngine } from '../src/core/engine';
+import { FIXED_SCALE, MaltlineEngine } from '../src/core/engine';
 import type { CustomerState, GameEvent, MaltlineState } from '../src/core/types';
 import { MaltlineRendererEffects } from '../src/viewer/renderer-effects';
 import { deriveMaltlineRendererLayout } from '../src/viewer/renderer-layout';
@@ -75,9 +75,9 @@ describe('MaltlineRendererEffects', () => {
     // and serve bursts consume entropy without changing that phase.
     effects.advance(100);
     const agedFirst = effects.particles[0]!;
-    expect(agedFirst.x).toBeCloseTo(882 + Math.cos(firstAngle) * firstSpeed * 0.1, 12);
+    expect(agedFirst.x).toBeCloseTo(layout.project(scenario.laneLength * FIXED_SCALE, layout.vesselY(0)).x + Math.cos(firstAngle) * firstSpeed * 0.1, 12);
     expect(agedFirst.y).toBeCloseTo(
-      layout.laneCenterY(0) + (Math.sin(firstAngle) * firstSpeed - 30) * 0.1 + 1.5,
+      layout.vesselY(0) - 12 * layout.project(0, layout.vesselY(0)).scale + (Math.sin(firstAngle) * firstSpeed - 30) * 0.1 + 1.5,
       12,
     );
     const translation = effects.shakeTranslation();

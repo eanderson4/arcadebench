@@ -26,11 +26,11 @@ describe('first-run presentation copy', () => {
     expect(completeCopy).toContain('← →');
     expect(completeCopy).toContain('↑ ↓');
     expect(completeCopy).toContain('SPACE');
-    expect(completeCopy).toContain('F / ENTER');
+    expect(completeCopy).toContain('BUTTON 2 / ENTER');
     expect(completeCopy).toContain('READY');
     expect(completeCopy).toContain('intercept return');
-    const slideControl = instructions.steps?.find((step) => step.includes('F / ENTER'));
-    expect(slideControl).toContain('slide held shake');
+    const slideControl = instructions.steps?.find((step) => step.includes('BUTTON 1 / SPACE'));
+    expect(slideControl).toContain('release to toss');
     expect(slideControl).not.toContain('catch');
   });
 
