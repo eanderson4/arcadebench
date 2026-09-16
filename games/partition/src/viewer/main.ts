@@ -1,7 +1,7 @@
 import { PartitionEngine } from '../core/engine';
 import { applyDifficulty, DIFFICULTY_PRESETS } from '../core/difficulty';
 import { parsePartitionReplay, replayPartitionFrames, type PartitionReplayFrame } from '../core/replay';
-import type { ControlInput, DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
+import type { DifficultyId, Direction, GameEvent, PartitionReplay, PartitionState, ReplayTick } from '../core/types';
 import { PARTITION_GAME_ID, PARTITION_GAME_VERSION } from '../core/version';
 import { createPartitionCampaign, resolvePartitionProgression, type PartitionCampaignLevel } from '../levels';
 import { FeedbackNoteDialog, type NoteTarget } from './feedback-note';
@@ -27,6 +27,8 @@ import {
 } from './leaderboard';
 import { PartitionRenderer } from './renderer';
 import { PartitionAudio } from './audio';
+import { PartitionHumanInput } from './human-input';
+import { actionNearStabilityHud } from './stability-hud';
 import { ReplayTransport } from './replay-transport';
 import { createShowcaseReplay } from './showcase-replay';
 import { resolveTimePressure } from './time-pressure';
@@ -183,16 +185,9 @@ let mode: ViewMode = params.get('mode') === 'replay'
     ? 'live'
     : 'home';
 let immersive = false;
-let direction: Direction = 'idle';
-let drawing = false;
-let touchDirection: Direction = 'idle';
-let touchDrawing = false;
+const humanInput = new PartitionHumanInput();
 let liveStarted = mode === 'live' && params.get('autostart') === '1';
 let liveReplayTicks: ReplayTick[] = [];
-const keys = new Set<string>();
-const pressedDirections: Direction[] = [];
-let bufferedDirection: Direction = 'idle';
-let bufferedDraw = false;
 
 let loadedReplay: PartitionReplay = createShowcaseReplay();
 let replayFrames: PartitionReplayFrame[] = replayPartitionFrames(loadedReplay);
@@ -288,7 +283,7 @@ const feedbackNoteDialog = new FeedbackNoteDialog({
   announce: (message) => showNotice(message),
 });
 
-const AUTO_ADVANCE_SECONDS = 5;
+const AUTO_ADVANCE_SECONDS = 4;
 
 function isFormControl(target: EventTarget | null): target is HTMLElement {
   return target instanceof HTMLElement
@@ -594,12 +589,12 @@ function updateHomeSelection(): void {
   difficultySummary.textContent = DIFFICULTY_PRESETS[selectedDifficulty].description;
 }
 
-function resetLiveSession(): void {
+function resetLiveSession(preserveHeldControls = false): void {
   scoreSubmitted = false;
   cancelAutoAdvance();
   clearTimeout(captureFeedbackTimer);
-  clearHumanControls();
-  direction = 'idle';
+  if (preserveHeldControls) humanInput.nextStage();
+  else clearHumanControls();
   liveReplayTicks = [];
   currentPartitionCount = 0;
   recordedScenarioId = null;
@@ -627,9 +622,9 @@ function resetLiveSession(): void {
   configureFieldSurface(engine.snapshot());
 }
 
-function launchSelectedField(): void {
+function launchSelectedField(preserveHeldControls = false): void {
   engine = new PartitionEngine(applyDifficulty(selectedLevel().scenario, selectedDifficulty));
-  resetLiveSession();
+  resetLiveSession(preserveHeldControls);
   liveStarted = true;
   playIntro.classList.add('hidden');
   playIntro.classList.remove('leaving');
@@ -754,7 +749,7 @@ function advanceProgression(): void {
   selectedLevelIndex++;
   levelSelect.value = String(selectedLevel().metadata.number);
   updateHomeSelection();
-  launchSelectedField();
+  launchSelectedField(true);
   showNotice(
     `Stage ${String(selectedLevel().metadata.number).padStart(2, '0')} · ${selectedLevel().metadata.tier.toUpperCase()}`,
   );
@@ -786,50 +781,9 @@ function scheduleAutoAdvance(state: PartitionState): void {
   }, AUTO_ADVANCE_SECONDS * 1000);
 }
 
-function selectDirection(): Direction {
-  for (let index = pressedDirections.length - 1; index >= 0; index--) {
-    const candidate = pressedDirections[index];
-    if (keys.has(`Arrow${candidate[0].toUpperCase()}${candidate.slice(1)}`)) return candidate;
-  }
-  return touchDirection;
-}
-
-function directionForCode(code: string): Direction | null {
-  switch (code) {
-    case 'ArrowUp': return 'up';
-    case 'ArrowDown': return 'down';
-    case 'ArrowLeft': return 'left';
-    case 'ArrowRight': return 'right';
-    default: return null;
-  }
-}
-
 function clearHumanControls(): void {
-  keys.clear();
-  pressedDirections.length = 0;
-  bufferedDirection = 'idle';
-  bufferedDraw = false;
-  drawing = false;
-  touchDirection = 'idle';
-  touchDrawing = false;
+  humanInput.reset();
   engine.setInput({ direction: 'idle', draw: 'off' });
-}
-
-function currentInput(): ControlInput {
-  const heldDirection = selectDirection();
-  const state = engine.snapshot();
-  const movementDue = state.tick % state.sparkMoveEveryTicks === 0;
-  direction = heldDirection;
-  let draw = drawing || touchDrawing;
-  if (movementDue) {
-    if (direction === 'idle' && bufferedDirection !== 'idle') {
-      direction = bufferedDirection;
-      draw = draw || bufferedDraw;
-    }
-    bufferedDirection = 'idle';
-    bufferedDraw = false;
-  }
-  return { direction, draw: draw ? 'fast' : 'off' };
 }
 
 function humanReplay(): PartitionReplay {
@@ -1056,15 +1010,6 @@ function showFrameCaptureFeedback(frame: PartitionReplayFrame): void {
   );
 }
 
-function actionOverlapsStabilityHud(state: PartitionState): boolean {
-  const inLowerLeft = (x: number, y: number): boolean =>
-    x <= state.width * 0.3 && y >= state.height * 0.68;
-  if (inLowerLeft(state.spark.position.x, state.spark.position.y)) return true;
-  return state.trace.some((edge) =>
-    inLowerLeft(edge.ax, edge.ay) || inLowerLeft(edge.bx, edge.by),
-  );
-}
-
 function actionOverlapsTimeHud(state: PartitionState): boolean {
   const inUpperRight = (x: number, y: number): boolean =>
     x >= state.width * 0.64 && y <= state.height * 0.34;
@@ -1204,6 +1149,9 @@ function renderEvents(tick: number): void {
 }
 
 function updateStats(state: PartitionState): void {
+  const traceArmed = mode === 'live' && humanInput.isTraceArmed();
+  traceButton.textContent = traceArmed ? 'ARMED' : 'TRACE';
+  traceButton.setAttribute('aria-label', traceArmed ? 'Trace armed. Steer into the field.' : 'Tap to start a trace');
   const currentPercentage = Math.floor(state.capturedFraction * 100);
   const targetPercentage = Math.round(state.targetFraction * 100);
   const capture = `${currentPercentage}%`;
@@ -1219,7 +1167,10 @@ function updateStats(state: PartitionState): void {
   stabilityFill.style.width = `${Math.min(100, state.capturedFraction * 100)}%`;
   stabilityGoalMarker.style.left = `${Math.min(100, state.targetFraction * 100)}%`;
   stabilityHud.setAttribute('aria-label', `${capture} stabilized, ${targetPercentage}% goal`);
-  stabilityHud.classList.toggle('action-nearby', actionOverlapsStabilityHud(state));
+  stabilityHud.classList.toggle('action-nearby', actionNearStabilityHud(
+    state, canvas.getBoundingClientRect(), stabilityHud.getBoundingClientRect(),
+    stabilityHud.classList.contains('action-nearby'),
+  ));
   timePressureHud.classList.toggle('action-nearby', actionOverlapsTimeHud(state));
   stageIntegrityEl.textContent = integrity;
   const ticksPerSecond = mode === 'replay'
@@ -1515,6 +1466,7 @@ function modeTabs(): NodeListOf<HTMLButtonElement> {
 
 function setMode(nextMode: ViewMode): void {
   if (nextMode !== 'live') cancelAutoAdvance();
+  if (nextMode !== mode) clearHumanControls();
   mode = nextMode;
   if (mode === 'home') {
     liveStarted = false;
@@ -1568,7 +1520,7 @@ window.addEventListener('keydown', (event) => {
     return;
   }
   if (isFormControl(target)) return;
-  if (mode === 'home' || mode === 'catalog') return;
+  if (mode === 'home' || mode === 'catalog' || mode === 'leaderboard') return;
   if (mode === 'replay') {
     switch (event.code) {
       case 'Space':
@@ -1617,69 +1569,41 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.code.startsWith('Arrow') || event.code === 'Space') event.preventDefault();
   if (!liveStarted && (event.code.startsWith('Arrow') || event.code === 'Space')) startHumanPlay();
-  const pressedDirection = directionForCode(event.code);
-  if (pressedDirection && !event.repeat) {
-    const prior = pressedDirections.indexOf(pressedDirection);
-    if (prior !== -1) pressedDirections.splice(prior, 1);
-    pressedDirections.push(pressedDirection);
-    bufferedDirection = pressedDirection;
-    bufferedDraw = drawing || touchDrawing || keys.has('Space');
-  }
-  keys.add(event.code);
-  if (event.code === 'Space') {
-    drawing = true;
-    const activeDirection = selectDirection();
-    if (activeDirection !== 'idle') {
-      bufferedDirection = activeDirection;
-      bufferedDraw = true;
-    }
-  }
+  humanInput.keyDown(event.code, engine.snapshot(), event.repeat);
 });
 
-window.addEventListener('keyup', (event) => {
-  if (isFormControl(event.target)) return;
-  keys.delete(event.code);
-  const releasedDirection = directionForCode(event.code);
-  if (releasedDirection) {
-    const index = pressedDirections.indexOf(releasedDirection);
-    if (index !== -1) pressedDirections.splice(index, 1);
-  }
-  if (event.code === 'Space') drawing = false;
-});
-
-for (const button of document.querySelectorAll<HTMLButtonElement>('[data-direction]')) {
-  const selected = button.dataset.direction as Direction;
-  const begin = (event: Event) => {
-    event.preventDefault();
-    if (!liveStarted) startHumanPlay();
-    touchDirection = selected;
-    bufferedDirection = selected;
-    bufferedDraw = touchDrawing;
-  };
-  const end = (event: Event) => {
-    event.preventDefault();
-    if (touchDirection === selected) touchDirection = 'idle';
-  };
-  button.addEventListener('pointerdown', begin);
-  button.addEventListener('pointerup', end);
-  button.addEventListener('pointercancel', end);
-  button.addEventListener('pointerleave', end);
-}
+// Releases must be observed even if focus moved to a form after the press.
+window.addEventListener('keyup', (event) => humanInput.keyUp(event.code));
 
 const traceButton = query<HTMLButtonElement>('[data-trace]');
-traceButton.addEventListener('pointerdown', (event) => {
-  event.preventDefault();
-  if (!liveStarted) startHumanPlay();
-  touchDrawing = true;
-  if (touchDirection !== 'idle') {
-    bufferedDirection = touchDirection;
-    bufferedDraw = true;
-  }
-});
-for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
-  traceButton.addEventListener(eventName, (event) => {
+for (const button of document.querySelectorAll<HTMLButtonElement>('[data-direction], [data-trace]')) {
+  const action = button.hasAttribute('data-trace') ? 'trace' : button.dataset.direction as Direction;
+  // Enter repeats otherwise generate fresh detail=0 clicks on native buttons.
+  // Cancel only the repeat's default activation; retain the first activation,
+  // Space's normal keyup click, and AT clicks without accompanying key events.
+  button.addEventListener('keydown', event => {
+    if (event.repeat && (event.code === 'Enter' || event.code === 'Space')) event.preventDefault();
+  });
+  button.addEventListener('pointerdown', event => {
     event.preventDefault();
-    touchDrawing = false;
+    if (mode !== 'live') return;
+    if (!liveStarted) startHumanPlay();
+    button.setPointerCapture(event.pointerId);
+    humanInput.pointerDown(event.pointerId, action, engine.snapshot());
+  });
+  button.addEventListener('pointerup', event => humanInput.pointerUp(event.pointerId));
+  button.addEventListener('pointercancel', event => humanInput.pointerCancel(event.pointerId));
+  button.addEventListener('lostpointercapture', event => humanInput.pointerUp(event.pointerId));
+  // Native keyboard/assistive clicks have detail=0. Pointer taps were handled
+  // above, so their generated click must not arm a second trace.
+  button.addEventListener('click', event => {
+    if (event.detail !== 0 || mode !== 'live') return;
+    if (!liveStarted) startHumanPlay();
+    if (action === 'trace') humanInput.tapTrace(engine.snapshot());
+    else {
+      humanInput.pointerDown(-1, action, engine.snapshot());
+      humanInput.pointerUp(-1);
+    }
   });
 }
 
@@ -2003,9 +1927,10 @@ query<HTMLButtonElement>('#copy-link').addEventListener('click', async () => {
 
 setInterval(() => {
   if (mode === 'live' && liveStarted && engine.snapshot().status === 'running') {
-    engine.setInput(currentInput());
+    engine.setInput(humanInput.sample(engine.snapshot()));
     const applied = engine.snapshot();
     const result = engine.step();
+    humanInput.observe(result);
     liveReplayTicks.push({
       tick: result.state.tick,
       input: { ...applied.currentInput },
