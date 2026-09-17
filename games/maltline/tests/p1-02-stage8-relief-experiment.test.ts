@@ -563,7 +563,10 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
 
     expect(await readFile(resolve(repositoryRoot, '.node-version'), 'utf8')).toBe('22.19.0\n');
     const workflow = await readFile(resolve(repositoryRoot, '.github/workflows/ci-cd.yml'), 'utf8');
-    expect(workflow.match(/node-version-file: \.node-version/gu)).toHaveLength(2);
+    const setupNodeActions = workflow.match(/uses: actions\/setup-node@/gu) ?? [];
+    const pinnedNodeDeclarations = workflow.match(/node-version-file: \.node-version/gu) ?? [];
+    expect(setupNodeActions.length).toBeGreaterThan(0);
+    expect(pinnedNodeDeclarations).toHaveLength(setupNodeActions.length);
     expect(workflow).not.toMatch(/node-version:\s*22(?:\s|$)/u);
   }, 30_000);
 
