@@ -300,13 +300,16 @@ for (const viewport of launcherViewports) {
     if (viewport.width >= 700) {
       expect(Math.abs(measurements.cards[0]!.top - measurements.cards[1]!.top)).toBeLessThan(1);
       expect(measurements.cards[0]!.right).toBeLessThan(measurements.cards[1]!.left);
-      // Both games are comparable without scrolling past the introduction: the
-      // artwork and the play action both sit above the fold in two-column mode.
-      for (const card of measurements.cards.slice(0, 2)) {
-        expect(card.artTop).toBeGreaterThanOrEqual(0);
-        expect(card.artBottom).toBeLessThanOrEqual(measurements.innerHeight);
-        expect(card.actionBottom).toBeLessThanOrEqual(measurements.innerHeight);
-      }
+      // One large gameplay frame leads while the next card peeks in from the
+      // right, making the carousel obvious without shrinking the game art.
+      expect(measurements.cards[0]!.right - measurements.cards[0]!.left)
+        .toBeGreaterThan(measurements.innerWidth * 0.75);
+      expect(measurements.cards[0]!.right).toBeLessThan(measurements.innerWidth);
+      expect(measurements.cards[1]!.left).toBeLessThan(measurements.innerWidth);
+      expect(measurements.cards[1]!.right).toBeGreaterThan(measurements.innerWidth);
+      expect(measurements.cards[0]!.artTop).toBeGreaterThanOrEqual(0);
+      expect(measurements.cards[0]!.artBottom).toBeLessThanOrEqual(measurements.innerHeight);
+      expect(measurements.cards[0]!.actionBottom).toBeLessThanOrEqual(measurements.innerHeight);
     } else {
       expect(measurements.cards[1]!.top).toBe(measurements.cards[0]!.top);
       expect(measurements.cards[1]!.left).toBeGreaterThan(measurements.cards[0]!.right);

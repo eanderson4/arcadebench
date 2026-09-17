@@ -42,9 +42,18 @@ test('buttons, arrows, Home/End, and Tab expose every game in shuffled DOM order
   await open(page, [0, 0]);
   const order = await names(page);
   const links = page.locator('#games .game-card__play');
+  await expect(page.locator('[data-carousel-title]')).toHaveText(order[0]!);
+  await expect(page.locator('[data-carousel-count]')).toHaveText('01 / 03');
+  await expect(page.locator('[data-carousel-next-label]')).toHaveText(`Next up: ${order[1]}`);
+  await expect(page.locator('#games > li[data-active="true"] h2')).toHaveText(order[0]!);
+  await expect(page.locator('[data-carousel-progress] > [data-active="true"]')).toHaveCount(1);
   await expect(page.getByRole('button', { name: 'Previous game' })).toBeDisabled();
   await page.getByRole('button', { name: 'Next game' }).click();
   await expect.poll(() => page.locator('#games').evaluate(el => el.scrollLeft)).toBeGreaterThan(100);
+  await expect(page.locator('[data-carousel-title]')).toHaveText(order[1]!);
+  await expect(page.locator('[data-carousel-count]')).toHaveText('02 / 03');
+  await expect(page.locator('[data-carousel-live]')).toHaveText(`Game 2 of 3, ${order[1]}`);
+  await expect(page.locator('#games > li[data-active="true"] h2')).toHaveText(order[1]!);
   await links.first().focus();
   for (let i = 0; i < 3; i++) {
     await expect(links.nth(i)).toBeFocused();
@@ -57,6 +66,7 @@ test('buttons, arrows, Home/End, and Tab expose every game in shuffled DOM order
   await page.keyboard.press('ArrowLeft'); await expect(links.first()).toBeFocused();
   await page.keyboard.press('End'); await expect(links.last()).toBeFocused();
   await expect(page.getByRole('button', { name: 'Next game' })).toBeDisabled();
+  await expect(page.locator('[data-carousel-next-label]')).toHaveText('End of the shelf');
   const box = await links.last().boundingBox();
   expect(box!.width).toBeGreaterThan(44); expect(box!.height).toBeGreaterThanOrEqual(44);
 });
@@ -70,6 +80,29 @@ test('reduced motion jumps immediately and keeps the artwork unfiltered', async 
   expect(await page.locator('.game-card__art img').evaluateAll(images => images.map(image => ({
     filter: getComputedStyle(image).filter, opacity: getComputedStyle(image).opacity,
   })))).toEqual(authored.map(() => ({ filter: 'none', opacity: '1' })));
+});
+
+test('normal-motion navigation announces its settled slide', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 720 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await open(page, [2, 1]);
+  await page.getByRole('button', { name: /^Next game/u }).click();
+  await expect(page.locator('[data-carousel-live]')).toHaveText('Game 2 of 3, Maltline');
+});
+
+test('endpoint navigation keeps keyboard focus inside the carousel controls', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 720 });
+  await open(page, [2, 1]);
+  const previous = page.getByRole('button', { name: /^Previous game/u });
+  const next = page.getByRole('button', { name: /^Next game/u });
+  await next.click();
+  await next.click();
+  await expect(next).toBeDisabled();
+  await expect(previous).toBeFocused();
+  await previous.click();
+  await previous.click();
+  await expect(previous).toBeDisabled();
+  await expect(next).toBeFocused();
 });
 
 test('touch swipe moves the native scroll-snap track without moving the page sideways', async ({ page, context }) => {

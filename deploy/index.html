@@ -43,9 +43,27 @@
 
         <section class="game-carousel" aria-label="Choose a game" aria-roledescription="carousel">
           <div class="game-carousel__controls" hidden>
-            <p class="game-carousel__status" aria-live="polite" aria-atomic="true"></p>
-            <button type="button" data-carousel-prev aria-controls="games" aria-label="Previous game">‹</button>
-            <button type="button" data-carousel-next aria-controls="games" aria-label="Next game">›</button>
+            <div class="game-carousel__readout" aria-hidden="true">
+              <span class="game-carousel__lamp"></span>
+              <p class="game-carousel__status">
+                <span class="game-carousel__eyebrow">On the bench</span>
+                <strong data-carousel-title></strong>
+                <span class="game-carousel__count" data-carousel-count></span>
+              </p>
+              <p class="game-carousel__next" data-carousel-next-label></p>
+            </div>
+            <div class="game-carousel__progress" data-carousel-progress aria-hidden="true"></div>
+            <div class="game-carousel__buttons">
+              <button type="button" data-carousel-prev aria-controls="games" aria-label="Previous game">
+                <span class="game-carousel__button-arrow" aria-hidden="true">‹</span>
+                <span class="game-carousel__button-label" aria-hidden="true">Back</span>
+              </button>
+              <button class="game-carousel__next-button" type="button" data-carousel-next aria-controls="games" aria-label="Next game">
+                <span class="game-carousel__button-label" aria-hidden="true">Next</span>
+                <span class="game-carousel__button-arrow" aria-hidden="true">›</span>
+              </button>
+            </div>
+            <p class="ab-visually-hidden" data-carousel-live aria-live="polite" aria-atomic="true"></p>
           </div>
         <ul id="games" class="game-grid" role="list" aria-label="Available games" tabindex="-1">
           <li>

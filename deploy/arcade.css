@@ -165,8 +165,8 @@ h1 {
 .game-grid {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: calc((100% - 28px) / 2);
-  gap: 28px;
+  grid-auto-columns: 89%;
+  gap: 20px;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   overflow-anchor: none;
@@ -176,6 +176,11 @@ h1 {
   padding: 3px 3px 14px;
   list-style: none;
   outline: none;
+  scrollbar-width: none;
+}
+
+.game-grid::-webkit-scrollbar {
+  display: none;
 }
 
 .game-grid > li {
@@ -185,6 +190,7 @@ h1 {
 }
 
 .game-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -192,10 +198,32 @@ h1 {
   border: 1px solid var(--ab-rule);
   border-radius: var(--ab-radius);
   background: var(--ab-surface);
+  transition: border-color var(--ab-transition), box-shadow var(--ab-transition), transform var(--ab-transition);
+}
+
+.game-grid > li[data-active="true"] .game-card {
+  border-color: var(--ab-blue);
+  box-shadow: 0 8px 24px rgba(37, 40, 36, 0.12), inset 0 0 0 1px var(--ab-blue);
+}
+
+/* A small double crossbar connects the selected game to the bench mark. */
+.game-grid > li[data-active="true"] .game-card::before {
+  position: absolute;
+  z-index: 2;
+  top: 12px;
+  left: 0;
+  width: 34px;
+  height: 6px;
+  border-top: 2px solid var(--ab-blue);
+  border-bottom: 2px solid var(--ab-blue);
+  content: '';
+  pointer-events: none;
 }
 
 /* The artwork is the card's identity, so it gets the full 16:9 window. */
 .game-card__art {
+  position: relative;
+  overflow: hidden;
   margin: 0;
   border-bottom: 1px solid var(--ab-rule);
   background: var(--ab-plate);
@@ -207,6 +235,7 @@ h1 {
   height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
+  transition: transform 220ms ease;
 }
 
 .game-card__body {
@@ -275,6 +304,37 @@ h1 {
 
 .game-card__play:hover .game-card__arrow {
   transform: translateX(3px);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .game-card:hover,
+  .game-card:focus-within {
+    transform: translateY(-3px);
+  }
+
+  .game-card:hover .game-card__art img,
+  .game-card:focus-within .game-card__art img {
+    transform: scale(1.018);
+  }
+}
+
+@media (min-width: 700px) {
+  .game-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.65fr) minmax(230px, 1fr);
+  }
+
+  .game-card__art {
+    border-right: 1px solid var(--ab-rule);
+    border-bottom: 0;
+  }
+
+  .game-card__art img {
+    height: 100%;
+    min-height: 252px;
+    aspect-ratio: auto;
+    object-fit: contain;
+  }
 }
 
 /* Recent high scores: the platform's shared activity feed, deliberately
@@ -648,19 +708,211 @@ body.error-page .page-shell {
   }
 }
 
-/* Optional controls enhance the same scrollable HTML list; no autoplay. */
-.game-carousel__controls { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-bottom: 10px; }
-.game-carousel__controls[hidden] { display: none; }
-.game-carousel__status { margin: 0 auto 0 0; color: var(--ab-ink-muted); font-size: 13px; }
-.game-carousel__controls button { width: 44px; height: 44px; border: 1px solid var(--ab-rule); border-radius: var(--ab-radius); background: var(--ab-surface); color: var(--ab-blue); font: inherit; font-size: 22px; cursor: pointer; }
-.game-carousel__controls button:disabled { opacity: .4; cursor: default; }
-.game-carousel__controls button:focus-visible { outline: 3px solid var(--ab-blue); outline-offset: 2px; }
+/* Optional controls enhance the same scrollable HTML list; no autoplay. The
+   readout borrows the mark's double crossbar without turning the catalog into
+   another game screen. */
+.game-carousel__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'readout buttons'
+    'progress buttons';
+  align-items: center;
+  gap: 5px var(--ab-space-4);
+  min-height: 58px;
+  margin-bottom: var(--ab-space-2);
+}
 
-/* At tablet widths the arrows share the heading row, leaving both play
-   actions reachable above the fold without shrinking their targets. */
-@media (min-width: 700px) and (max-width: 900px) {
-  .catalog { position: relative; }
-  .catalog__intro h1 { padding-right: 112px; }
-  .game-carousel__controls { position: absolute; top: clamp(16px, 2.6vh, 30px); right: 0; margin: 0; }
-  .game-carousel__status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.game-carousel__controls[hidden] {
+  display: none;
+}
+
+.game-carousel__readout {
+  grid-area: readout;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 9px;
+}
+
+.game-carousel__lamp {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--ab-red);
+  box-shadow: 0 0 0 4px rgba(191, 67, 46, 0.11);
+}
+
+.game-carousel__status {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  line-height: 1.15;
+}
+
+.game-carousel__eyebrow,
+.game-carousel__count,
+.game-carousel__next {
+  color: var(--ab-ink-muted);
+  font-size: 11px;
+  font-weight: var(--ab-weight-utility);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.game-carousel__status strong {
+  overflow: hidden;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-carousel__count {
+  white-space: nowrap;
+}
+
+.game-carousel__next {
+  overflow: hidden;
+  margin: 0 0 0 8px;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-transform: none;
+}
+
+.game-carousel__progress {
+  grid-area: progress;
+  display: flex;
+  gap: 4px;
+  width: min(100%, 360px);
+  padding-left: 17px;
+}
+
+.game-carousel__progress span {
+  width: 24px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ab-rule-strong);
+  transition: width 180ms ease, background-color 180ms ease;
+}
+
+.game-carousel__progress span[data-active="true"] {
+  width: 52px;
+  background: var(--ab-blue);
+}
+
+.game-carousel__buttons {
+  grid-area: buttons;
+  display: flex;
+  gap: var(--ab-space-2);
+}
+
+.game-carousel__controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 74px;
+  height: 46px;
+  padding: 0 13px;
+  border: 1px solid var(--ab-rule-strong);
+  border-radius: var(--ab-radius);
+  background: var(--ab-surface);
+  box-shadow: 0 3px 0 var(--ab-rule-strong);
+  color: var(--ab-blue);
+  font: inherit;
+  font-size: 13px;
+  font-weight: var(--ab-weight-utility);
+  cursor: pointer;
+  transform: translateY(-2px);
+  transition: color var(--ab-transition), background-color var(--ab-transition),
+    border-color var(--ab-transition), box-shadow var(--ab-transition), transform var(--ab-transition);
+}
+
+.game-carousel__controls .game-carousel__next-button {
+  border-color: var(--ab-blue);
+  background: var(--ab-blue);
+  box-shadow: 0 3px 0 var(--ab-blue-strong);
+  color: var(--ab-on-blue);
+}
+
+.game-carousel__controls button:hover:not(:disabled) {
+  border-color: var(--ab-blue);
+}
+
+.game-carousel__controls button:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--ab-rule-strong);
+  transform: none;
+}
+
+.game-carousel__controls .game-carousel__next-button:active:not(:disabled) {
+  box-shadow: 0 1px 0 var(--ab-blue-strong);
+}
+
+.game-carousel__controls button:disabled {
+  opacity: 0.32;
+  box-shadow: none;
+  cursor: default;
+  transform: none;
+}
+
+.game-carousel__controls button:focus-visible {
+  outline: 3px solid var(--ab-blue);
+  outline-offset: 2px;
+}
+
+.game-carousel__button-arrow {
+  font-size: 21px;
+  font-weight: var(--ab-weight-body);
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .carousel-ready .game-grid > li {
+    animation: carousel-arrive 360ms both;
+    animation-delay: calc(var(--carousel-order) * 55ms);
+  }
+
+  @keyframes carousel-arrive {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+  }
+}
+
+@media (max-width: 699px) {
+  .game-carousel__controls {
+    gap: 4px 10px;
+  }
+
+  .game-carousel__eyebrow,
+  .game-carousel__next,
+  .game-carousel__button-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .game-carousel__controls button {
+    width: 46px;
+    min-width: 46px;
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card,
+  .game-card__art img,
+  .game-carousel__progress span,
+  .game-carousel__controls button {
+    animation: none;
+    transition: none;
+  }
 }

@@ -21,29 +21,56 @@ if (track && controls) {
     track.append(...cards);
   } catch { /* HTML order remains usable. */ }
   const ordered = [...track.children];
+  ordered.forEach((card, index) => card.style.setProperty('--carousel-order', index));
   const previous = controls.querySelector('[data-carousel-prev]');
   const next = controls.querySelector('[data-carousel-next]');
-  const status = controls.querySelector('.game-carousel__status');
+  const title = controls.querySelector('[data-carousel-title]');
+  const count = controls.querySelector('[data-carousel-count]');
+  const nextLabel = controls.querySelector('[data-carousel-next-label]');
+  const progress = controls.querySelector('[data-carousel-progress]');
+  const live = controls.querySelector('[data-carousel-live]');
+  const names = ordered.map(card => card.querySelector('h2').textContent);
+  progress.replaceChildren(...ordered.map(() => document.createElement('span')));
+  const markers = [...progress.children];
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const position = () => ordered.reduce((best, card, index) => (
     Math.abs(card.getBoundingClientRect().left - track.getBoundingClientRect().left)
       < Math.abs(ordered[best].getBoundingClientRect().left - track.getBoundingClientRect().left) ? index : best
   ), 0);
-  const sync = () => {
+  let announced = -1;
+  const sync = (announce = false) => {
+    const previousFocused = document.activeElement === previous;
+    const nextFocused = document.activeElement === next;
     previous.disabled = track.scrollLeft <= 2;
     next.disabled = track.scrollLeft >= track.scrollWidth - track.clientWidth - 2;
-    const visible = ordered.filter(card => {
-      const box = card.getBoundingClientRect(), view = track.getBoundingClientRect();
-      return box.left >= view.left - 4 && box.right <= view.right + 4;
+    const current = position();
+    ordered.forEach((card, index) => {
+      card.dataset.active = String(index === current);
+      card.setAttribute('aria-label', `Game ${index + 1} of ${ordered.length}: ${names[index]}`);
     });
-    status.textContent = visible.map(card => card.querySelector('h2').textContent).join(' · ')
-      || ordered[position()].querySelector('h2').textContent;
+    markers.forEach((marker, index) => marker.dataset.active = String(index === current));
+    title.textContent = names[current];
+    count.textContent = `${String(current + 1).padStart(2, '0')} / ${String(ordered.length).padStart(2, '0')}`;
+    nextLabel.textContent = current < ordered.length - 1 ? `Next up: ${names[current + 1]}` : 'End of the shelf';
+    previous.setAttribute('aria-label', current > 0 ? `Previous game: ${names[current - 1]}` : 'Previous game');
+    next.setAttribute('aria-label', current < ordered.length - 1 ? `Next game: ${names[current + 1]}` : 'Next game');
+    if (announce && current !== announced) {
+      live.textContent = `Game ${current + 1} of ${ordered.length}, ${names[current]}`;
+      announced = current;
+    }
+    // Native disabled controls cannot retain focus. At an endpoint, keep the
+    // player in the navigator by moving to the available direction.
+    if (previous.disabled && previousFocused) next.focus({ preventScroll: true });
+    if (next.disabled && nextFocused) previous.focus({ preventScroll: true });
   };
-  const reveal = (index, focus = false) => {
+  const reveal = (index, focus = false, announce = true) => {
     const card = ordered[Math.max(0, Math.min(ordered.length - 1, index))];
     if (focus) card.querySelector('.game-card__play').focus({ preventScroll: true });
-    track.scrollTo({ left: track.scrollLeft + card.getBoundingClientRect().left - track.getBoundingClientRect().left - 3,
-      behavior: reduced.matches || focus ? 'instant' : 'smooth' });
+    track.scrollTo({
+      left: track.scrollLeft + card.getBoundingClientRect().left - track.getBoundingClientRect().left - 3,
+      behavior: reduced.matches || focus ? 'instant' : 'smooth',
+    });
+    if (reduced.matches || focus) sync(announce);
   };
   previous.addEventListener('click', () => reveal(position() - 1));
   next.addEventListener('click', () => reveal(position() + 1));
@@ -60,11 +87,15 @@ if (track && controls) {
   // into view without scrolling the surrounding page vertically.
   track.addEventListener('focusin', event => {
     const index = ordered.findIndex(card => card.contains(event.target));
-    if (index >= 0) reveal(index);
+    if (index >= 0) reveal(index, false, false);
   });
-  track.addEventListener('scroll', sync, { passive: true });
-  new ResizeObserver(sync).observe(track);
+  track.addEventListener('scroll', () => {
+    sync();
+  }, { passive: true });
+  track.addEventListener('scrollend', () => sync(true));
+  new ResizeObserver(() => sync()).observe(track);
   controls.hidden = false;
   track.scrollLeft = 0;
   sync();
+  requestAnimationFrame(() => document.documentElement.classList.add('carousel-ready'));
 }
