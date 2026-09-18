@@ -217,7 +217,10 @@ async function exercise(origin) {
   assertHeader(launcher, 'cache-control', 'public, max-age=0, must-revalidate');
   assertHeader(launcher, 'content-type', 'text/html; charset=utf-8');
   assertSecurityHeaders(launcher);
-  assert.match(launcher.body.toString('utf8'), /<h1>Choose your game\.<\/h1>/u);
+  assert.match(
+    launcher.body.toString('utf8'),
+    /<h1 class="launcher-title">Choose your game\.<\/h1>/u,
+  );
   for (const cover of ['/covers/partition.png', '/covers/maltline.png']) {
     const asset = await probe(origin, `Cover ${cover}`, cover);
     assertStatus(asset, 200);
@@ -306,7 +309,10 @@ async function exercise(origin) {
 
   const rootPlainQuery = await probe(origin, 'Root plain query', '/?utm_source=probe');
   assertStatus(rootPlainQuery, 200);
-  assert.match(rootPlainQuery.body.toString('utf8'), /<h1>Choose your game\.<\/h1>/u);
+  assert.match(
+    rootPlainQuery.body.toString('utf8'),
+    /<h1 class="launcher-title">Choose your game\.<\/h1>/u,
+  );
 
   const hiddenHeaders = await probe(origin, 'Hidden _headers', '/_headers');
   const hiddenRedirects = await probe(origin, 'Hidden _redirects', '/_redirects');
