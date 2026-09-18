@@ -181,7 +181,7 @@ for (const viewport of launcherViewports) {
     await page.evaluate(() => document.fonts.ready);
     const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
       imageFit: getComputedStyle(document.querySelector('#selected-game img')!).objectFit,
-      boxes: ['#selected-game', '.recent', '.launcher-help'].map(selector => {
+      boxes: ['#selected-game', '.recent'].map(selector => {
         const r = document.querySelector(selector)!.getBoundingClientRect(); return { left: r.left, right: r.right };
       }),
     }));

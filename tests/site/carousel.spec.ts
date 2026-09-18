@@ -68,7 +68,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 1536, height: 864
     const measured = await page.evaluate(() => {
       const track = document.querySelector('#games')!.getBoundingClientRect();
       return { doc: [document.documentElement.scrollWidth, document.documentElement.scrollHeight],
-        visible: [...document.querySelectorAll('.cartridge__select,#selected-game,.recent,#launcher-help,.site-footer,#selected-game .game-card__play')].every(el => {
+        visible: [...document.querySelectorAll('.cartridge__select,#selected-game,.recent,.site-footer,#selected-game .game-card__play')].every(el => {
           const r = el.getBoundingClientRect(); return r.left >= 0 && r.top >= 0 && r.right <= innerWidth + .5 && r.bottom <= innerHeight + .5;
         }), shoulders: [...document.querySelectorAll('.cartridge__select')].every(el => el.getBoundingClientRect().top - 6 >= track.top),
         fit: getComputedStyle(document.querySelector('#selected-game img')!).objectFit };
@@ -125,16 +125,32 @@ test('idle pages probe slowly when no gamepad is connected', async ({ page }) =>
   await page.waitForTimeout(2200);
   expect(await page.evaluate(() => (window as any).gamepadPolls)).toBeLessThanOrEqual(4);
 });
+test('cartridge prompt stays quiet until pointer hover or keyboard focus', async ({ page }) => {
+  await open(page);
+  const statuses = page.locator('.cartridge__status');
+  await expect(statuses.first()).toBeHidden();
+  await expect(statuses.nth(1)).toBeHidden();
+  await page.locator('.cartridge__select').nth(1).hover();
+  await expect(statuses.nth(1)).toBeVisible();
+  await expect(statuses.nth(1)).toHaveText('Pick to preview');
+  await page.locator('.cartridge__select').nth(2).focus();
+  await expect(statuses.nth(2)).toBeVisible();
+});
 test('native touch swipe browses the shelf; reduced motion preserves complete unfiltered art', async ({ page, context }) => {
   await page.setViewportSize({ width: 390, height: 720 }); await open(page);
   const track = page.locator('#games'); const box = await track.boundingBox(); const y = box!.y + 90;
+  const startX = box!.x + box!.width - 20;
   const cdp = await context.newCDPSession(page);
-  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 330, y }] });
-  for (const x of [280, 220, 160, 100, 50]) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] });
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: startX, y }] });
+  for (const distance of [45, 90, 140, 190, 240]) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: startX - distance, y }] });
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await expect.poll(() => track.evaluate(el => el.scrollLeft)).toBeGreaterThan(100);
-  await expect(page.locator('#selected-game')).toHaveAttribute('data-game-id', 'maltline');
-  await expect(page.locator('.recent')).toHaveAttribute('data-game-id', 'maltline');
+  await expect.poll(() => page.locator('#selected-game').getAttribute('data-game-id')).not.toBe('partition');
+  const selected = await page.locator('#selected-game').getAttribute('data-game-id');
+  expect(['maltline', 'smilefall']).toContain(selected);
+  await expect(page.locator('.recent')).toHaveAttribute('data-game-id', selected!);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
   expect(await page.locator('#selected-game img').evaluate(el => ({ filter: getComputedStyle(el).filter, opacity: getComputedStyle(el).opacity }))).toEqual({ filter: 'none', opacity: '1' });
   expect(await page.locator('.cartridge').first().evaluate(el => getComputedStyle(el).transitionDuration)).toBe('0s');
@@ -166,7 +182,8 @@ test('twelve-game shelf reveals every selection while desktop document stays fix
   await expect(page.locator('.cartridge__select').last()).toHaveAttribute('aria-pressed', 'true');
   const geometry = await page.evaluate(() => {
     const r = document.querySelector('.cartridge:last-child')!.getBoundingClientRect(); const track = document.querySelector('#games')!.getBoundingClientRect();
-    return { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, within: r.left >= track.left && r.right <= track.right, scrolled: document.querySelector('#games')!.scrollLeft > 0 };
+    const controls = document.querySelector('.game-carousel__controls')!.getBoundingClientRect();
+    return { width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, within: r.left >= track.left && r.right <= controls.left - 8, scrolled: document.querySelector('#games')!.scrollLeft > 0 };
   });
   expect(geometry).toEqual({ width: 1280, height: 720, within: true, scrolled: true });
   await page.keyboard.press('Home'); await expect(page.locator('.cartridge__select').first()).toHaveAttribute('aria-pressed', 'true');

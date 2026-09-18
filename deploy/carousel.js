@@ -58,21 +58,24 @@ if (track && launcher && controls && detail) {
   });
   const previous = controls.querySelector('[data-carousel-prev]');
   const next = controls.querySelector('[data-carousel-next]');
-  const title = controls.querySelector('[data-carousel-title]');
-  const count = controls.querySelector('[data-carousel-count]');
   const live = launcher.querySelector('[data-carousel-live]');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const desktop = matchMedia('(min-width: 1100px) and (min-height: 650px) and (orientation: landscape)');
   let selected = -1;
   let scrollTimer;
   let lastInput = -Infinity;
+  const shelfBounds = () => {
+    const viewport = track.getBoundingClientRect();
+    const buttons = controls.getBoundingClientRect();
+    return { viewport, safeRight: buttons.width > 0 ? buttons.left - 12 : viewport.right - 8 };
+  };
   const reveal = (index, animate = true) => {
     const card = ordered[index].card;
     const bounds = card.getBoundingClientRect();
-    const viewport = track.getBoundingClientRect();
+    const { viewport, safeRight } = shelfBounds();
     let target = track.scrollLeft;
     if (bounds.left < viewport.left + 8) target += bounds.left - viewport.left - 12;
-    else if (bounds.right > viewport.right - 8) target += bounds.right - viewport.right + 12;
+    else if (bounds.right > safeRight) target += bounds.left - viewport.left - 12;
     track.scrollTo({ left: target, behavior: animate && !reduced.matches ? 'smooth' : 'instant' });
   };
   const select = (index, announce = true, focus = false) => {
@@ -97,8 +100,6 @@ if (track && launcher && controls && detail) {
         entry.button.setAttribute('aria-pressed', String(i === index));
         entry.status.textContent = i === index ? 'Selected' : 'Pick to preview';
       });
-      title.textContent = game.title;
-      count.textContent = `${String(index + 1).padStart(2, '0')} / ${String(ordered.length).padStart(2, '0')}`;
       previous.setAttribute('aria-disabled', String(index === 0));
       next.setAttribute('aria-disabled', String(index === ordered.length - 1));
       document.dispatchEvent(new CustomEvent('arcadebench:selection', { detail: { gameId: game.id, gameTitle: game.title } }));
@@ -113,19 +114,24 @@ if (track && launcher && controls && detail) {
   next.addEventListener('click', () => { if (selected < ordered.length - 1) select(selected + 1); });
   track.addEventListener('focusin', event => {
     const index = ordered.findIndex(game => game.button === event.target);
-    if (index >= 0) select(index, false);
+    if (index >= 0) {
+      select(index, false);
+      requestAnimationFrame(() => {
+        if (document.activeElement === ordered[index].button) reveal(index, false);
+      });
+    }
   });
   // Native swipe browses the shelf. Select only when the previous selection left view.
   track.addEventListener('scroll', () => {
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
       if (performance.now() - lastInput < 700) return;
-      const viewport = track.getBoundingClientRect();
+      const { viewport, safeRight } = shelfBounds();
       const current = ordered[selected].card.getBoundingClientRect();
-      if (current.right > viewport.left + 20 && current.left < viewport.right - 20) return;
+      if (current.right > viewport.left + 20 && current.left < safeRight - 20) return;
       const index = ordered.findIndex(game => {
         const rect = game.card.getBoundingClientRect();
-        return rect.left >= viewport.left - 1 && rect.right <= viewport.right + 1;
+        return rect.left >= viewport.left - 1 && rect.right <= safeRight + 1;
       });
       if (index >= 0) select(index, true);
     }, 140);
@@ -158,7 +164,6 @@ if (track && launcher && controls && detail) {
   let primary = false;
   let lastMove = -Infinity;
   let lastLaunch = -Infinity;
-  const gamepadStatus = launcher.querySelector('[data-gamepad-status]');
   const resetPad = () => { padId = ''; armed = false; direction = 0; primary = false; };
   const poll = time => {
     if (document.hidden) { resetPad(); return; }
@@ -182,12 +187,10 @@ if (track && launcher && controls && detail) {
         }
         if (pressed && !primary && time - lastLaunch >= 500) { lastLaunch = time; launch(); }
       }
-      gamepadStatus.textContent = armed ? 'Controller ready' : 'Release controller controls to start';
       direction = horizontal;
       primary = pressed;
     } else {
       resetPad();
-      gamepadStatus.textContent = '';
       probeTimer = setTimeout(() => { frame = requestAnimationFrame(poll); }, 1000);
       return;
     }
@@ -214,7 +217,6 @@ if (track && launcher && controls && detail) {
   controls.hidden = false;
   detail.hidden = false;
   document.querySelector('.recent').hidden = false;
-  launcher.querySelector('#launcher-help').hidden = false;
   document.documentElement.classList.add('launcher-ready');
   select(0, false);
   new ResizeObserver(() => reveal(selected, false)).observe(track);
