@@ -227,11 +227,20 @@ check(about.includes('src="/contributors/whit-anderson.webp" alt="Caricature of 
   && about.includes('Game designer &amp; playtester')
   && about.includes("Helped shape Smilefall's central idea, levels, and game feel through design and playtesting."),
   'about page lacks Whit’s portrait and unlinked design/playtesting credit', failures);
+check(['partition', 'maltline', 'smilefall'].every(gameId => launcher.includes(`data-game-id="${gameId}"`)
+  && launcher.includes(`href="/games/${gameId}/"`)), 'launcher must retain authored game identities and all three no-JavaScript Play routes', failures);
+check(launcher.includes('id="selected-game"') && launcher.includes('Leaderboard · Recent runs'),
+  'launcher must provide selected-game preview and leaderboard panel', failures);
+const scoreboard = launcher.match(/<aside class="recent"[\s\S]*?<\/aside>/u)?.[0] ?? '';
+check(scoreboard.length > 0 && !/<(?:a|button|input)\b|\btabindex=/u.test(scoreboard),
+  'launcher scoreboard must remain passive and link-free', failures);
 const launcherScripts = launcher.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu) ?? [];
 check(launcherScripts.length === 2 && ['/carousel.js', '/activity.js'].every((path, index) =>
   launcherScripts[index] === `<script type="module" src="${path}"></script>`),
   'launcher must execute only its external carousel and activity modules, without inline code', failures);
 const carouselSource = await readFile(resolve(root, 'carousel.js'), 'utf8');
+check(!/[←→↑↓]/u.test(`${launcher}\n${carouselSource}`),
+  'launcher arrows must use bundled-font glyphs or CSS instead of host-font fallbacks', failures);
 check(!/(?:\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie|\bimport\s*(?:\(|[{'"*]))/u.test(carouselSource),
   'carousel contains an unapproved transport, storage surface, or runtime import', failures);
 check(!/\son[a-z]+\s*=|javascript\s*:/iu.test(launcher),

@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/brand/brand.css" />
     <link rel="stylesheet" href="/arcade.css" />
   </head>
-  <body>
+  <body class="launcher-page">
     <a class="skip-link" href="#games">Skip to games</a>
     <div class="page-shell">
       <header class="site-nav ab-crossbar-rule">
@@ -29,6 +29,7 @@
           </span>
           <span class="ab-lockup__descriptor" aria-hidden="true">Free play</span>
         </a>
+        <h1 class="launcher-title">Choose your game.</h1>
         <nav class="site-nav__links" aria-label="Primary">
           <a href="#games">Games</a>
           <a href="/about/">About</a>
@@ -37,37 +38,20 @@
 
       <main class="catalog">
         <div class="catalog__intro">
-          <h1>Choose your game.</h1>
           <p class="catalog__note">A free browser arcade for everyone, inspired by the early arcade era. Simple controls, quick rounds, and high scores worth chasing.</p>
         </div>
 
-        <section class="game-carousel" aria-label="Choose a game" aria-roledescription="carousel">
+        <section class="game-carousel" aria-label="Choose a game" aria-roledescription="carousel" tabindex="-1" aria-describedby="launcher-help">
           <div class="game-carousel__controls" hidden>
-            <div class="game-carousel__readout" aria-hidden="true">
-              <span class="game-carousel__lamp"></span>
-              <p class="game-carousel__status">
-                <span class="game-carousel__eyebrow">On the bench</span>
-                <strong data-carousel-title></strong>
-                <span class="game-carousel__count" data-carousel-count></span>
-              </p>
-              <p class="game-carousel__next" data-carousel-next-label></p>
-            </div>
-            <div class="game-carousel__progress" data-carousel-progress aria-hidden="true"></div>
+            <p class="game-carousel__readout"><span>On the bench</span><strong data-carousel-title></strong><span data-carousel-count></span></p>
             <div class="game-carousel__buttons">
-              <button type="button" data-carousel-prev aria-controls="games" aria-label="Previous game">
-                <span class="game-carousel__button-arrow" aria-hidden="true">‹</span>
-                <span class="game-carousel__button-label" aria-hidden="true">Back</span>
-              </button>
-              <button class="game-carousel__next-button" type="button" data-carousel-next aria-controls="games" aria-label="Next game">
-                <span class="game-carousel__button-label" aria-hidden="true">Next</span>
-                <span class="game-carousel__button-arrow" aria-hidden="true">›</span>
-              </button>
+              <button type="button" data-carousel-prev aria-controls="games" aria-label="Previous game"><span aria-hidden="true">‹</span></button>
+              <button type="button" data-carousel-next aria-controls="games" aria-label="Next game"><span aria-hidden="true">›</span></button>
             </div>
-            <p class="ab-visually-hidden" data-carousel-live aria-live="polite" aria-atomic="true"></p>
           </div>
         <ul id="games" class="game-grid" role="list" aria-label="Available games" tabindex="-1">
           <li>
-            <article class="game-card" aria-labelledby="partition-title">
+            <article class="game-card" data-game-id="partition" aria-labelledby="partition-title">
               <p class="game-card__art">
                 <img
                   src="/covers/partition.png"
@@ -92,7 +76,7 @@
             </article>
           </li>
           <li>
-            <article class="game-card" aria-labelledby="maltline-title">
+            <article class="game-card" data-game-id="maltline" aria-labelledby="maltline-title">
               <p class="game-card__art">
                 <img
                   src="/covers/maltline.png"
@@ -117,7 +101,7 @@
             </article>
           </li>
           <li>
-            <article class="game-card" aria-labelledby="smilefall-title">
+            <article class="game-card" data-game-id="smilefall" aria-labelledby="smilefall-title">
               <p class="game-card__art">
                 <img src="/covers/smilefall.png" width="960" height="540" decoding="async"
                   alt="Smilefall gameplay: bright yellow smiles tumble past rocky hazards toward colorful buckets below." />
@@ -137,26 +121,21 @@
             </article>
           </li>
         </ul>
-        </section>
-
-        <!--
-          The activity feed is platform-wide: every game that registers an
-          adapter shows up here on its own, so this section names no game and
-          carries no per-game artwork or link. The status line ships with its
-          loading state so the section stays honest if the module never runs,
-          and the no-script fallback replaces it rather than stacking under it.
-        -->
-        <section class="recent" aria-labelledby="recent-title">
-          <div class="recent__head">
-            <h2 class="recent__title" id="recent-title">Recent high scores</h2>
-            <p class="recent__lede">The newest qualifying scores from every game on ArcadeBench.</p>
-          </div>
-          <p class="recent__status" id="recent-status" role="status" data-live>Loading recent high scores&#8230;</p>
-          <ol class="recent__list" id="recent-list" hidden></ol>
-          <noscript>
-            <style>.recent__status[data-live] { display: none; }</style>
-            <p class="recent__status">Recent high scores need JavaScript. <a href="#games">Choose a game</a> and set the first one.</p>
-          </noscript>
+          <article id="selected-game" class="selected-game" aria-labelledby="selected-title" hidden></article>
+          <aside class="recent" aria-labelledby="recent-title" hidden>
+            <div class="recent__head">
+              <p class="recent__eyebrow">Leaderboard · Recent runs</p>
+              <h2 class="recent__title" id="recent-title">Recent high scores</h2>
+              <p class="recent__lede">Qualifying scores · newest first</p>
+            </div>
+            <div class="recent__body">
+              <p class="recent__status" id="recent-status" role="status">Loading recent high scores&#8230;</p>
+              <ol class="recent__list" id="recent-list" hidden></ol>
+            </div>
+            <p class="recent__foot"><span id="recent-count"></span><span>Rank at submission</span></p>
+          </aside>
+          <p id="launcher-help" class="launcher-help" hidden><span><strong>‹ ›</strong> Choose <span aria-hidden="true">·</span> <strong>Enter / Space</strong> Play <span aria-hidden="true">·</span> <strong>D-pad / Stick</strong> Choose <span aria-hidden="true">·</span> <strong>A</strong> Play</span><span data-gamepad-status></span></p>
+          <p class="ab-visually-hidden" data-carousel-live aria-live="polite" aria-atomic="true"></p>
         </section>
       </main>
 

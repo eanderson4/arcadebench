@@ -11,23 +11,23 @@
   "screenshots": [
     {
       "name": "launcher-1280.png",
-      "sha256": "5c422d582e35910b3fd920e9c5972d016cd7eac02eca875261d7cbe3b693d00f"
+      "sha256": "6877eb6fe67776c108cac1d53fb7cb6b3c86dc67e532ecb15cbf6cd9477d5cbf"
     },
     {
       "name": "launcher-700.png",
-      "sha256": "774ccfc770a89744cb7013f791f525246857c6b6c61d2fa3ff3d9a69bf4bba6a"
+      "sha256": "998f74f89f1e05e9403aa765ab40bea2dff92998651a809f9b6946d7f962adc8"
     },
     {
       "name": "launcher-390.png",
-      "sha256": "ebcf43c36de0f4e3f48d0584a60d79ecea80b9f450ffc5abca45548282d64e9c"
+      "sha256": "19353da8e25866850f1daf1833caf4e3afc236b1571c5e85601a28ad4478941b"
     },
     {
       "name": "launcher-320.png",
-      "sha256": "f2b5a5b382dbe1e1bdd9d24c2f812bb24375272a6196238cb5386f08778edb5b"
+      "sha256": "e6c757c97cc875c44890c5403044c6d0a97814e8d45bdecd75bd85069ab4ee08"
     },
     {
       "name": "launcher-focus-700.png",
-      "sha256": "dd2430ed862c91cd9b26e0ec2507b0863707695d04b6ec13ebcfa6b5fc9f1400"
+      "sha256": "7370fb15c617a24b05f48d9f5394c168d264e89cad8e77cfa9f86ddc10deb6ea"
     },
     {
       "name": "not-found-1280.png",

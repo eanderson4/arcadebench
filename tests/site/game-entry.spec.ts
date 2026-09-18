@@ -16,7 +16,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   const apiRequests: string[] = [];
   apiRequestsByPage.set(page, apiRequests);
   const activityUrl = new URL('/api/v2/activity', testInfo.project.use.baseURL).href;
-  await page.route(activityUrl, async (route) => {
+  await page.route(`${activityUrl}*`, async (route) => {
     expect(route.request().method()).toBe('GET');
     await route.fulfill({
       status: 200,
@@ -60,7 +60,7 @@ async function openLauncher(page: Page): Promise<void> {
   expect(response?.headers()['content-security-policy']).toContain("default-src 'self'");
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your game.' }))
     .toBeVisible();
-  await expect(page.getByText('New high scores will appear here.')).toBeVisible();
+  await expect(page.getByText(/New .* high scores will appear here\./)).toBeVisible();
   expect(apiRequestsByPage.get(page)).toEqual(['GET /api/v2/activity']);
 }
 
@@ -75,7 +75,10 @@ async function storageLengths(page: Page): Promise<{
 }
 
 async function activateGame(page: Page, pathname: string): Promise<void> {
-  const play = page.locator(`a.game-card__play[href="${pathname}"]`);
+  const slug = pathname.split('/')[2];
+  await page.locator(`#games li:has(article[data-game-id="${slug}"]) .cartridge__select`).click();
+  await expect(page.locator('.recent')).toHaveAttribute('aria-busy', 'false');
+  const play = page.locator(`#selected-game a.game-card__play[href="${pathname}"]`);
   await expect(play).toHaveCount(1);
   await expect(play).toHaveAttribute('href', pathname);
   const response = await page.goto(pathname, { waitUntil: 'networkidle' });

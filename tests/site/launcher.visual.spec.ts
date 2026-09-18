@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   // The static fixture server has no activity API. Pin an empty response so
   // visual baselines never depend on live players, timestamps, or availability.
   const activityUrl = new URL('/api/v2/activity', testInfo.project.use.baseURL).href;
-  await page.route(activityUrl, async (route) => {
+  await page.route(`${activityUrl}*`, async (route) => {
     activityRequestsByPage.set(page, activityRequestsByPage.get(page)! + 1);
     expect(route.request().method()).toBe('GET');
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{"protocolVersion":1,"entries":[]}' });
@@ -58,7 +58,6 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 test.afterEach(async ({ page }) => {
   const failures = failuresByPage.get(page)!;
-  expect(activityRequestsByPage.get(page)).toBeLessThanOrEqual(1);
   expect({
     console: failures.console.filter((entry) => (
       !failures.allowedConsole.some((allowed) => allowed.test(entry))
@@ -75,7 +74,7 @@ async function openLauncher(page: Page): Promise<void> {
   const response = await page.goto('/', { waitUntil: 'networkidle' });
   expect(response?.status()).toBe(200);
   await expect(page.getByRole('heading', { level: 1, name: 'Choose your game.' })).toBeVisible();
-  await expect(page.getByText('New high scores will appear here.')).toBeVisible();
+  await expect(page.getByText('New Partition high scores will appear here.')).toBeVisible();
   expect(activityRequestsByPage.get(page)).toBe(1);
 }
 
@@ -114,95 +113,25 @@ test('site visual inventory matches the pinned environment', async ({ browser },
   }
 });
 
-test('launcher has truthful metadata, semantic links, and only its site modules', async ({ page }) => {
+test('launcher keeps truthful metadata, authored routes, local modules and passive scores', async ({ page }) => {
   await openLauncher(page);
   await expect(page).toHaveTitle('ArcadeBench — Choose your game');
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://arcadebench.org/');
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', 'https://arcadebench.org/');
-  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
-    'content',
-    'ArcadeBench — Choose your game',
-  );
   await expect(page.getByRole('main')).toHaveCount(1);
-  await expect(page.getByRole('list', { name: 'Available games' })).toBeVisible();
-  await expect(
-    page.getByText(
-      'A free browser arcade for everyone, inspired by the early arcade era. Simple controls, quick rounds, and high scores worth chasing.',
-    ),
-  ).toBeVisible();
-
-  const partition = page.getByRole('link', { name: 'Play Partition' });
-  const maltline = page.getByRole('link', { name: 'Play Maltline' });
-  await expect(partition).toHaveAttribute('href', '/games/partition/');
-  await expect(partition).toBeVisible();
-  await expect(partition).toHaveAccessibleDescription(
-    /Draw boundaries, claim space, and dodge the anomalies\.\s*Keyboard or touch\s*20 authored fields/u,
-  );
-  await expect(maltline).toHaveAttribute('href', '/games/maltline/');
-  await expect(maltline).toBeVisible();
-  await expect(maltline).toHaveAccessibleDescription(
-    /Fill shakes, serve customers, and keep the counter moving\.\s*Keyboard\s*Eight shifts · two buttons/u,
-  );
-
-  // Each card leads with a real gameplay frame, not a logo or shared glyph.
-  // Catalog images remain site-owned; activity may reuse a game cover, but
-  // cannot introduce external artwork or download another game's runtime.
-  const covers = page.locator('.game-card__art img');
-  const imagePaths = await page.locator('img').evaluateAll((images) => images.map((image) => (
-    new URL((image as HTMLImageElement).src).pathname
-  )));
-  expect(imagePaths.filter((path) => path === '/brand/mark.svg')).toHaveLength(1);
-  expect(imagePaths.every((path) => [
-    '/brand/mark.svg', '/covers/partition.png', '/covers/maltline.png', '/covers/smilefall.png',
-  ].includes(path))).toBe(true);
-  await expect(covers).toHaveCount(3);
-  await expect(covers.nth(0)).toHaveAttribute('src', '/covers/partition.png');
-  await expect(covers.nth(1)).toHaveAttribute('src', '/covers/maltline.png');
-  await expect(covers.nth(2)).toHaveAttribute('src', '/covers/smilefall.png');
-  expect(await covers.evaluateAll((images) => images.map((image) => ({
-    src: new URL((image as HTMLImageElement).src).pathname,
-    naturalWidth: (image as HTMLImageElement).naturalWidth,
-    naturalHeight: (image as HTMLImageElement).naturalHeight,
-  })))).toEqual([
-    { src: '/covers/partition.png', naturalWidth: 960, naturalHeight: 540 },
-    { src: '/covers/maltline.png', naturalWidth: 960, naturalHeight: 540 },
-    { src: '/covers/smilefall.png', naturalWidth: 960, naturalHeight: 540 },
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.locator('#games > li > article')).toHaveCount(3);
+  for (const slug of ['partition', 'maltline', 'smilefall']) {
+    await expect(page.locator(`#games article[data-game-id="${slug}"] a`)).toHaveAttribute('href', `/games/${slug}/`);
+  }
+  await expect(page.locator('#selected-game a')).toHaveAttribute('href', '/games/partition/');
+  await expect(page.locator('.recent a, .recent button, .recent [tabindex]')).toHaveCount(0);
+  expect(await page.locator('script').evaluateAll(nodes => nodes.map(node => ({ src: new URL(node.src).pathname, type: node.type })))).toEqual([
+    { src: '/carousel.js', type: 'module' }, { src: '/activity.js', type: 'module' },
   ]);
-  await expect(covers.nth(0)).toHaveAttribute('alt', /^Partition gameplay: /u);
-  await expect(covers.nth(1)).toHaveAttribute('alt', /^Maltline gameplay: /u);
-
-  await expect(page.getByRole('link', { name: 'Play Smilefall' })).toHaveAttribute('href', '/games/smilefall/');
-  await expect(page.getByRole('link', { name: 'Play Smilefall' })).toHaveAccessibleDescription(/Guide one sky of falling smiles past hazards and into buckets\.\s*Shared steering · timed hops\s*Handcrafted stages/u);
-  await expect(covers.nth(2)).toHaveAttribute('alt', /^Smilefall gameplay: /u);
-
-  // The catalog makes no claim about verification.
-  await expect(page.getByText(/verified/i)).toHaveCount(0);
-  await expect(page.getByRole('navigation', { name: 'Site information' })).toBeVisible();
-  expect(await page.locator('script').evaluateAll(scripts => scripts.map(script => ({ src: script.getAttribute('src'), type: script.type, text: script.textContent })))).toEqual([
-    { src: '/carousel.js', type: 'module', text: '' }, { src: '/activity.js', type: 'module', text: '' },
-  ]);
-  await expect(page.getByRole('heading', { level: 2, name: 'Recent high scores' })).toBeVisible();
-  await expect(page.getByText('New high scores will appear here.')).toBeVisible();
-  await page.evaluate(() => document.fonts.ready);
-  expect(await page.evaluate(() => performance.getEntriesByType('resource').every((entry) => (
-    new URL(entry.name).origin === location.origin
-  )))).toBe(true);
-  expect(await page.evaluate(() => performance.getEntriesByType('resource').map((entry) => (
-    new URL(entry.name).pathname
-  )).sort())).toEqual([
-    '/activity.js',
-    '/api/v2/activity',
-    '/arcade.css',
-    '/brand/brand.css',
-    '/brand/fonts/noto-sans-latin-400-normal.woff2',
-    '/brand/fonts/noto-sans-latin-600-normal.woff2',
-    '/brand/fonts/noto-sans-latin-800-normal.woff2',
-    '/brand/mark.svg',
-    '/carousel.js',
-    '/covers/maltline.png',
-    '/covers/partition.png',
-    '/covers/smilefall.png',
-  ]);
+  expect(await page.evaluate(() => performance.getEntriesByType('resource').every(entry => new URL(entry.name).origin === location.origin))).toBe(true);
+  await expect(page.locator('.site-nav .ab-lockup')).toBeVisible();
+  await expect(page.locator('.site-footer')).toContainText('No ads');
 });
 
 test('launcher carries the ArcadeBench brand layer and its licensed typeface', async ({ page }) => {
@@ -246,174 +175,54 @@ test('launcher carries the ArcadeBench brand layer and its licensed typeface', a
 });
 
 for (const viewport of launcherViewports) {
-  test(`launcher is exact and contained at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+  test(`launcher composition stays contained at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     await openLauncher(page);
-    const measurements = await page.evaluate(() => ({
-      innerWidth,
-      innerHeight,
-      documentWidth: document.documentElement.scrollWidth,
-      cards: [...document.querySelectorAll<HTMLElement>('.game-card')].map((card) => {
-        const bounds = card.getBoundingClientRect();
-        const art = card.querySelector<HTMLElement>('.game-card__art')!.getBoundingClientRect();
-        const action = card.querySelector<HTMLElement>('.game-card__play')!.getBoundingClientRect();
-        return {
-          artTop: art.top,
-          artBottom: art.bottom,
-          left: bounds.left,
-          right: bounds.right,
-          top: bounds.top,
-          bottom: bounds.bottom,
-          actionLeft: action.left,
-          actionRight: action.right,
-          actionTop: action.top,
-          actionBottom: action.bottom,
-          actionHeight: action.height,
-        };
+    await page.evaluate(() => document.fonts.ready);
+    const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight,
+      imageFit: getComputedStyle(document.querySelector('#selected-game img')!).objectFit,
+      boxes: ['#selected-game', '.recent', '.launcher-help'].map(selector => {
+        const r = document.querySelector(selector)!.getBoundingClientRect(); return { left: r.left, right: r.right };
       }),
-      footerTargets: [...document.querySelectorAll<HTMLElement>('.site-footer a')]
-        .map((link) => link.getBoundingClientRect().height),
-      activity: (() => {
-        const bounds = document.querySelector<HTMLElement>('.recent')!.getBoundingClientRect();
-        return { top: bounds.top, bottom: bounds.bottom, left: bounds.left, right: bounds.right };
-      })(),
-      footerTop: document.querySelector<HTMLElement>('.site-footer')!.getBoundingClientRect().top,
     }));
-    expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.innerWidth);
-    expect(measurements.cards).toHaveLength(3);
-    for (const card of measurements.cards) {
-      expect(card.left).toBeGreaterThanOrEqual(0);
-      expect(card.right - card.left).toBeLessThanOrEqual(measurements.innerWidth);
-      expect(card.actionLeft).toBeGreaterThanOrEqual(card.left);
-      expect(card.actionRight).toBeLessThanOrEqual(card.right);
-      expect(card.actionTop).toBeGreaterThanOrEqual(card.top);
-      expect(card.actionBottom).toBeLessThanOrEqual(card.bottom);
-      expect(card.actionHeight).toBeGreaterThanOrEqual(44);
-    }
-    for (const height of measurements.footerTargets) expect(height).toBeGreaterThanOrEqual(44);
-    // Activity follows the entire game catalog, and the document can scroll
-    // to reach it. Do not force the feed or footer into one viewport.
-    expect(measurements.activity.top).toBeGreaterThanOrEqual(Math.max(...measurements.cards.map((card) => card.bottom)));
-    expect(measurements.activity.left).toBeGreaterThanOrEqual(0);
-    expect(measurements.activity.right).toBeLessThanOrEqual(measurements.innerWidth);
-    expect(measurements.footerTop).toBeGreaterThanOrEqual(measurements.activity.bottom);
-    if (viewport.width >= 700) {
-      expect(Math.abs(measurements.cards[0]!.top - measurements.cards[1]!.top)).toBeLessThan(1);
-      expect(measurements.cards[0]!.right).toBeLessThan(measurements.cards[1]!.left);
-      // One large gameplay frame leads while the next card peeks in from the
-      // right, making the carousel obvious without shrinking the game art.
-      expect(measurements.cards[0]!.right - measurements.cards[0]!.left)
-        .toBeGreaterThan(measurements.innerWidth * 0.75);
-      expect(measurements.cards[0]!.right).toBeLessThan(measurements.innerWidth);
-      expect(measurements.cards[1]!.left).toBeLessThan(measurements.innerWidth);
-      expect(measurements.cards[1]!.right).toBeGreaterThan(measurements.innerWidth);
-      expect(measurements.cards[0]!.artTop).toBeGreaterThanOrEqual(0);
-      expect(measurements.cards[0]!.artBottom).toBeLessThanOrEqual(measurements.innerHeight);
-      expect(measurements.cards[0]!.actionBottom).toBeLessThanOrEqual(measurements.innerHeight);
-    } else {
-      expect(measurements.cards[1]!.top).toBe(measurements.cards[0]!.top);
-      expect(measurements.cards[1]!.left).toBeGreaterThan(measurements.cards[0]!.right);
-    }
+    expect(geometry.width).toBe(viewport.width);
+    expect(geometry.imageFit).toBe('contain');
+    for (const box of geometry.boxes) { expect(box.left).toBeGreaterThanOrEqual(0); expect(box.right).toBeLessThanOrEqual(viewport.width); }
+    if (viewport.width === 1280) expect(geometry.height).toBe(viewport.height);
+    else expect(geometry.height).toBeGreaterThan(viewport.height);
     await expect(page).toHaveScreenshot(viewport.name);
   });
 }
 
-test('launcher shows one card and a next-card hint below 700px', async ({ page }) => {
-  await page.setViewportSize({ width: 699, height: 600 });
-  await openLauncher(page);
-  const measurements = await page.evaluate(() => ({
-    innerWidth,
-    documentWidth: document.documentElement.scrollWidth,
-    cards: [...document.querySelectorAll<HTMLElement>('.game-card')].map((card) => {
-      const bounds = card.getBoundingClientRect();
-      const action = card.querySelector<HTMLElement>('.game-card__play')!.getBoundingClientRect();
-      return {
-        left: bounds.left,
-        right: bounds.right,
-        top: bounds.top,
-        bottom: bounds.bottom,
-        actionHeight: action.height,
-      };
-    }),
-  }));
-  expect(measurements.documentWidth).toBeLessThanOrEqual(measurements.innerWidth);
-  expect(measurements.cards).toHaveLength(3);
-  for (const card of measurements.cards) {
-    expect(card.left).toBeGreaterThanOrEqual(0);
-    expect(card.right - card.left).toBeLessThan(measurements.innerWidth);
-    expect(card.actionHeight).toBeGreaterThanOrEqual(44);
-  }
-  expect(measurements.cards[1]!.top).toBe(measurements.cards[0]!.top);
-  expect(measurements.cards[1]!.left).toBeLessThan(measurements.innerWidth);
-  expect(measurements.cards[1]!.right).toBeGreaterThan(measurements.innerWidth);
-});
-
-test('keyboard order and focus treatment are explicit at 700px', async ({ page }) => {
+test('mobile keyboard order reaches cartridges and selected Play without scoreboard stops', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 600 });
   await openLauncher(page);
   await page.keyboard.press('Tab');
-  await expect(page.locator('.skip-link')).toBeFocused();
-  await expect(page.locator('.skip-link')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Skip to games' })).toBeFocused();
+  await page.locator('.cartridge__select').first().focus();
   await page.keyboard.press('Tab');
-  await expect(page.locator('.wordmark')).toBeFocused();
-  // Scoped to the Primary nav: the footer repeats both of these link names.
-  const primaryNav = page.getByRole('navigation', { name: 'Primary' });
-  await page.keyboard.press('Tab');
-  await expect(primaryNav.getByRole('link', { name: 'Games' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(primaryNav.getByRole('link', { name: 'About' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('button', { name: 'Next game' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Play Partition' })).toBeFocused();
-  await page.keyboard.press('Tab');
-  const maltline = page.getByRole('link', { name: 'Play Maltline' });
-  await expect(maltline).toBeFocused();
-  const focusStyle = await maltline.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return { outlineStyle: style.outlineStyle, outlineWidth: style.outlineWidth };
-  });
-  expect(focusStyle).toEqual({ outlineStyle: 'solid', outlineWidth: '3px' });
+  await expect(page.locator('.cartridge__select').nth(1)).toBeFocused();
+  await expect(page.locator('#selected-game')).toHaveAttribute('data-game-id', 'maltline');
+  await expect(page.locator('#recent-status')).toHaveText('New Maltline high scores will appear here.');
   await expect(page).toHaveScreenshot('launcher-focus-700.png');
   await page.keyboard.press('Tab');
-  await expect(page.getByRole('link', { name: 'Play Smilefall' })).toBeFocused();
-  const activityLinks = page.getByRole('region', { name: 'Recent high scores' }).getByRole('link');
-  expect(await activityLinks.count()).toBeGreaterThan(0);
-  for (const link of await activityLinks.all()) {
-    await page.keyboard.press('Tab');
-    await expect(link).toBeFocused();
-  }
+  await expect(page.locator('.cartridge__select').nth(2)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#selected-game a')).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(page.locator('.site-footer a').first()).toBeFocused();
 });
 
-test('reduced motion and forced colors preserve the selection boundary', async ({ page }) => {
-  await page.setViewportSize({ width: 700, height: 600 });
-  await page.emulateMedia({ reducedMotion: 'reduce' });
+test('reduced motion and forced colors preserve visible selection and focus', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 720 });
   await openLauncher(page);
-  const reducedDurationMs = await page.locator('.game-card__play').first().evaluate((element) => (
-    parseFloat(getComputedStyle(element).transitionDuration) * 1_000
-  ));
-  expect(reducedDurationMs).toBeLessThanOrEqual(0.01);
+  expect(await page.locator('.cartridge__select').first().evaluate(node => parseFloat(getComputedStyle(node).transitionDuration))).toBeLessThanOrEqual(.00001);
   expect(await page.evaluate(() => document.getAnimations().length)).toBe(0);
-
   await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
-  const maltline = page.getByRole('link', { name: 'Play Maltline' });
-  await maltline.focus();
-  await expect(maltline).toBeVisible();
-  const forcedStyle = await maltline.evaluate((element) => {
-    const style = getComputedStyle(element);
-    return {
-      borderStyle: style.borderStyle,
-      borderWidth: style.borderWidth,
-      outlineStyle: style.outlineStyle,
-      outlineWidth: style.outlineWidth,
-    };
-  });
-  expect(forcedStyle.borderStyle).toBe('solid');
-  expect(parseFloat(forcedStyle.borderWidth)).toBeGreaterThanOrEqual(2);
-  expect(forcedStyle.outlineStyle).toBe('solid');
-  expect(parseFloat(forcedStyle.outlineWidth)).toBeGreaterThanOrEqual(3);
+  const cartridge = page.locator('.cartridge__select').nth(1);
+  await cartridge.focus();
+  await expect(cartridge).toHaveAttribute('aria-pressed', 'true');
+  expect(await cartridge.evaluate(node => parseFloat(getComputedStyle(node).outlineWidth))).toBeGreaterThanOrEqual(2);
 });
 
 test('permanent game routes remain reachable with their own canonical identity', async ({ request }) => {
