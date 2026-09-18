@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "build:site": "npm run build --workspace=@arcadebench/partition && npm run build --workspace=@arcadebench/maltline && node scripts/build-site.mjs",
+    "build:site": "npm run build --workspace=@arcadebench/partition && npm run build --workspace=@arcadebench/maltline && npm run build --workspace=@arcadebench/smilefall && node scripts/build-site.mjs",
     "test:site": "node scripts/built-site-smoke.mjs",
     "test:site:wrangler-local": "node scripts/wrangler-local-smoke.mjs",
     "test:visual:site": "playwright test --config=playwright.site.config.ts",
@@ -32,7 +32,8 @@
     "preview:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler dev",
     "deploy:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --keep-vars",
     "db:migrate:local": "node scripts/prepare-production-migrations.mjs && wrangler d1 migrations apply arcadebench-platform --local",
-    "db:migrate:remote": "node scripts/prepare-production-migrations.mjs && wrangler d1 migrations apply arcadebench-platform --remote"
+    "db:migrate:remote": "node scripts/prepare-production-migrations.mjs && wrangler d1 migrations apply arcadebench-platform --remote",
+    "dev:smilefall": "npm run dev --workspace=@arcadebench/smilefall"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.22.0",

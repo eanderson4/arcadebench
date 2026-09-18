@@ -1,0 +1,120 @@
+/**
+ * Smilefall design tokens — "Sticker Arcade".
+ *
+ * The whole look is built from four ideas: candy colors on warm paper, fat ink
+ * outlines, hard toy shadows that make everything feel pressable, and nothing
+ * ever sits perfectly straight. Change a token here and the whole game and its
+ * kit page move together.
+ */
+:root {
+  color-scheme: light;
+
+  /* ---- ink & paper ------------------------------------------------------ */
+  --sf-ink: #2c1b47;
+  --sf-ink-soft: #6b5a86;
+  --sf-ink-faint: #a99bc0;
+  --sf-paper: #fff8ec;
+  --sf-paper-warm: #ffeed6;
+  --sf-paper-shade: #f3e3cd;
+
+  /* ---- candy ------------------------------------------------------------ */
+  --sf-yolk: #ffd23f;
+  --sf-yolk-deep: #f2a413;
+  --sf-bubble: #ff5d8f;
+  --sf-bubble-deep: #e03a6d;
+  --sf-grape: #8b5cf6;
+  --sf-mint: #2fd39b;
+  --sf-mint-deep: #14a877;
+  --sf-tangerine: #ff8a3d;
+  --sf-sky: #52c8ff;
+  --sf-sky-hi: #a9e9ff;
+  --sf-sky-lo: #d8f4ff;
+
+  /* ---- world ------------------------------------------------------------ */
+  --sf-grass: #6fd66f;
+  --sf-grass-deep: #3fae55;
+  --sf-rock: #9aa0b8;
+  --sf-rock-deep: #5f657f;
+
+  /* ---- ink lines -------------------------------------------------------- */
+  --sf-stroke-width: 3px;
+  --sf-stroke: var(--sf-stroke-width) solid var(--sf-ink);
+  --sf-stroke-thin: 2px solid var(--sf-ink);
+
+  /* ---- toy shadows ------------------------------------------------------ */
+  --sf-pop-sm: 0 3px 0 var(--sf-ink);
+  --sf-pop: 0 5px 0 var(--sf-ink);
+  --sf-pop-lg: 0 8px 0 var(--sf-ink);
+  --sf-drop: 0 14px 28px rgba(44, 27, 71, 0.18);
+  --sf-inner-gloss: inset 0 3px 0 rgba(255, 255, 255, 0.55);
+
+  /* ---- roundness -------------------------------------------------------- */
+  --sf-r-sm: 10px;
+  --sf-r-md: 18px;
+  --sf-r-lg: 28px;
+  --sf-r-xl: 40px;
+  --sf-r-pill: 999px;
+
+  /* ---- spacing ---------------------------------------------------------- */
+  --sf-space-1: 4px;
+  --sf-space-2: 8px;
+  --sf-space-3: 12px;
+  --sf-space-4: 18px;
+  --sf-space-5: 26px;
+  --sf-space-6: 38px;
+  --sf-space-7: 56px;
+
+  /* ---- type ------------------------------------------------------------- */
+  --sf-font-display: 'Baloo 2', ui-rounded, 'SF Pro Rounded', 'Trebuchet MS', system-ui, sans-serif;
+  --sf-font-body: 'Nunito', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
+  --sf-size-hero: clamp(56px, 11vw, 132px);
+  --sf-size-title: clamp(30px, 4.4vw, 52px);
+  --sf-size-head: clamp(20px, 2.3vw, 28px);
+  --sf-size-body: 17px;
+  --sf-size-small: 14px;
+  --sf-size-tiny: 12px;
+  --sf-track-loud: 0.06em;
+
+  /* ---- motion ----------------------------------------------------------- */
+  --sf-boing: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --sf-quick: 130ms var(--sf-boing);
+  --sf-easy: 260ms var(--sf-boing);
+
+  /* ---- semantic roles --------------------------------------------------- */
+  --sf-good: var(--sf-mint);
+  --sf-bad: var(--sf-bubble);
+  --sf-warn: var(--sf-tangerine);
+}
+
+/* Nothing in Smilefall sits straight. */
+@keyframes sf-wobble {
+  0%, 100% { transform: rotate(-1.4deg); }
+  50% { transform: rotate(1.4deg); }
+}
+@keyframes sf-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes sf-pop-in {
+  0% { transform: scale(0.7) rotate(-6deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes sf-jelly {
+  0% { transform: scale(1, 1); }
+  30% { transform: scale(1.16, 0.84); }
+  55% { transform: scale(0.92, 1.08); }
+  75% { transform: scale(1.04, 0.96); }
+  100% { transform: scale(1, 1); }
+}
+@keyframes sf-drift {
+  from { background-position-x: 0; }
+  to { background-position-x: 240px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

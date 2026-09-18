@@ -1,6 +1,7 @@
 import { ApiError } from '../http';
 import { partitionAdapter } from '../partition-adapter';
 import { maltlinePlatformAdapter } from '../maltline-platform-adapter';
+import { smilefallPlatformAdapter } from '../smilefall-platform-adapter';
 import type { GameAdapter } from './types';
 
 /**
@@ -39,7 +40,11 @@ export class GameRegistry {
 }
 
 /** The independently verified game adapters compiled into this release. */
-export const defaultRegistry = new GameRegistry([partitionAdapter, maltlinePlatformAdapter]);
+export const defaultRegistry = new GameRegistry([
+  partitionAdapter,
+  maltlinePlatformAdapter,
+  smilefallPlatformAdapter,
+]);
 
 export function registerGameAdapter(adapter: GameAdapter): void {
   defaultRegistry.register(adapter);

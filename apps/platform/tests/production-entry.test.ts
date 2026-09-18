@@ -6,14 +6,24 @@ import type { ArcadeBenchEnv } from '../src/env';
 import { createPendingReplayObject } from '../src/shared/replays';
 import { createArcadeBenchGameClient } from '@arcadebench/sdk';
 import { MALTLINE_CURRENT_CABINET_AUTHORITY as cabinet } from '@arcadebench/maltline/verifier';
+import { SmilefallEngine, type ControlInput } from '@arcadebench/smilefall';
+import {
+  SMILEFALL_CURRENT_RANKED_AUTHORITY as smilefall,
+  buildSmilefallRankedProof,
+  resolveOfficialSmilefallScenario,
+  verifySmilefallRankedProof,
+  type SmilefallProofInputTick,
+  type SmilefallRankedChallenge,
+} from '@arcadebench/smilefall/verifier';
 import { buildMaltlineCabinetProof, verifyMaltlineCabinetProof } from '../../../games/maltline/src/core/cabinet-proof';
 import { cabinetReplays } from '../../../games/maltline/tests/support/cabinet-fixtures';
 import { allowCallsign, arcadeProof, GAME_VERSION, PUBLICATION } from './support/partition-fixtures';
 
 const origin = 'https://arcadebench.org';
+const idleSmilefallInput: ControlInput = { lean: 'none', hop: false };
 const productionNames = new Set(['0001_public_platform.sql', '0002_replay_retention.sql',
   '0004_shared_platform.sql', '0005_maltline_cabinet.sql',
-  '0006_maltline_cabinet_progression.sql']);
+  '0006_maltline_cabinet_progression.sql', '0007_smilefall_launch_board.sql']);
 beforeAll(async () => {
   // The default suite also exercises this file, but never applies 0003 here.
   const migrations = env.TEST_MIGRATIONS.filter(migration => productionNames.has(migration.name));
@@ -21,12 +31,51 @@ beforeAll(async () => {
   await applyD1Migrations(env.DB, migrations);
 });
 
+function terminalSmilefallStage(
+  levelId: string,
+  difficulty: SmilefallRankedChallenge['difficulty'],
+  nonce: number,
+): { levelId: string; ticks: SmilefallProofInputTick[]; won: boolean } {
+  const engine = new SmilefallEngine(resolveOfficialSmilefallScenario(levelId, difficulty, nonce));
+  const ticks: SmilefallProofInputTick[] = [];
+  while (engine.snapshot().status === 'running') {
+    const tick = engine.snapshot().tick + 1;
+    engine.setInput(idleSmilefallInput);
+    ticks.push({ tick, input: idleSmilefallInput });
+    engine.step();
+  }
+  return { levelId, ticks, won: engine.snapshot().status === 'won' };
+}
+
+function productionSmilefallProof(runId: string, nonce: number) {
+  const difficulty = smilefall.difficulties[0];
+  const challenge: SmilefallRankedChallenge = {
+    runId,
+    nonce,
+    boardId: 'arcade',
+    difficulty,
+  };
+  const stages = [];
+  for (const levelId of smilefall.arcadeLevelIds) {
+    const stage = terminalSmilefallStage(levelId, difficulty, nonce);
+    stages.push({ levelId, ticks: stage.ticks });
+    if (!stage.won) break;
+  }
+  const proof = buildSmilefallRankedProof(stages, challenge);
+  return {
+    proof,
+    score: verifySmilefallRankedProof(proof, challenge, smilefall.gameVersion).summary,
+  };
+}
+
 describe('maintained production entry without generation-2 schema', () => {
   it('applies only the shared release schema and opens Second Shift', async () => {
     const legacy = await env.DB.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'maltline_%'").all();
     expect(legacy.results).toEqual([]);
     expect(await env.DB.prepare("SELECT game_version, name, state FROM seasons WHERE game_id = 'maltline' AND state = 'active'").first())
       .toEqual({ game_version: 'cabinet-2', name: 'Second Shift', state: 'active' });
+    expect(await env.DB.prepare("SELECT game_version, name, state FROM seasons WHERE game_id = 'smilefall' AND state = 'active'").first())
+      .toEqual({ game_version: '1.0.0', name: 'Launch Board', state: 'active' });
   });
 
   it('rejects every legacy Maltline method before any binding or cookie access', async () => {
@@ -52,7 +101,7 @@ describe('maintained production entry without generation-2 schema', () => {
     expect(await response.json()).toMatchObject({ entries: [] });
   });
 
-  it.each(['partition', 'maltline'] as const)('accepts %s through the shared SDK and production entry without manual season activation', async (gameId) => {
+  it.each(['partition', 'maltline', 'smilefall'] as const)('accepts %s through the shared SDK and production entry without manual season activation', async (gameId) => {
     let cookie = '';
     const fetchImpl: typeof fetch = async (input, init) => {
       const headers = new Headers(init?.headers);
@@ -62,8 +111,12 @@ describe('maintained production entry without generation-2 schema', () => {
       cookie = response.headers.get('set-cookie')?.split(';')[0] ?? cookie;
       return response;
     };
-    const version = gameId === 'partition' ? GAME_VERSION : cabinet.gameVersion;
-    const context: Record<string, string> = gameId === 'partition' ? { difficulty: 'medium' } : {};
+    const version = gameId === 'partition'
+      ? GAME_VERSION
+      : gameId === 'maltline' ? cabinet.gameVersion : smilefall.gameVersion;
+    const context: Record<string, string> = gameId === 'partition'
+      ? { difficulty: 'medium' }
+      : gameId === 'smilefall' ? { difficulty: smilefall.difficulties[0] } : {};
     const client = createArcadeBenchGameClient({ gameId, gameVersion: version,
       baseUrl: `${origin}/api/v2`, fetchImpl });
     const run = await client.runs.begin({ boardId: 'arcade', context });
@@ -75,10 +128,12 @@ describe('maintained production entry without generation-2 schema', () => {
     if (gameId === 'partition') {
       const attempt = arcadeProof(Number(run.seed), 'medium');
       proof = { replays: attempt.replays }; score = attempt.score;
-    } else {
+    } else if (gameId === 'maltline') {
       const challenge = { runId: run.id, nonce: Number(run.seed) };
       proof = buildMaltlineCabinetProof(cabinetReplays(false, cabinet), challenge, cabinet.gameVersion);
       score = verifyMaltlineCabinetProof(proof, challenge, cabinet.gameVersion).summary;
+    } else {
+      ({ proof, score } = productionSmilefallProof(run.id, Number(run.seed)));
     }
     const result = await client.leaderboards.submit({ boardId: 'arcade', runId: run.id,
       playerName, score, proof, publication: PUBLICATION });

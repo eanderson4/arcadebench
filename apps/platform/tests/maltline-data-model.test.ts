@@ -142,7 +142,7 @@ beforeAll(async () => {
 });
 
 describe('Maltline generation-2 D1 model', () => {
-  it('preserves the active generation-2 and Partition seasons while archiving the additional cabinet authority', async () => {
+  it('preserves other active game seasons while archiving the additional cabinet authority', async () => {
     const result = await env.DB.prepare(`
       SELECT id, game_id AS gameId, game_version AS gameVersion, state
       FROM seasons
@@ -172,6 +172,12 @@ describe('Maltline generation-2 D1 model', () => {
         id: 'partition-0-1-0-launch',
         gameId: 'partition',
         gameVersion: '0.1.0',
+        state: 'active',
+      },
+      {
+        id: 'smilefall-launch-1',
+        gameId: 'smilefall',
+        gameVersion: '1.0.0',
         state: 'active',
       },
     ]);

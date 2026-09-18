@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 async function openPartition(page: Page): Promise<void> {
-  await page.route('**/api/v2/activity', route => route.fulfill({
+  await page.route('**/api/v2/activity*', route => route.fulfill({
     contentType: 'application/json', body: '{"protocolVersion":1,"entries":[]}',
   }));
   await page.goto('/games/partition/');

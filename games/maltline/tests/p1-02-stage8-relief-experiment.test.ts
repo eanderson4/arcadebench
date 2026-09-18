@@ -76,8 +76,10 @@ async function fixtureRepository(root: string, kernelExtra = ''): Promise<void> 
       include: ['src', 'tools'],
     })],
     ['tsconfig.base.json', JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext' } })],
-    ['package-lock.json', JSON.stringify({ packages: {
-      'node_modules/typescript': { version: '7.0.2' }, 'node_modules/tsx': { version: '4.23.12' },
+    ['package-lock.json', JSON.stringify({ lockfileVersion: 3, packages: {
+      'node_modules/typescript': { version: '7.0.2' },
+      'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+      'node_modules/esbuild': { version: '0.28.2', integrity: 'sha512-fixture' },
     } })],
     ['.node-version', '22.19.0\n'],
   ]);
@@ -378,15 +380,15 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
       producer: {
         package: '@arcadebench/maltline', mode: 'tsx-cli',
         source: {
-          fileCount: 22,
-          sha256: '4770de4932ae9da40519409743a673db2e815c6f81eaf685bdc8f8ab097e7f78',
+          fileCount: 23,
+          sha256: '6c6d867cef5841201567b371e34bb5ed1df132dc784cbf8993c68716e148dd55',
         },
         kernel: {
           fileCount: 19,
           sha256: '26cc05106648c70c9231ee973bb7ed42e398d93d63054ac8cf9e6b8c04aa483b',
         },
         build: {
-          sha256: 'cb988dd701d9b134a0163f7dd779a3946c1108b65934acd38521ec0d3b2ccc9a',
+          sha256: 'bf63569207ff51473e0ffa72561335f043fd34fe9f62eb38e63bf7304bba8d0e',
           toolchain: { node: process.versions.node, typescript: '7.0.2', tsx: '4.23.12' },
         },
       },
@@ -405,7 +407,7 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
     expect(Object.isFrozen(envelope)).toBe(true);
     expect(Object.isFrozen(envelope.producer.kernel.files)).toBe(true);
     expect(envelope.integrity.canonicalEnvelopeSha256)
-      .toBe('e57ebb37be5a8f0e5cac9e19e072d103c5b4cf3b03474efc355a36400c2a59f8');
+      .toBe('e6631f04032868aab20678c67262d0df7bb527a010ae70382e96f9a0a5319fcc');
     await expect(verifyP102Stage8ReliefEnvelope(envelope)).resolves.toEqual(envelope);
     await expect(parseP102Stage8ReliefEnvelopeJson(formatP102Stage8ReliefEnvelope(envelope)))
       .resolves.toEqual(envelope);
@@ -495,6 +497,31 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
     await fixtureRepository(second);
     const firstIdentity = await getP102Stage8ReliefProducerIdentityForTesting(first);
     expect(await getP102Stage8ReliefProducerIdentityForTesting(second)).toEqual(firstIdentity);
+    const unrelatedLock = JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        'games/unrelated': { name: '@arcadebench/unrelated', version: '0.1.0' },
+        'node_modules/@arcadebench/unrelated': { resolved: 'games/unrelated', link: true },
+        'node_modules/typescript': { version: '7.0.2' },
+        'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+        'node_modules/esbuild': { version: '0.28.2', integrity: 'sha512-fixture' },
+      },
+    });
+    await writeFile(resolve(second, 'package-lock.json'), unrelatedLock);
+    expect(await getP102Stage8ReliefProducerIdentityForTesting(second)).toEqual(firstIdentity);
+    await writeFile(resolve(second, 'package-lock.json'), JSON.stringify({
+      lockfileVersion: 3,
+      packages: {
+        'node_modules/typescript': { version: '7.0.2' },
+        'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+        'node_modules/esbuild': { version: '0.28.2', integrity: 'sha512-changed' },
+      },
+    }));
+    const changedToolchain = await getP102Stage8ReliefProducerIdentityForTesting(second);
+    expect(changedToolchain.source).toEqual(firstIdentity.source);
+    expect(changedToolchain.kernel).toEqual(firstIdentity.kernel);
+    expect(changedToolchain.build.sha256).not.toBe(firstIdentity.build.sha256);
+    await writeFile(resolve(second, 'package-lock.json'), unrelatedLock);
     await writeFile(resolve(second, 'games/maltline/src/core/engine.ts'), 'export const engine = 2;\n');
     const changed = await getP102Stage8ReliefProducerIdentityForTesting(second);
     expect(changed.kernel.sha256).not.toBe(firstIdentity.kernel.sha256);
@@ -516,12 +543,16 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
     const cases = [
       ['Node', '.node-version', '22.18.0\n', /Node runtime .* does not match declared version/u],
       ['malformed Node declaration', '.node-version', ' 22.19.0 \n', /one exact semantic version/u],
-      ['TypeScript', 'package-lock.json', JSON.stringify({ packages: {
+      ['TypeScript', 'package-lock.json', JSON.stringify({ lockfileVersion: 3, packages: {
         'node_modules/typescript': { version: '7.0.1' }, 'node_modules/tsx': { version: '4.23.12' },
       } }), /TypeScript runtime .* does not match locked version/u],
-      ['tsx', 'package-lock.json', JSON.stringify({ packages: {
+      ['tsx', 'package-lock.json', JSON.stringify({ lockfileVersion: 3, packages: {
         'node_modules/typescript': { version: '7.0.2' }, 'node_modules/tsx': { version: '4.23.11' },
       } }), /tsx runtime .* does not match locked version/u],
+      ['missing required tsx dependency', 'package-lock.json', JSON.stringify({ lockfileVersion: 3, packages: {
+        'node_modules/typescript': { version: '7.0.2' },
+        'node_modules/tsx': { version: '4.23.12', dependencies: { esbuild: '0.28.2' } },
+      } }), /missing esbuild, required by node_modules\/tsx/u],
     ] as const;
     for (const [label, path, contents, error] of cases) {
       const root = await temporaryRoot('p102-toolchain-mismatch-');
@@ -532,7 +563,10 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
 
     expect(await readFile(resolve(repositoryRoot, '.node-version'), 'utf8')).toBe('22.19.0\n');
     const workflow = await readFile(resolve(repositoryRoot, '.github/workflows/ci-cd.yml'), 'utf8');
-    expect(workflow.match(/node-version-file: \.node-version/gu)).toHaveLength(2);
+    const setupNodeActions = workflow.match(/uses: actions\/setup-node@/gu) ?? [];
+    const pinnedNodeDeclarations = workflow.match(/node-version-file: \.node-version/gu) ?? [];
+    expect(setupNodeActions.length).toBeGreaterThan(0);
+    expect(pinnedNodeDeclarations).toHaveLength(setupNodeActions.length);
     expect(workflow).not.toMatch(/node-version:\s*22(?:\s|$)/u);
   }, 30_000);
 
@@ -589,7 +623,7 @@ describe('P1-02 prospective Stage 8 arrival-relief experiment', () => {
     expect(output.trimEnd().endsWith('}')).toBe(true);
     expect(() => JSON.parse(output)).not.toThrow();
     expect(output).not.toMatch(/^>\s/u);
-    expect(Buffer.byteLength(output)).toBe(533_836);
-    expect(sha(output)).toBe('12539618f8f965a1bb04bb0f3625f0050d00c4f1948261d4c7c5c60584ddd3d1');
+    expect(Buffer.byteLength(output)).toBe(533_895);
+    expect(sha(output)).toBe('b246940cc33fb47c640167bc67a23b3d291ae4137af2bf6f5710546c7e5b7cec');
   }, 60_000);
 });

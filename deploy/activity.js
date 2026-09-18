@@ -1,27 +1,10 @@
-/*
- * ArcadeBench launcher · recent high scores.
- *
- * Loaded only by the launcher page. Reads the public platform activity feed
- * once, keeps whatever survives validation, and renders it as an ordinary
- * ordered list. The launcher's job is to stay usable no matter what this file
- * finds: any failure leaves the games above untouched and swaps the quiet status
- * line instead.
- *
- * The feed is platform-wide, so nothing here knows which games exist. A row is
- * whatever the server said it was: a game title, a board label, a callsign, the
- * rank it reached, and a link the server built. A game earns a row by
- * registering an adapter on the platform, never by being named in this file, so
- * there is no allowlist to keep in sync and no per-game request to fan out.
- *
- * Everything shown here is server-reported and then re-validated. A name goes
- * in through textContent, a link is rebuilt from the parsed URL of a same-origin
- * path under the entry's own game, and bounds are enforced on every field, so
- * nothing in a response can introduce markup, a script, or an off-site URL.
- */
-
+/* Selected-game recent qualifying runs. Keep validation independent from rendering:
+ * server strings are bounded plain text; malformed/cross-game records are skipped.
+ * Each selection aborts the previous request and uses a generation guard, so even
+ * a transport that completes after cancellation cannot replace the active game. */
 const ACTIVITY_ENDPOINT = '/api/v2/activity';
 const REQUEST_TIMEOUT_MS = 8000;
-const MAXIMUM_ENTRIES = 8;
+const MAXIMUM_ENTRIES = 5;
 const MAXIMUM_RESPONSE_BYTES = 200_000;
 const MAXIMUM_NAME_LENGTH = 32;
 const MAXIMUM_TITLE_LENGTH = 48;
@@ -115,13 +98,6 @@ function leaderboardPath(value, gameId) {
   return `${url.pathname}${url.search}`;
 }
 
-/** Tier tone comes from the reported placement alone. */
-function rankTier(rank) {
-  if (rank === 1) return 'one';
-  if (rank <= 10) return 'ten';
-  return 'fifty';
-}
-
 /**
  * Normalize one feed record, or return null to drop it. Every field is bounded
  * and every relationship inside the record has to hold: the type has to be the
@@ -163,7 +139,7 @@ function parseEntry(value) {
 }
 
 /** Read the feed body defensively; a malformed payload is a fetch failure. */
-function parsePayload(payload) {
+function parsePayload(payload, gameId) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   if (payload.protocolVersion !== PROTOCOL_VERSION) return null;
   if (!Array.isArray(payload.entries)) return null;
@@ -173,13 +149,13 @@ function parsePayload(payload) {
     const entry = parseEntry(candidate);
     // One unreadable record is skipped, not fatal: the rest of the page of
     // activity is still real, and the row count stays honest.
-    if (!entry || seen.has(entry.id)) continue;
+    if (!entry || entry.gameId !== gameId || seen.has(entry.id)) continue;
     seen.add(entry.id);
     entries.push(entry);
   }
   // The feed may arrive in any order; the section promises the newest first.
   entries.sort((first, second) => (
-    second.occurred.milliseconds - first.occurred.milliseconds || first.id.localeCompare(second.id)
+    second.occurred.milliseconds - first.occurred.milliseconds || second.id.localeCompare(first.id)
   ));
   return { entries, reportedEmpty: payload.entries.length === 0 };
 }
@@ -191,98 +167,164 @@ function element(tagName, className, text) {
   return node;
 }
 
-/** "16 Sep, 08:12" style stamp, marked up as a real machine-readable time. */
+/** Relative recency is computed on each response; no per-second timer or marquee. */
 function timeStamp(entry) {
-  const time = element('time', 'score-row__time', dateFormatter.format(new Date(entry.occurred.milliseconds)));
+  const minutes = Math.max(0, Math.floor((Date.now() - entry.occurred.milliseconds) / 60_000));
+  const label = minutes < 1 ? 'Just now' : minutes < 60 ? `${minutes}m ago`
+    : minutes < 1440 ? `${Math.floor(minutes / 60)}h ago` : `${Math.floor(minutes / 1440)}d ago`;
+  const time = element('time', 'score-row__time', label);
   time.dateTime = entry.occurred.iso;
+  time.title = dateFormatter.format(new Date(entry.occurred.milliseconds));
   return time;
 }
 
 function scoreRow(entry) {
   const row = element('li', 'score-row');
-
-  const main = element('span', 'score-row__main');
-  // One sentence, in one text flow: "SPARK PILOT reached #8". The rank is
-  // styled inside it rather than beside it, so a screen reader hears a
-  // sentence instead of three run-together fragments.
-  const who = element('span', 'score-row__who');
-  who.append(element('span', 'score-row__name', entry.playerName));
-  who.append(document.createTextNode(' reached '));
-  const rank = element('span', 'score-row__rank', `#${entry.rank}`);
-  rank.dataset.tier = rankTier(entry.rank);
-  who.append(rank);
-  main.append(who);
-
-  const meta = element('span', 'score-row__meta');
-  for (const part of [entry.gameTitle, entry.boardLabel, ...entry.context]) {
-    meta.append(element('span', 'score-row__chip', part));
-  }
-  main.append(meta);
-  row.append(main);
-
-  row.append(timeStamp(entry));
-
-  const link = element('a', 'score-row__link', 'Leaderboard');
-  link.href = entry.path;
-  link.setAttribute('aria-label', `${entry.gameTitle} leaderboard: ${entry.boardLabel}`);
-  row.append(link);
-
+  row.dataset.eventId = entry.id;
+  row.dataset.gameId = entry.gameId;
+  const placement = element('span', 'score-row__placement', 'reached ');
+  placement.append(element('strong', 'score-row__rank', `#${entry.rank}`));
+  const name = element('span', 'score-row__name', entry.playerName);
+  // Board labels may already include context. Avoid repeating identical context.
+  const describedBoard = entry.boardLabel.toLocaleLowerCase();
+  const parts = [entry.boardLabel, ...entry.context.filter(value => (
+    !describedBoard.includes(value.toLocaleLowerCase())
+  ))];
+  row.append(name, placement, element('span', 'score-row__meta', parts.join(' · ')), timeStamp(entry));
   return row;
 }
 
-function renderEntries(entries) {
-  const rows = entries.slice(0, MAXIMUM_ENTRIES).map(scoreRow);
-  list.replaceChildren(...rows);
-  list.hidden = rows.length === 0;
-  status.hidden = true;
-  status.replaceChildren();
-}
-
-/** One quiet sentence, optionally followed by real links (never raw markup). */
-function renderMessage(message, links = []) {
-  const nodes = [document.createTextNode(message)];
-  for (const { text, href } of links) {
-    nodes.push(document.createTextNode(' '));
-    const anchor = element('a', undefined, text);
-    anchor.href = href;
-    nodes.push(anchor);
-  }
-  list.hidden = true;
-  list.replaceChildren();
-  status.textContent = '';
-  status.append(...nodes);
-  status.hidden = false;
-}
-
-async function loadActivity() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const response = await fetch(ACTIVITY_ENDPOINT, {
-      headers: { accept: 'application/json' },
-      credentials: 'same-origin',
-      signal: controller.signal,
-    });
-    if (!response.ok) throw new Error(`Activity feed returned ${response.status}`);
-    const body = await response.text();
-    if (body.length > MAXIMUM_RESPONSE_BYTES) throw new Error('Activity feed was too large');
-    const parsed = parsePayload(JSON.parse(body));
-    if (!parsed) throw new Error('Activity feed was not a recognized payload');
-    if (parsed.entries.length === 0) {
-      // Only claim the arcade is quiet when the server actually said so; a feed
-      // of records we could not read is a failure, not an empty scoreboard.
-      if (!parsed.reportedEmpty) throw new Error('Activity feed held no readable records');
-      renderMessage('New high scores will appear here.', [{ text: 'Choose a game', href: '#games' }]);
-      return;
-    }
-    renderEntries(parsed.entries);
-  } catch {
-    renderMessage('Recent scores are unavailable right now.');
-  } finally {
-    clearTimeout(timeout);
-  }
-}
-
 if (list instanceof HTMLOListElement && status instanceof HTMLElement) {
-  void loadActivity();
+  const panel = document.querySelector('.recent');
+  const body = document.querySelector('.recent__body');
+  const heading = document.querySelector('#recent-title');
+  const count = document.querySelector('#recent-count');
+  const detail = document.querySelector('#selected-game');
+  const desktop = matchMedia('(min-width: 1100px) and (min-height: 650px) and (orientation: landscape)');
+  let generation = 0;
+  let controller;
+  let selectedGame = '';
+  let rows = [];
+  let refreshTimer;
+  let lastInteraction = 0;
+  const clearRefresh = () => clearTimeout(refreshTimer);
+  const scheduleRefresh = () => {
+    clearRefresh();
+    if (document.hidden) return;
+    const refreshWhenIdle = () => {
+      if (document.hidden) return;
+      const idleFor = performance.now() - lastInteraction;
+      if (idleFor < 1000) { refreshTimer = setTimeout(refreshWhenIdle, 1000 - idleFor); return; }
+      void loadActivity(detail.dataset.gameId, detail.dataset.gameTitle, true);
+    };
+    refreshTimer = setTimeout(refreshWhenIdle, 30_000);
+  };
+  for (const type of ['keydown', 'pointerdown']) document.addEventListener(type, event => {
+    if (event.target.closest('.game-carousel')) lastInteraction = performance.now();
+  }, { capture: true, passive: true });
+  const fitRows = () => {
+    if (!rows.length) return;
+    let used = 0;
+    let shown = 0;
+    const statusStyle = getComputedStyle(status);
+    const statusHeight = status.hidden ? 0 : status.getBoundingClientRect().height + parseFloat(statusStyle.marginTop) + parseFloat(statusStyle.marginBottom);
+    const available = desktop.matches ? Math.max(0, body.clientHeight - statusHeight) : Infinity;
+    for (const row of rows) {
+      row.hidden = false;
+      const height = row.getBoundingClientRect().height;
+      const fits = used + height <= available;
+      row.hidden = !fits;
+      if (fits) { used += height; shown++; }
+      else used = Infinity; // Never skip a newer row to fit a shorter older one.
+    }
+    count.textContent = `${shown} recent qualifying ${shown === 1 ? 'run' : 'runs'}`;
+  };
+  const message = text => {
+    rows = [];
+    list.replaceChildren();
+    list.hidden = true;
+    if (status.textContent !== text) status.textContent = text;
+    status.hidden = false;
+    count.textContent = '';
+  };
+  async function loadActivity(gameId, gameTitle, refresh = false) {
+    if (!GAME_ID_PATTERN.test(gameId) || !displayText(gameTitle, MAXIMUM_TITLE_LENGTH)) return;
+    const retainView = refresh && selectedGame === gameId;
+    const hadRows = rows.length > 0;
+    clearRefresh();
+    selectedGame = gameId;
+    const requestGeneration = ++generation;
+    controller?.abort();
+    const requestController = new AbortController();
+    controller = requestController;
+    heading.textContent = gameTitle;
+    panel.dataset.gameId = gameId;
+    list.setAttribute('aria-label', `${gameTitle}: newest qualifying leaderboard entries`);
+    panel.setAttribute('aria-busy', 'true');
+    if (!retainView) message(`Loading ${gameTitle} high scores…`);
+    if (document.hidden) { panel.setAttribute('aria-busy', 'false'); controller = undefined; return; }
+    const timeout = setTimeout(() => requestController.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const query = new URLSearchParams({ limit: String(MAXIMUM_ENTRIES), gameId });
+      const response = await fetch(`${ACTIVITY_ENDPOINT}?${query}`, {
+        headers: { accept: 'application/json' }, credentials: 'same-origin', signal: requestController.signal,
+      });
+      if (!response.ok) throw new Error('Activity unavailable');
+      const contents = await response.text();
+      if (contents.length > MAXIMUM_RESPONSE_BYTES) throw new Error('Activity response too large');
+      const parsed = parsePayload(JSON.parse(contents), gameId);
+      if (!parsed) throw new Error('Unrecognized activity payload');
+      if (requestGeneration !== generation || selectedGame !== gameId) return;
+      if (requestController.signal.aborted) throw new Error('Activity request timed out');
+      if (!parsed.entries.length) {
+        if (!parsed.reportedEmpty) throw new Error('No readable activity records');
+        message(`New ${gameTitle} high scores will appear here.`);
+        return;
+      }
+      rows = parsed.entries.slice(0, MAXIMUM_ENTRIES).map(scoreRow);
+      list.replaceChildren(...rows);
+      list.hidden = false;
+      status.hidden = true;
+      status.textContent = '';
+      fitRows();
+    } catch {
+      if (requestGeneration === generation && selectedGame === gameId) {
+        if (retainView && hadRows) {
+          status.textContent = 'Scores may be out of date. Unable to refresh.';
+          status.hidden = false;
+          fitRows();
+        } else if (!retainView) message(`${gameTitle} scores are unavailable right now.`);
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (requestGeneration === generation) {
+        panel.setAttribute('aria-busy', 'false');
+        controller = undefined;
+        scheduleRefresh();
+      }
+    }
+  }
+  const onSelection = () => {
+    if (detail.dataset.gameId && detail.dataset.gameId !== selectedGame) {
+      lastInteraction = performance.now();
+      void loadActivity(detail.dataset.gameId, detail.dataset.gameTitle);
+    }
+  };
+  document.addEventListener('arcadebench:selection', onSelection);
+  new ResizeObserver(fitRows).observe(body);
+  desktop.addEventListener('change', fitRows);
+  document.fonts.ready.then(fitRows);
+  const suspend = () => {
+    clearRefresh(); generation++; controller?.abort(); controller = undefined;
+    panel.setAttribute('aria-busy', 'false');
+  };
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) suspend();
+    else if (detail.dataset.gameId) void loadActivity(detail.dataset.gameId, detail.dataset.gameTitle, true);
+  });
+  window.addEventListener('pagehide', suspend);
+  window.addEventListener('pageshow', event => {
+    if (event.persisted && !controller && detail.dataset.gameId) void loadActivity(detail.dataset.gameId, detail.dataset.gameTitle, true);
+  });
+  onSelection();
 }

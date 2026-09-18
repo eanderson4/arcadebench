@@ -1,7 +1,7 @@
 # ArcadeBench site visual fixtures
 
 This suite exercises the assembled, production-shaped `dist/site` artifact.
-It is intentionally independent of either game's development fixture entry.
+It is intentionally independent of any game's development fixture entry.
 
 The seven exact images cover the launcher at 1280×720, 700×600, 390×720, and
 320×568; its 700px keyboard-focus state; and the custom 404 at 1280×720 and
@@ -47,3 +47,24 @@ which the repository controls. `playwright.site.config.ts` pins
 factor of 1 to narrow that variance, but the remaining differences are real.
 Regenerate the baselines on the recorded platform rather than expecting a
 different one to match. Do not mask text to make a mismatch pass.
+
+## Cartridge launcher coverage
+
+The launcher tests stub `crypto.getRandomValues` to preserve authored order in
+pixel baselines. `carousel.spec.ts` independently covers all six shuffle
+permutations, rejection of the biased uint32 tail, one shuffle per load,
+keyboard/Tab order, touch scrolling, reduced motion, and no-JavaScript links.
+The track may overflow horizontally inside its own viewport; the document and
+play targets must remain contained and each game must be reachable.
+
+Desktop landscape is tested at 1280×720, 1536×864 and 1920×1080 with exact
+viewport containment, complete selected art, visible cartridges, scoreboard,
+Play and footer. Narrow web layouts scroll naturally, preserve native touch
+shelf scrolling, and retain all three authored routes without JavaScript.
+Standard gamepad tests cover neutral arming, stick hysteresis, D-pad edges and
+one launch per A press. Activity tests cover selected-game request parameters,
+rank-at-submission semantics, passive rows, validation of hostile records,
+loading/empty/unavailable states, cancellation and stale-response protection.
+Clock-controlled tests verify visible-only 30-second refresh, retained rows on
+background failure, and paused requests while hidden. Scoreboard height tests
+show only complete newest rows instead of introducing internal scrolling.

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#8ee6ff" />
+    <meta name="description" content="Smilefall is a free ArcadeBench game about steering one sky of falling smiles into buckets." />
+    <meta property="og:title" content="Smilefall — ArcadeBench" />
+    <meta property="og:description" content="Guide one sky of falling smiles past hazards and into buckets." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ArcadeBench" />
+    <meta property="og:url" content="https://arcadebench.org/games/smilefall/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="canonical" href="https://arcadebench.org/games/smilefall/" />
+    <title>Smilefall — ArcadeBench</title>
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./design/tokens.css" />
+    <link rel="stylesheet" href="./design/system.css" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body class="sf-sky-bg" data-screen="home">
+    <header class="site-nav">
+      <a class="brand" href="/" aria-label="ArcadeBench home">
+        <span class="sf-face" style="--sf-face-size: 34px" aria-hidden="true"><i></i></span>
+        <b>ARCADEBENCH</b><i>/</i><span>SMILEFALL</span>
+      </a>
+      <button id="sound-toggle" class="sf-btn sf-btn--small sf-btn--paper" type="button" aria-pressed="true">SOUND ON</button>
+    </header>
+
+    <main>
+      <section id="home-screen" class="screen home" aria-labelledby="home-title">
+        <div class="home-hero">
+          <div class="home-copy sf-stack">
+            <p class="sf-kicker">One wheel. Every smile.</p>
+            <h1 id="home-title" class="sf-hero sf-hero--sticker" tabindex="-1">SMILE<em>FALL</em></h1>
+            <p class="sf-lede">
+              Guide one sky of falling smiles past hazards and into buckets. Every smile follows the same
+              steering wheel, so saving one can send another somewhere surprising.
+            </p>
+            <div class="home-actions" aria-label="Play Smilefall">
+              <label class="select-label home-difficulty">Difficulty
+                <select id="arcade-difficulty" aria-label="Arcade run difficulty"></select>
+              </label>
+              <button id="start-arcade" class="sf-btn sf-btn--jumbo sf-btn--pink" type="button">START ARCADE RUN</button>
+              <button id="open-catalog" class="sf-btn sf-btn--paper" type="button">LEVEL CATALOG</button>
+              <button id="open-leaderboard" class="sf-btn sf-btn--ghost" type="button">LEADERBOARDS</button>
+            </div>
+            <p id="ranked-status" class="connection-line" role="status">Checking the current leaderboard season…</p>
+          </div>
+
+          <div class="how-row" aria-label="How to play">
+            <article class="sf-panel sf-panel--warm sf-tilt-l how-card">
+              <span class="sf-chip sf-chip--sky">01 / LEAN</span>
+              <p><span class="sf-key">←</span> <span class="sf-key">→</span> steers <b>every</b> falling smile at once.</p>
+              <span class="sf-wheel" id="demo-wheel" data-lean="none" aria-hidden="true">
+                <u data-side="left">◀</u><i></i><u data-side="right">▶</u>
+                <span><small>One wheel</small><b>Every one</b></span>
+              </span>
+            </article>
+            <article class="sf-panel sf-panel--warm how-card">
+              <span class="sf-chip sf-chip--yolk">02 / HOP</span>
+              <p><span class="sf-key">SPACE</span> bumps the flock upward. Charges refill over time.</p>
+            </article>
+            <article class="sf-panel sf-panel--warm sf-tilt-r how-card">
+              <span class="sf-chip sf-chip--pink">03 / READ THE SHAPE</span>
+              <p>Round objects leave a frown. Anything visibly spiked pops a smile immediately.</p>
+              <span class="sf-tags"><span>ROUND · BOUNCES</span><span data-hot="true">SPIKED · POPS</span></span>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="catalog-screen" class="screen browse-screen" aria-labelledby="catalog-title">
+        <div class="screen-heading">
+          <div>
+            <p class="sf-kicker">Play one at a time</p>
+            <h1 id="catalog-title" class="sf-title" tabindex="-1">Level catalog</h1>
+            <p class="sf-lede">Choose any level, difficulty, and route through the falling crowd.</p>
+          </div>
+          <div class="screen-actions">
+            <label class="select-label">Difficulty
+              <select id="catalog-difficulty"></select>
+            </label>
+            <button id="catalog-leaderboard" class="sf-btn sf-btn--paper" type="button">LEADERBOARDS</button>
+            <button id="catalog-home" class="sf-btn sf-btn--ghost" type="button">HOME</button>
+          </div>
+        </div>
+        <div id="catalog-grid" class="catalog-grid" aria-live="polite"></div>
+      </section>
+
+      <section id="leaderboard-screen" class="screen browse-screen" aria-labelledby="leaderboard-title">
+        <div class="screen-heading">
+          <div>
+            <p class="sf-kicker"><span id="leaderboard-season">Launch Board</span> · Current competition</p>
+            <h1 id="leaderboard-title" class="sf-title" tabindex="-1">Leaderboards</h1>
+            <p id="leaderboard-mode" class="connection-line" role="status">Loading verified scores…</p>
+          </div>
+          <div class="screen-actions">
+            <button id="leaderboard-catalog" class="sf-btn sf-btn--paper" type="button">LEVEL CATALOG</button>
+            <button id="leaderboard-home" class="sf-btn sf-btn--ghost" type="button">HOME</button>
+          </div>
+        </div>
+        <div class="board-controls">
+          <div class="sf-segment" role="tablist" aria-label="Leaderboard type">
+            <button type="button" role="tab" data-board-scope="arcade" aria-selected="true">ARCADE RUN</button>
+            <button type="button" role="tab" data-board-scope="level" aria-selected="false">LEVEL</button>
+          </div>
+          <label class="select-label">Difficulty
+            <select id="leaderboard-difficulty"></select>
+          </label>
+          <label id="leaderboard-level-wrap" class="select-label" hidden>Level
+            <select id="leaderboard-level"></select>
+          </label>
+        </div>
+        <div class="sf-panel leaderboard-panel">
+          <h2 id="leaderboard-board-title" class="sf-head">Arcade Run</h2>
+          <div id="leaderboard-head" class="leaderboard-row leaderboard-head" aria-hidden="true"></div>
+          <ol id="leaderboard-list" class="leaderboard-list" aria-label="Smilefall leaderboard"></ol>
+          <div id="leaderboard-empty" class="leaderboard-empty" role="status">
+            <span class="sf-face sf-face--sad" style="--sf-face-size: 58px" aria-hidden="true"><i></i></span>
+            <b>LOADING SCORES…</b>
+            <p>The board will appear here.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="play-screen" class="screen play" aria-label="Smilefall game">
+        <header class="hud">
+          <div class="hud-left">
+            <button id="quit-button" class="sf-btn sf-btn--small sf-btn--paper" type="button">← ARCADEBENCH</button>
+            <div class="hud-stage">
+              <b id="hud-title">First Giggle</b>
+              <span id="hud-progress" class="sf-chip sf-chip--mint">ARCADE · 1 / 10</span>
+            </div>
+          </div>
+          <div class="hud-center">
+            <div class="sf-meter" id="bucket-meter" style="--sf-meter-fill: 0%"><i></i><b id="bucket-meter-label">BUCKETS 0 / 3</b></div>
+            <div class="hud-pips">
+              <span class="sf-wheel" id="steer-wheel" data-lean="none" title="One wheel steers every smile in the sky">
+                <u data-side="left">◀</u><i></i><u data-side="right">▶</u>
+                <span><small>Steering</small><b id="steer-count">0 smiles</b></span>
+              </span>
+              <span class="sf-kicker">Reserve</span><span id="reserve-pips" class="sf-pips sf-pips--frown"></span>
+              <span class="sf-kicker">Hops</span><span id="hop-pips" class="sf-pips sf-pips--hop"></span>
+            </div>
+          </div>
+          <div class="hud-right">
+            <span class="sf-stat"><small>Score</small><b id="hud-score">0</b></span>
+            <span class="sf-stat"><small>Combo</small><b id="hud-combo">×0</b></span>
+            <span class="sf-stat"><small>Clock</small><b id="hud-clock">0:40</b></span>
+            <button id="play-sound-toggle" class="sf-btn sf-btn--small sf-btn--paper" type="button" aria-pressed="true">SOUND ON</button>
+            <button id="pause-button" class="sf-btn sf-btn--small sf-btn--paper" type="button">PAUSE</button>
+          </div>
+        </header>
+
+        <div class="stage-wrap">
+          <div class="stage">
+            <canvas id="field" width="1280" height="800" tabindex="-1" aria-label="Smilefall playfield"></canvas>
+
+            <div id="ready-overlay" class="overlay" data-open="false" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="ready-title">
+              <div class="sf-panel sf-anim-pop overlay-card">
+                <span class="sf-face sf-anim-bob" style="--sf-face-size: 74px" aria-hidden="true"><i></i></span>
+                <p id="ready-progress" class="sf-kicker">Arcade level 1 of 10</p>
+                <h2 id="ready-title" class="sf-title">First Giggle</h2>
+                <p id="ready-copy" class="sf-lede">One field. One shared steering wheel.</p>
+                <span id="ready-rules" class="sf-tags ready-rules"></span>
+                <div class="overlay-keys">
+                  <span><span class="sf-key">←</span><span class="sf-key">→</span> lean</span>
+                  <span><span class="sf-key">SPACE</span> hop</span>
+                  <span><span class="sf-key">P</span> pause</span>
+                </div>
+                <button id="ready-start" class="sf-btn sf-btn--jumbo sf-btn--mint" type="button">GO!</button>
+              </div>
+            </div>
+
+            <div id="pause-overlay" class="overlay" data-open="false" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pause-title">
+              <div class="sf-panel sf-anim-pop overlay-card">
+                <h2 id="pause-title" class="sf-title">Paused</h2>
+                <p class="sf-lede">The smiles are hovering politely.</p>
+                <div class="sf-row overlay-actions">
+                  <button id="resume-button" class="sf-btn sf-btn--mint" type="button">RESUME</button>
+                  <button id="restart-button" class="sf-btn sf-btn--paper" type="button">RESTART LEVEL</button>
+                  <button id="pause-home" class="sf-btn sf-btn--ghost" type="button">LEAVE RUN</button>
+                </div>
+              </div>
+            </div>
+
+            <div id="result-overlay" class="overlay" data-open="false" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="result-title">
+              <div class="sf-panel sf-anim-pop overlay-card result-card">
+                <span id="result-face" class="sf-face sf-anim-bob" style="--sf-face-size: 76px" aria-hidden="true"><i></i></span>
+                <h2 id="result-title" class="sf-title" tabindex="-1">Buckets full!</h2>
+                <p id="result-copy" class="sf-lede">Every bucket found a smile.</p>
+                <div id="result-stats" class="result-stats"></div>
+                <div id="result-actions" class="sf-row overlay-actions">
+                  <button id="result-again" class="sf-btn sf-btn--paper" type="button">TRY AGAIN</button>
+                  <button id="result-next" class="sf-btn sf-btn--mint" type="button">NEXT LEVEL →</button>
+                  <button id="result-score" class="sf-btn sf-btn--pink" type="button">ENTER SCORE →</button>
+                  <button id="result-home" class="sf-btn sf-btn--ghost" type="button">HOME</button>
+                </div>
+                <form id="score-form" class="score-form" hidden>
+                  <label>Callsign
+                    <input id="score-name" name="name" maxlength="16" autocomplete="nickname" required />
+                  </label>
+                  <label class="social-choice">
+                    <input id="score-social" type="checkbox" />
+                    Allow ArcadeBench to use this replay in social media.
+                  </label>
+                  <p class="score-save-note">Your score will be saved to this leaderboard.</p>
+                  <p id="score-status" class="connection-line" role="status"></p>
+                  <div class="sf-row overlay-actions">
+                    <button id="score-submit" class="sf-btn sf-btn--pink" type="submit">SAVE SCORE</button>
+                    <button id="score-cancel" class="sf-btn sf-btn--ghost" type="button">BACK</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <div class="touch-controls" aria-label="Touch controls">
+            <button id="touch-left" type="button" aria-label="Lean left" aria-pressed="false">←</button>
+            <button id="touch-hop" type="button" aria-label="Hop" aria-pressed="false">HOP</button>
+            <button id="touch-right" type="button" aria-label="Lean right" aria-pressed="false">→</button>
+          </div>
+          <p class="stage-hint">
+            <span id="hud-rules" class="sf-tags"></span>
+            <span class="sf-key">←</span><span class="sf-key">→</span> lean ·
+            <span class="sf-key">SPACE</span> hop · <span class="sf-key">P</span> pause
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="feedback-note" class="feedback-dialog">
+      <form id="feedback-note-form" method="dialog">
+        <p class="sf-kicker">Private note about <span id="feedback-note-subject"></span></p>
+        <label for="feedback-note-text">Optional note for ArcadeBench</label>
+        <textarea id="feedback-note-text" rows="5" maxlength="1000"></textarea>
+        <p>Only ArcadeBench maintainers can read this. Notes expire after 90 days.</p>
+        <p id="feedback-note-status" role="status"></p>
+        <div class="sf-row">
+          <button id="feedback-note-save" class="sf-btn sf-btn--pink" type="submit">SAVE NOTE</button>
+          <button id="feedback-note-clear" class="sf-btn sf-btn--paper" type="button">CLEAR</button>
+          <button id="feedback-note-cancel" class="sf-btn sf-btn--ghost" type="button">CANCEL</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -14,7 +14,7 @@ import { createBuiltSiteServer, builtSiteRoot } from './serve-built-site.mjs';
 
 const repositoryRoot = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const textExtensions = new Set(['.css', '.html', '.js', '.json', '.svg', '.txt', '.xml']);
-const forbiddenArtifactPath = /(?:^|\/)(?:src|tests?|testing|experiments)(?:\/|$)|(?:human-lab|visual-fixtures|p1-08-candidates)|\.(?:map|ts)$/iu;
+const forbiddenArtifactPath = /(?:^|\/)(?:src|tests?|testing|experiments|kit)(?:\/|$)|(?:human-lab|visual-fixtures|p1-08-candidates)|\.(?:map|ts)$/iu;
 const forbiddenArtifactText = /(?:maltline-human-lab-session|maltline-human-lab-ready|__maltlineHumanLabTestDriver|visual-fixtures\.html|p1-08-candidates|\/@vite\/client)/iu;
 
 function check(condition, message, failures) {
@@ -187,8 +187,10 @@ const launcher = htmlByRoute.get('/');
 const partition = htmlByRoute.get('/games/partition/');
 const maltline = htmlByRoute.get('/games/maltline/');
 const about = htmlByRoute.get('/about/');
+const smilefall = htmlByRoute.get('/games/smilefall/');
+check(smilefall && !/STICKER KIT|href=["'](?:\.\/)?kit\//iu.test(smilefall), 'Smilefall exposes a development kit', failures);
 check(launcher !== partition, 'launcher is an accidental copy of Partition', failures);
-check(launcher.includes('href="/games/partition/"') && launcher.includes('href="/games/maltline/"'),
+check(['partition', 'maltline', 'smilefall'].every(game => launcher.includes(`href="/games/${game}/"`)),
   'launcher lacks direct permanent game links', failures);
 check(launcher.includes('href="#games"') && launcher.includes('href="/about/"'),
   'launcher primary navigation is not Games plus About', failures);
@@ -218,15 +220,34 @@ for (const [label, contents] of [['launcher', launcher], ['about', about]]) {
 check(about.includes('href="/about.css"'), 'about page lacks its site-owned stylesheet', failures);
 check(about.includes('src="/brand/mark.svg"'), 'about page does not show the ArcadeBench mark', failures);
 check(!/<script\b/iu.test(about), 'about page must not execute JavaScript', failures);
+check((about.match(/class="about__person"/gu) ?? []).length === 2,
+  'about page must credit both contributors', failures);
+check(about.includes('src="/contributors/whit-anderson.webp" alt="Caricature of Whit Anderson" width="512" height="512"')
+  && about.includes('<p class="about__person-name">Whit Anderson</p>')
+  && about.includes('Game designer &amp; playtester')
+  && about.includes("Helped shape Smilefall's central idea, levels, and game feel through design and playtesting."),
+  'about page lacks Whit’s portrait and unlinked design/playtesting credit', failures);
+check(['partition', 'maltline', 'smilefall'].every(gameId => launcher.includes(`data-game-id="${gameId}"`)
+  && launcher.includes(`href="/games/${gameId}/"`)), 'launcher must retain authored game identities and all three no-JavaScript Play routes', failures);
+check(launcher.includes('id="selected-game"') && launcher.includes('Leaderboard · Recent runs'),
+  'launcher must provide selected-game preview and leaderboard panel', failures);
+const scoreboard = launcher.match(/<aside class="recent"[\s\S]*?<\/aside>/u)?.[0] ?? '';
+check(scoreboard.length > 0 && !/<(?:a|button|input)\b|\btabindex=/u.test(scoreboard),
+  'launcher scoreboard must remain passive and link-free', failures);
 const launcherScripts = launcher.match(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu) ?? [];
-check(launcherScripts.length === 1
-  && /^<script\s+(?:type="module"\s+src="\/activity\.js"|src="\/activity\.js"\s+type="module")\s*>\s*<\/script\s*>$/u.test(launcherScripts[0]),
-  'launcher must execute only the external /activity.js module, without inline code', failures);
+check(launcherScripts.length === 2 && ['/carousel.js', '/activity.js'].every((path, index) =>
+  launcherScripts[index] === `<script type="module" src="${path}"></script>`),
+  'launcher must execute only its external carousel and activity modules, without inline code', failures);
+const carouselSource = await readFile(resolve(root, 'carousel.js'), 'utf8');
+check(!/[←→↑↓]/u.test(`${launcher}\n${carouselSource}`),
+  'launcher arrows must use bundled-font glyphs or CSS instead of host-font fallbacks', failures);
+check(!/(?:\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie|\bimport\s*(?:\(|[{'"*]))/u.test(carouselSource),
+  'carousel contains an unapproved transport, storage surface, or runtime import', failures);
 check(!/\son[a-z]+\s*=|javascript\s*:/iu.test(launcher),
   'launcher contains an inline event handler or JavaScript URL', failures);
 check(!/(?:\/api\/|\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie)/u.test(launcher),
   'launcher contains a network, API, or persistent-storage surface', failures);
-check(!/(?:\/assets\/|\/maltline\/assets\/)[A-Za-z0-9._-]+/u.test(launcher),
+check(!/(?:\/assets\/|\/maltline\/assets\/|\/smilefall\/assets\/)[A-Za-z0-9._-]+/u.test(launcher),
   'launcher imports a game JavaScript or stylesheet asset', failures);
 check(launcher.includes('href="/arcade.css"'), 'launcher lacks its site-owned stylesheet', failures);
 check(SITE_CONTRACT.staticFiles.some(({ output, source }) => (
@@ -239,7 +260,7 @@ if (actualFiles.includes('activity.js')) {
     'activity module must address only /api/v2/activity', failures);
   check(!/(?:XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie|\bimport\s*(?:\(|[{'"*]))/u.test(activitySource),
     'activity module contains an unapproved transport, storage surface, or runtime import', failures);
-  check(!/(?:\/assets\/|\/maltline\/assets\/)[A-Za-z0-9._-]+/u.test(activitySource),
+  check(!/(?:\/assets\/|\/maltline\/assets\/|\/smilefall\/assets\/)[A-Za-z0-9._-]+/u.test(activitySource),
     'activity module imports a game JavaScript or stylesheet asset', failures);
 }
 

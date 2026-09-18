@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/brand/brand.css" />
     <link rel="stylesheet" href="/arcade.css" />
   </head>
-  <body>
+  <body class="launcher-page">
     <a class="skip-link" href="#games">Skip to games</a>
     <div class="page-shell">
       <header class="site-nav ab-crossbar-rule">
@@ -29,6 +29,7 @@
           </span>
           <span class="ab-lockup__descriptor" aria-hidden="true">Free play</span>
         </a>
+        <h1 class="launcher-title">Choose your game.</h1>
         <nav class="site-nav__links" aria-label="Primary">
           <a href="#games">Games</a>
           <a href="/about/">About</a>
@@ -37,13 +38,19 @@
 
       <main class="catalog">
         <div class="catalog__intro">
-          <h1>Choose your game.</h1>
           <p class="catalog__note">A free browser arcade for everyone, inspired by the early arcade era. Simple controls, quick rounds, and high scores worth chasing.</p>
         </div>
 
-        <ul id="games" class="game-grid" aria-label="Available games" tabindex="-1">
+        <section class="game-carousel" aria-label="Choose a game" aria-roledescription="carousel" tabindex="-1">
+          <div class="game-carousel__controls" hidden>
+            <div class="game-carousel__buttons">
+              <button type="button" data-carousel-prev aria-controls="games" aria-label="Previous game"><span aria-hidden="true">‹</span></button>
+              <button type="button" data-carousel-next aria-controls="games" aria-label="Next game"><span aria-hidden="true">›</span></button>
+            </div>
+          </div>
+        <ul id="games" class="game-grid" role="list" aria-label="Available games" tabindex="-1">
           <li>
-            <article class="game-card" aria-labelledby="partition-title">
+            <article class="game-card" data-game-id="partition" aria-labelledby="partition-title">
               <p class="game-card__art">
                 <img
                   src="/covers/partition.png"
@@ -62,13 +69,13 @@
                 </ul>
                 <a class="game-card__play" href="/games/partition/" aria-describedby="partition-premise partition-meta">
                   <span>Play Partition</span>
-                  <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+                  <span class="game-card__arrow" aria-hidden="true">›</span>
                 </a>
               </div>
             </article>
           </li>
           <li>
-            <article class="game-card" aria-labelledby="maltline-title">
+            <article class="game-card" data-game-id="maltline" aria-labelledby="maltline-title">
               <p class="game-card__art">
                 <img
                   src="/covers/maltline.png"
@@ -87,31 +94,46 @@
                 </ul>
                 <a class="game-card__play" href="/games/maltline/" aria-describedby="maltline-premise maltline-meta">
                   <span>Play Maltline</span>
-                  <span class="game-card__arrow" aria-hidden="true">&#8594;</span>
+                  <span class="game-card__arrow" aria-hidden="true">›</span>
+                </a>
+              </div>
+            </article>
+          </li>
+          <li>
+            <article class="game-card" data-game-id="smilefall" aria-labelledby="smilefall-title">
+              <p class="game-card__art">
+                <img src="/covers/smilefall.png" width="960" height="540" decoding="async"
+                  alt="Smilefall gameplay: bright yellow smiles tumble past rocky hazards toward colorful buckets below." />
+              </p>
+              <div class="game-card__body">
+                <h2 class="game-card__title" id="smilefall-title">Smilefall</h2>
+                <p class="game-card__premise" id="smilefall-premise">Guide one sky of falling smiles past hazards and into buckets.</p>
+                <ul class="game-card__meta" id="smilefall-meta">
+                  <li>Shared steering · timed hops</li>
+                  <li>Handcrafted stages</li>
+                </ul>
+                <a class="game-card__play" href="/games/smilefall/" aria-describedby="smilefall-premise smilefall-meta">
+                  <span>Play Smilefall</span>
+                  <span class="game-card__arrow" aria-hidden="true">›</span>
                 </a>
               </div>
             </article>
           </li>
         </ul>
-
-        <!--
-          The activity feed is platform-wide: every game that registers an
-          adapter shows up here on its own, so this section names no game and
-          carries no per-game artwork or link. The status line ships with its
-          loading state so the section stays honest if the module never runs,
-          and the no-script fallback replaces it rather than stacking under it.
-        -->
-        <section class="recent" aria-labelledby="recent-title">
-          <div class="recent__head">
-            <h2 class="recent__title" id="recent-title">Recent high scores</h2>
-            <p class="recent__lede">The newest qualifying scores from every game on ArcadeBench.</p>
-          </div>
-          <p class="recent__status" id="recent-status" role="status" data-live>Loading recent high scores&#8230;</p>
-          <ol class="recent__list" id="recent-list" hidden></ol>
-          <noscript>
-            <style>.recent__status[data-live] { display: none; }</style>
-            <p class="recent__status">Recent high scores need JavaScript. <a href="#games">Choose a game</a> and set the first one.</p>
-          </noscript>
+          <article id="selected-game" class="selected-game" aria-labelledby="selected-title" hidden></article>
+          <aside class="recent" aria-labelledby="recent-title" hidden>
+            <div class="recent__head">
+              <p class="recent__eyebrow">Leaderboard · Recent runs</p>
+              <h2 class="recent__title" id="recent-title">Recent high scores</h2>
+              <p class="recent__lede">Qualifying scores · newest first</p>
+            </div>
+            <div class="recent__body">
+              <p class="recent__status" id="recent-status" role="status">Loading recent high scores&#8230;</p>
+              <ol class="recent__list" id="recent-list" hidden></ol>
+            </div>
+            <p class="recent__foot"><span id="recent-count"></span><span>Rank at submission</span></p>
+          </aside>
+          <p class="ab-visually-hidden" data-carousel-live aria-live="polite" aria-atomic="true"></p>
         </section>
       </main>
 
@@ -127,6 +149,7 @@
         </nav>
       </footer>
     </div>
+    <script type="module" src="/carousel.js"></script>
     <script type="module" src="/activity.js"></script>
   </body>
 </html>

@@ -8,6 +8,7 @@ export const PRODUCTION_MIGRATIONS = Object.freeze([
   '0004_shared_platform.sql',
   '0005_maltline_cabinet.sql',
   '0006_maltline_cabinet_progression.sql',
+  '0007_smilefall_launch_board.sql',
 ]);
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 

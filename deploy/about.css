@@ -6,7 +6,7 @@
  * rule-separated closing sections (community support and the contributors
  * list), and the closing attribution. Every token is read from the brand
  * layer with a literal fallback, so the page still holds together if it is
- * opened on its own. No animation, no imagery, no new colour.
+ * opened on its own. Contributor portraits are the only imagery; no animation.
  */
 
 .about {
@@ -84,9 +84,8 @@
   line-height: 1.6;
 }
 
-/* Community support and the contributors list: two quiet sections separated
-   by a hairline rather than a wall of cards. Both stay in the same readable
-   column as the mission above. */
+/* Community support and contributors share quiet section rules. Contributor
+   rows expand into two columns only when both biographies have room. */
 .about__community,
 .about__contributors {
   max-width: 680px;
@@ -110,9 +109,16 @@
 }
 
 .about__people {
+  display: grid;
+  gap: var(--ab-space-7, 40px);
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+@media (min-width: 900px) {
+  .about__contributors { max-width: none; }
+  .about__people { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .about__person {

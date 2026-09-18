@@ -1,0 +1,451 @@
+/**
+ * Smilefall component kit. Every control is a physical toy: fat ink outline,
+ * hard shadow underneath, and it presses down when you touch it.
+ * See /src/viewer/kit/ for the living gallery of everything in this file.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--sf-font-body);
+  font-size: var(--sf-size-body);
+  color: var(--sf-ink);
+  background: var(--sf-paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+/* ---- the sky backdrop --------------------------------------------------- */
+.sf-sky-bg {
+  background:
+    radial-gradient(circle at 12% 14%, rgba(255, 255, 255, 0.85) 0 60px, transparent 61px),
+    radial-gradient(circle at 84% 26%, rgba(255, 255, 255, 0.7) 0 44px, transparent 45px),
+    linear-gradient(180deg, var(--sf-sky-hi) 0%, var(--sf-sky-lo) 52%, var(--sf-paper-warm) 100%);
+}
+
+/* ---- headings ----------------------------------------------------------- */
+.sf-hero,
+.sf-title,
+.sf-head {
+  font-family: var(--sf-font-display);
+  font-weight: 800;
+  line-height: 0.95;
+  margin: 0;
+}
+.sf-hero { font-size: var(--sf-size-hero); letter-spacing: -0.02em; }
+.sf-title { font-size: var(--sf-size-title); }
+.sf-head { font-size: var(--sf-size-head); }
+
+/* Chunky sticker lettering: white fill, ink outline, hard drop. */
+.sf-hero--sticker {
+  color: var(--sf-paper);
+  -webkit-text-stroke: 5px var(--sf-ink);
+  paint-order: stroke fill;
+  text-shadow: 0 10px 0 var(--sf-ink), 0 12px 26px rgba(44, 27, 71, 0.28);
+}
+.sf-hero--sticker em {
+  font-style: normal;
+  color: var(--sf-yolk);
+}
+
+.sf-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sf-space-2);
+  font-family: var(--sf-font-display);
+  font-weight: 700;
+  font-size: var(--sf-size-small);
+  letter-spacing: var(--sf-track-loud);
+  text-transform: uppercase;
+  color: var(--sf-ink-soft);
+}
+
+.sf-lede { margin: 0; font-size: clamp(16px, 1.6vw, 20px); line-height: 1.5; color: var(--sf-ink-soft); font-weight: 600; }
+
+/* ---- buttons ------------------------------------------------------------ */
+.sf-btn {
+  --sf-btn-face: var(--sf-yolk);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sf-space-2);
+  padding: 13px 22px;
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-btn-face);
+  box-shadow: var(--sf-pop), var(--sf-inner-gloss);
+  font-family: var(--sf-font-display);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: transform var(--sf-quick), box-shadow var(--sf-quick), filter var(--sf-quick);
+}
+.sf-btn:hover { transform: translateY(-2px) rotate(-1deg); box-shadow: var(--sf-pop-lg), var(--sf-inner-gloss); }
+.sf-btn:active { transform: translateY(4px); box-shadow: var(--sf-pop-sm), var(--sf-inner-gloss); }
+.sf-btn:focus-visible { outline: 4px solid var(--sf-grape); outline-offset: 3px; }
+.sf-btn[disabled] { filter: grayscale(0.7) opacity(0.6); pointer-events: none; }
+
+.sf-btn--jumbo { padding: 20px 40px; font-size: 26px; }
+.sf-btn--small { padding: 8px 14px; font-size: 15px; box-shadow: var(--sf-pop-sm), var(--sf-inner-gloss); }
+.sf-btn--pink { --sf-btn-face: var(--sf-bubble); color: var(--sf-paper); }
+.sf-btn--mint { --sf-btn-face: var(--sf-mint); }
+.sf-btn--grape { --sf-btn-face: var(--sf-grape); color: var(--sf-paper); }
+.sf-btn--paper { --sf-btn-face: var(--sf-paper); }
+.sf-btn--ghost {
+  --sf-btn-face: transparent;
+  box-shadow: none;
+  border-style: dashed;
+}
+.sf-btn--ghost:hover { box-shadow: var(--sf-pop-sm); background: var(--sf-paper); }
+
+/* ---- panels ------------------------------------------------------------- */
+.sf-panel {
+  position: relative;
+  padding: var(--sf-space-5);
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-lg);
+  background: var(--sf-paper);
+  box-shadow: var(--sf-pop-lg), var(--sf-drop);
+}
+.sf-panel--warm { background: var(--sf-paper-warm); }
+.sf-panel--flat { box-shadow: var(--sf-pop-sm); }
+.sf-tilt-l { transform: rotate(-1.6deg); }
+.sf-tilt-r { transform: rotate(1.6deg); }
+
+/* ---- chips, pills, badges ----------------------------------------------- */
+.sf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: var(--sf-stroke-thin);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-paper-warm);
+  font-family: var(--sf-font-display);
+  font-weight: 700;
+  font-size: var(--sf-size-tiny);
+  letter-spacing: var(--sf-track-loud);
+  text-transform: uppercase;
+}
+.sf-chip--yolk { background: var(--sf-yolk); }
+.sf-chip--mint { background: var(--sf-mint); }
+.sf-chip--pink { background: var(--sf-bubble); color: var(--sf-paper); }
+.sf-chip--grape { background: var(--sf-grape); color: var(--sf-paper); }
+.sf-chip--sky { background: var(--sf-sky); }
+
+.sf-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 0 8px;
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-yolk);
+  box-shadow: var(--sf-pop-sm);
+  font-family: var(--sf-font-display);
+  font-weight: 800;
+  font-size: 19px;
+}
+
+/* ---- stat readouts ------------------------------------------------------ */
+.sf-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 74px;
+}
+.sf-stat small {
+  font-family: var(--sf-font-display);
+  font-size: var(--sf-size-tiny);
+  font-weight: 700;
+  letter-spacing: var(--sf-track-loud);
+  text-transform: uppercase;
+  color: var(--sf-ink-soft);
+}
+.sf-stat b {
+  font-family: var(--sf-font-display);
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- pips (frowns left, hop charges) ------------------------------------ */
+.sf-pips { display: inline-flex; align-items: center; gap: 6px; }
+.sf-pips i {
+  width: 16px;
+  height: 16px;
+  border: var(--sf-stroke-thin);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-pip-face, var(--sf-yolk));
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6);
+  transition: background var(--sf-quick), transform var(--sf-quick);
+}
+.sf-pips i[data-spent='true'] { background: var(--sf-paper-shade); transform: scale(0.78); }
+/* Long meters print a count instead of a wrapping row of pips. */
+.sf-pips b {
+  font-family: var(--sf-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.sf-pips--hop { --sf-pip-face: var(--sf-sky); }
+.sf-pips--frown { --sf-pip-face: var(--sf-bubble); }
+
+/* ---- steering wheel ------------------------------------------------------
+   The flock shares one wheel, so the HUD shows one wheel. It tilts with the
+   lean and prints how many smilies are currently taking the order. */
+.sf-wheel {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 6px;
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-paper);
+  box-shadow: var(--sf-pop-sm);
+}
+.sf-wheel > i {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border: var(--sf-stroke);
+  border-radius: 50%;
+  background: var(--sf-grape);
+  box-shadow: inset 0 -3px 0 rgba(44, 27, 71, 0.25);
+  transition: transform var(--sf-quick);
+}
+/* Three spokes, so the rotation is actually visible. */
+.sf-wheel > i::before,
+.sf-wheel > i::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 3px;
+  height: 100%;
+  background: var(--sf-paper);
+  border-radius: var(--sf-r-pill);
+}
+.sf-wheel > i::before { transform: rotate(60deg); }
+.sf-wheel > i::after { transform: rotate(-60deg); }
+.sf-wheel[data-lean='left'] > i { transform: rotate(-38deg); }
+.sf-wheel[data-lean='right'] > i { transform: rotate(38deg); }
+.sf-wheel[data-lean='none'] > i { transform: rotate(0deg); }
+.sf-wheel > span {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+.sf-wheel small {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sf-ink-soft);
+}
+.sf-wheel b { font-family: var(--sf-font-display); font-size: 17px; white-space: nowrap; }
+.sf-wheel small { white-space: nowrap; }
+/* The arrows either side light up together, never one at a time. */
+.sf-wheel u {
+  font-style: normal;
+  text-decoration: none;
+  font-weight: 800;
+  color: var(--sf-ink-faint);
+  transition: color var(--sf-quick), transform var(--sf-quick);
+}
+.sf-wheel[data-lean='left'] u[data-side='left'],
+.sf-wheel[data-lean='right'] u[data-side='right'] {
+  color: var(--sf-grape);
+  transform: scale(1.35);
+}
+
+/* ---- feature tags ------------------------------------------------------- */
+.sf-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.sf-tags span {
+  padding: 2px 8px;
+  border: var(--sf-stroke-thin);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-paper-warm);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--sf-ink-soft);
+}
+.sf-tags span[data-hot='true'] {
+  background: var(--sf-bubble);
+  border-color: var(--sf-ink);
+  color: var(--sf-paper);
+}
+
+/* ---- meter -------------------------------------------------------------- */
+.sf-meter {
+  position: relative;
+  height: 22px;
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-paper-shade);
+  overflow: hidden;
+}
+.sf-meter i {
+  display: block;
+  height: 100%;
+  width: var(--sf-meter-fill, 0%);
+  background: repeating-linear-gradient(
+    115deg,
+    var(--sf-mint) 0 14px,
+    var(--sf-mint-deep) 14px 28px
+  );
+  transition: width var(--sf-easy);
+}
+.sf-meter b {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--sf-font-display);
+  font-size: var(--sf-size-tiny);
+  font-weight: 800;
+  letter-spacing: var(--sf-track-loud);
+}
+
+/* ---- selectable cards (stage picker, mood picker) ----------------------- */
+.sf-pick {
+  display: block;
+  width: 100%;
+  padding: var(--sf-space-4);
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-md);
+  background: var(--sf-paper);
+  box-shadow: var(--sf-pop-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: transform var(--sf-quick), box-shadow var(--sf-quick), background var(--sf-quick);
+}
+.sf-pick:hover { transform: translateY(-3px) rotate(-0.8deg); box-shadow: var(--sf-pop); }
+.sf-pick[aria-pressed='true'] {
+  background: var(--sf-yolk);
+  box-shadow: var(--sf-pop);
+  transform: rotate(-1deg);
+}
+.sf-pick:focus-visible { outline: 4px solid var(--sf-grape); outline-offset: 3px; }
+
+.sf-segment {
+  display: inline-flex;
+  padding: 5px;
+  gap: 4px;
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-paper-warm);
+  box-shadow: var(--sf-pop-sm);
+}
+.sf-segment button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: var(--sf-r-pill);
+  background: transparent;
+  font-family: var(--sf-font-display);
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background var(--sf-quick), transform var(--sf-quick);
+}
+.sf-segment button[aria-pressed='true'] { background: var(--sf-yolk); box-shadow: var(--sf-pop-sm); transform: translateY(-1px); }
+.sf-segment button:focus-visible { outline: 3px solid var(--sf-grape); outline-offset: 2px; }
+
+/* ---- the mascot --------------------------------------------------------- */
+.sf-face {
+  position: relative;
+  display: inline-block;
+  width: var(--sf-face-size, 54px);
+  height: var(--sf-face-size, 54px);
+  border: var(--sf-stroke);
+  border-radius: var(--sf-r-pill);
+  background: radial-gradient(circle at 34% 30%, #fff2b8 0 18%, var(--sf-yolk) 55%, var(--sf-yolk-deep) 100%);
+  box-shadow: var(--sf-pop-sm);
+}
+.sf-face::before,
+.sf-face::after {
+  content: '';
+  position: absolute;
+  top: 32%;
+  width: 12%;
+  height: 17%;
+  border-radius: var(--sf-r-pill);
+  background: var(--sf-ink);
+}
+.sf-face::before { left: 27%; }
+.sf-face::after { right: 27%; }
+.sf-face i {
+  position: absolute;
+  left: 26%;
+  bottom: 22%;
+  width: 48%;
+  height: 26%;
+  border: 0 solid var(--sf-ink);
+  border-bottom-width: var(--sf-stroke-width);
+  border-radius: 0 0 var(--sf-r-pill) var(--sf-r-pill);
+}
+.sf-face--sad i { bottom: 14%; transform: rotate(180deg); }
+/* Bruised: duller, frowning, wearing a plaster. Still in the game. */
+.sf-face--hurt {
+  background:
+    radial-gradient(ellipse at 26% 68%, rgba(192, 132, 252, 0.75) 0 16%, transparent 17%),
+    radial-gradient(circle at 34% 30%, #ffe6d0 0 18%, #e8b46a 55%, #b98436 100%);
+}
+.sf-face--hurt i { bottom: 14%; transform: rotate(180deg); }
+.sf-face--rock {
+  background: radial-gradient(circle at 34% 30%, #c3c8db 0 18%, var(--sf-rock) 55%, var(--sf-rock-deep) 100%);
+  border-radius: 46% 54% 52% 48% / 50% 46% 54% 50%;
+}
+.sf-face--rock::before, .sf-face--rock::after, .sf-face--rock i { display: none; }
+
+/* ---- callouts ----------------------------------------------------------- */
+.sf-callout {
+  display: flex;
+  gap: var(--sf-space-3);
+  align-items: flex-start;
+  padding: var(--sf-space-3) var(--sf-space-4);
+  border: var(--sf-stroke-thin);
+  border-radius: var(--sf-r-md);
+  background: var(--sf-paper-warm);
+  font-weight: 600;
+}
+.sf-callout--tip { background: #e8fbf2; border-color: var(--sf-mint-deep); }
+.sf-callout--oops { background: #ffe9f0; border-color: var(--sf-bubble-deep); }
+
+.sf-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  height: 32px;
+  padding: 0 8px;
+  border: var(--sf-stroke-thin);
+  border-radius: var(--sf-r-sm);
+  background: var(--sf-paper);
+  box-shadow: var(--sf-pop-sm);
+  font-family: var(--sf-font-display);
+  font-weight: 800;
+  font-size: 14px;
+}
+
+/* ---- motion helpers ----------------------------------------------------- */
+.sf-anim-wobble { animation: sf-wobble 3.4s ease-in-out infinite; }
+.sf-anim-bob { animation: sf-bob 2.6s ease-in-out infinite; }
+.sf-anim-pop { animation: sf-pop-in 340ms var(--sf-boing) both; }
+.sf-anim-jelly { animation: sf-jelly 460ms var(--sf-boing); }
+
+.sf-stack { display: flex; flex-direction: column; gap: var(--sf-space-3); }
+.sf-row { display: flex; align-items: center; gap: var(--sf-space-3); flex-wrap: wrap; }
+.sf-spread { display: flex; align-items: center; justify-content: space-between; gap: var(--sf-space-3); }
+.sf-visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}

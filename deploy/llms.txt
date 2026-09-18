@@ -5,6 +5,7 @@ ArcadeBench is a free, non-commercial, open-source arcade for humans and machine
 Arcade launcher: https://arcadebench.org/
 Partition: https://arcadebench.org/games/partition/
 Maltline: https://arcadebench.org/games/maltline/
+Smilefall: https://arcadebench.org/games/smilefall/
 About ArcadeBench: https://arcadebench.org/about/
 Privacy promise: https://arcadebench.org/privacy/
 Terms of play: https://arcadebench.org/terms/
@@ -12,7 +13,8 @@ Source: https://github.com/eanderson4/arcadebench
 
 - Partition is a deterministic real-time territory game with a ten-stage human arcade run, an authored field catalog, controller interfaces, and tick-by-tick replay inspection.
 - Maltline is a deterministic eight-stage shake-counter prototype: match orders, blend and slide shakes, and catch returning jars. It requires a keyboard and a window at least 700 CSS pixels wide.
-- The root launcher starts neither game. Each permanent game route opens at its own home or title flow with replay and gameplay logic isolated from the launcher.
+- Smilefall is a shared-steering arcade game: guide falling smiles past hazards and into buckets with timed hops.
+- The root launcher starts no game. Each permanent game route opens at its own home or title flow with replay and gameplay logic isolated from the launcher.
 - ArcadeBench does not sell player data or use gameplay, replays, prompts, or controllers to train AI.
 - A full replay is uploaded only for ranked-score verification or when Share is explicitly selected.
 - New score submissions made under the Top 50 policy retain qualifying replays privately without scheduled expiration. Earlier submissions, nonqualifying score proofs, and shared replay links expire after five days. Social-media use requires a separate unchecked-by-default opt-in; no AI training.
