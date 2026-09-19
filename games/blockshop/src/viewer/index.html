@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#274e56" />
+    <meta name="description" content="Blockshop is a free ArcadeBench brick breaker with hand-built racks and visible power blocks." />
+    <meta property="og:title" content="Blockshop — ArcadeBench" />
+    <meta property="og:description" content="Keep the bearing in the shop and clear eight hand-built racks." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ArcadeBench" />
+    <meta property="og:url" content="https://arcadebench.org/games/blockshop/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="canonical" href="https://arcadebench.org/games/blockshop/" />
+    <title>Blockshop — ArcadeBench</title>
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-screen="home">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ArcadeBench home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" /></svg>
+        <b>ARCADEBENCH</b><i>/</i><span>BLOCKSHOP</span>
+      </a>
+      <button id="sound-toggle" class="small-button" type="button" aria-pressed="true">SOUND ON</button>
+    </header>
+
+    <main>
+      <section id="home-screen" class="screen home" aria-labelledby="home-title">
+        <div class="home-copy">
+          <p class="kicker"><span>New rack ready</span> · Single player</p>
+          <h1 id="home-title" tabindex="-1"><span>BLOCK</span><em>SHOP</em></h1>
+          <p class="lede">Keep the steel bearing above the tray. Break every painted and wooden block. Catch the labeled tools that fall out.</p>
+          <button id="start-button" class="start-button" type="button"><span>START THE RUN</span><small>Eight racks · Three balls</small></button>
+          <div class="controls-card" aria-label="Controls">
+            <span><kbd>←</kbd><kbd>→</kbd> Move tray</span>
+            <span><kbd>SPACE</kbd> Launch</span>
+          </div>
+        </div>
+
+        <div class="preview-wrap" aria-label="Blockshop gameplay preview">
+          <div class="shop-label"><span>WORK ORDER 04</span><b>SPLIT SHIFT</b></div>
+          <canvas id="preview-canvas" width="1200" height="760" aria-label="Animated preview of Blockshop"></canvas>
+          <span class="preview-note">Actual game rules · live preview</span>
+        </div>
+
+        <div class="power-shelf" aria-label="Tools hidden in labeled blocks">
+          <p>TOOLS IN THE RACK</p>
+          <ul>
+            <li data-power="wide"><b>↔</b><span>WIDE<small>Longer tray</small></span></li>
+            <li data-power="slow"><b>≋</b><span>SLOW<small>Steady bearing</small></span></li>
+            <li data-power="multi"><b>×3</b><span>MULTI<small>Three in play</small></span></li>
+            <li data-power="sticky"><b>●</b><span>GLUE<small>Catch & release</small></span></li>
+            <li data-power="heavy"><b>◆</b><span>HEAVY<small>Drive through</small></span></li>
+            <li data-power="extra"><b>+1</b><span>BALL<small>One more chance</small></span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="play-screen" class="screen play" aria-label="Blockshop game">
+        <header class="hud">
+          <button id="leave-button" class="small-button back-button" type="button">← ARCADEBENCH</button>
+          <div class="stage-name"><small id="stage-number">RACK 01 / 08</small><b id="stage-title">First Cut</b></div>
+          <div class="hud-stat"><small>SCORE</small><b id="score">000000</b></div>
+          <div class="hud-stat"><small>COMBO</small><b id="combo">×0</b></div>
+          <div class="hud-stat balls-stat"><small>BALLS</small><span id="lives" aria-label="3 balls"></span></div>
+          <button id="pause-button" class="small-button" type="button">PAUSE</button>
+        </header>
+
+        <div class="game-layout">
+          <div class="cabinet-frame">
+            <div class="frame-screws" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <canvas id="game-canvas" width="1200" height="760" tabindex="0" aria-label="Blockshop playfield"></canvas>
+
+            <div id="ready-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ready-title">
+              <div class="overlay-card">
+                <p id="ready-number" class="kicker">Rack 01 of 08</p>
+                <h2 id="ready-title">First Cut</h2>
+                <p id="ready-lesson">Clear the painted blocks. Keep the bearing above the tray.</p>
+                <div class="material-key"><span><i class="paint-chip"></i> Paint · 1 hit</span><span><i class="wood-chip"></i> Wood · 2 hits</span><span><i class="steel-chip"></i> Steel · stays put</span></div>
+                <button id="ready-button" class="start-button" type="button"><span>OPEN THE RACK</span><small>Then press Action to launch</small></button>
+              </div>
+            </div>
+
+            <div id="pause-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
+              <div class="overlay-card small-card">
+                <p class="kicker">Tools down</p>
+                <h2 id="pause-title">Paused</h2>
+                <button id="resume-button" class="start-button" type="button"><span>BACK TO WORK</span></button>
+                <button id="pause-leave-button" class="text-button" type="button">Leave this run</button>
+              </div>
+            </div>
+
+            <div id="result-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="result-title">
+              <div class="overlay-card result-card">
+                <p id="result-kicker" class="kicker">Rack cleared</p>
+                <h2 id="result-title">Clean work.</h2>
+                <p id="result-copy">The next rack is ready.</p>
+                <dl class="result-stats"><div><dt>Score</dt><dd id="result-score">0</dd></div><div><dt>Best combo</dt><dd id="result-combo">0</dd></div><div><dt>Balls</dt><dd id="result-lives">3</dd></div></dl>
+                <button id="result-button" class="start-button" type="button"><span>NEXT RACK</span></button>
+                <button id="result-home-button" class="text-button" type="button">Back to title</button>
+              </div>
+            </div>
+          </div>
+
+          <aside class="tool-board" aria-label="Current power effects">
+            <p class="tool-board__title">ON THE BENCH</p>
+            <div id="active-powers" class="active-powers"><p class="empty-tools">Catch a labeled tag<br />to put it to work.</p></div>
+            <div class="work-order"><small>CURRENT ORDER</small><b id="blocks-left">0 BLOCKS</b><i><span id="progress-bar"></span></i></div>
+            <p class="control-reminder"><b>← → / A D</b> MOVE<br /><b>ENTER / SPACE</b> ACTION<br /><b>P</b> PAUSE</p>
+          </aside>
+        </div>
+
+        <div class="touch-controls" aria-label="Touch controls">
+          <button type="button" data-control="left" aria-label="Move left">←</button>
+          <button type="button" data-control="action">ACTION</button>
+          <button type="button" data-control="right" aria-label="Move right">→</button>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

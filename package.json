@@ -29,6 +29,7 @@
     "bench": "npm run bench --workspace=@arcadebench/cli --",
     "dev:partition": "npm run dev --workspace=@arcadebench/partition",
     "dev:board": "npm run dev --workspace=@arcadebench/board",
+    "dev:blockshop": "npm run dev --workspace=@arcadebench/blockshop",
     "preview:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler dev",
     "deploy:site": "npm run build:site && WRANGLER_LOG_PATH=.wrangler/logs wrangler deploy --keep-vars",
     "db:migrate:local": "node scripts/prepare-production-migrations.mjs && wrangler d1 migrations apply arcadebench-platform --local",
