@@ -32,7 +32,8 @@ at contact adds a small amount of English.
 - **Multiball** adds two live bearings.
 - **Glue** catches the next two tray returns.
 - **Heavy** lets bearings pass through breakable blocks for nine seconds.
-- **Extra** adds one ball, capped at five.
+- **Extra** adds one ball, capped at five. The first appears in Rack 2 so a
+  new player can carry an additional chance into the harder materials.
 
 Breaking a power block releases a labeled tag. The effect activates only when
 the tray catches that tag. Missing a tag has no penalty.

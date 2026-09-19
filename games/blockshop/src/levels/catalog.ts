@@ -47,10 +47,10 @@ export const BLOCKSHOP_STAGES: readonly BlockshopStage[] = [
     '11.1111.11',
     '..111111..',
   ]),
-  stage(2, 'wide-load', 'Wide Load', 'The arrow block drops a wider tray. Catch the labeled tag.', '#f2bd3f', 10, [
+  stage(2, 'wide-load', 'Wide Load', 'The arrow widens the tray. The +1 tag adds another ball.', '#f2bd3f', 10, [
     '.11111111.',
     '11.1111.11',
-    '..11WW11..',
+    '..11WE11..',
   ]),
   stage(3, 'hard-grain', 'Hard Grain', 'Dark hardwood needs two hits. The wave tag slows every ball.', '#68a879', 11, [
     '.22111122.',

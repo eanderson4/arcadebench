@@ -29,7 +29,7 @@ The run contains eight stages and starts with three balls. Score and remaining
 balls carry between stages. Each stage adds one readable material or power:
 
 1. **First Cut** — painted one-hit blocks.
-2. **Wide Load** — the wide-tray power.
+2. **Wide Load** — the wide-tray power and an early extra ball.
 3. **Hard Grain** — two-hit hardwood and slow motion.
 4. **Split Shift** — multiball and steel reflectors.
 5. **Steel Rack** — unbreakable routing and extra balls.
