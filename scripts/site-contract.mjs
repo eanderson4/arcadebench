@@ -160,7 +160,7 @@ export const SITE_CONTRACT = deepFreeze({
     ['Content-Security-Policy', "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; media-src 'self'"],
   ],
   limits: {
-    maximumFiles: 48,
+    maximumFiles: 56,
     maximumTotalBytes: 2 * 1024 * 1024,
     maximumBytesByExtension: {
       '': 32 * 1024,

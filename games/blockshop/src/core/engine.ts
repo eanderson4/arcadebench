@@ -234,6 +234,7 @@ export class BlockshopEngine {
       if (this.state.lives > 0) {
         this.state.balls.push(createBall(this.nextBallId++, this.state.paddleX));
         this.state.status = 'ready';
+        this.previousAction = false;
       }
     }
   }

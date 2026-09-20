@@ -41,6 +41,25 @@ describe('BlockshopEngine', () => {
     expect(next.state.tick).toBe(firstTick + 1);
   });
 
+  it('carries a held Action into the replacement ball after a miss', () => {
+    const engine = new BlockshopEngine(tinyStage());
+    engine.step({ move: -1, action: true });
+
+    let replacementReady = false;
+    for (let tick = 0; tick < 600; tick += 1) {
+      const result = engine.step({ move: -1, action: true });
+      if (result.state.lives === 2 && result.state.balls[0]?.stuck) {
+        replacementReady = true;
+        break;
+      }
+    }
+
+    expect(replacementReady).toBe(true);
+    const relaunched = engine.step({ move: -1, action: true });
+    expect(relaunched.events.some((event) => event.type === 'ball_launched')).toBe(true);
+    expect(relaunched.state.balls[0]?.stuck).toBe(false);
+  });
+
   it('gives steel no role in the stage-clear count', () => {
     const stage = tinyStage({
       bricks: [
