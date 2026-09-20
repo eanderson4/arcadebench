@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "build:site": "npm run build --workspace=@arcadebench/partition && npm run build --workspace=@arcadebench/maltline && npm run build --workspace=@arcadebench/smilefall && node scripts/build-site.mjs",
+    "build:site": "npm run build --workspace=@arcadebench/partition && npm run build --workspace=@arcadebench/maltline && npm run build --workspace=@arcadebench/smilefall && npm run build --workspace=@arcadebench/blockshop && node scripts/build-site.mjs",
     "test:site": "node scripts/built-site-smoke.mjs",
     "test:site:wrangler-local": "node scripts/wrangler-local-smoke.mjs",
     "test:visual:site": "playwright test --config=playwright.site.config.ts",

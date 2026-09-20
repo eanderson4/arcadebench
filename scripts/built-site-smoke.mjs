@@ -188,6 +188,7 @@ const partition = htmlByRoute.get('/games/partition/');
 const maltline = htmlByRoute.get('/games/maltline/');
 const about = htmlByRoute.get('/about/');
 const smilefall = htmlByRoute.get('/games/smilefall/');
+const blockshop = htmlByRoute.get('/games/blockshop/');
 check(smilefall && !/STICKER KIT|href=["'](?:\.\/)?kit\//iu.test(smilefall), 'Smilefall exposes a development kit', failures);
 check(launcher !== partition, 'launcher is an accidental copy of Partition', failures);
 check(['partition', 'maltline', 'smilefall'].every(game => launcher.includes(`href="/games/${game}/"`)),
@@ -196,7 +197,8 @@ check(launcher.includes('href="#games"') && launcher.includes('href="/about/"'),
   'launcher primary navigation is not Games plus About', failures);
 check(!launcher.includes('href="/partition/"') && !launcher.includes('href="/maltline/"'),
   'launcher still links a retired game route', failures);
-check(partition.includes('href="/assets/') && maltline.includes('href="/maltline/assets/'),
+check(partition.includes('href="/assets/') && maltline.includes('href="/maltline/assets/')
+  && blockshop.includes('href="/blockshop/assets/'),
   'game routes lost their shipped asset prefixes', failures);
 
 // The About page is the published mission statement: one self-contained HTML
@@ -247,7 +249,7 @@ check(!/\son[a-z]+\s*=|javascript\s*:/iu.test(launcher),
   'launcher contains an inline event handler or JavaScript URL', failures);
 check(!/(?:\/api\/|\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|localStorage|sessionStorage|indexedDB|document\s*\.\s*cookie)/u.test(launcher),
   'launcher contains a network, API, or persistent-storage surface', failures);
-check(!/(?:\/assets\/|\/maltline\/assets\/|\/smilefall\/assets\/)[A-Za-z0-9._-]+/u.test(launcher),
+check(!/(?:\/assets\/|\/maltline\/assets\/|\/smilefall\/assets\/|\/blockshop\/assets\/)[A-Za-z0-9._-]+/u.test(launcher),
   'launcher imports a game JavaScript or stylesheet asset', failures);
 check(launcher.includes('href="/arcade.css"'), 'launcher lacks its site-owned stylesheet', failures);
 check(SITE_CONTRACT.staticFiles.some(({ output, source }) => (
