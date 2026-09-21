@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import {
+  PADDLE_Y,
+  POWER_DROP_HEIGHT,
+  POWER_DROP_SPEED,
+  POWER_DROP_WIDTH,
+} from '../src/core/constants';
 import { BlockshopEngine } from '../src/core/engine';
-import type { BlockshopStage } from '../src/core/types';
+import type { BlockshopStage, BlockshopState } from '../src/core/types';
 import { BLOCKSHOP_STAGES } from '../src/levels';
 
 function tinyStage(overrides: Partial<BlockshopStage> = {}): BlockshopStage {
@@ -14,6 +20,10 @@ function tinyStage(overrides: Partial<BlockshopStage> = {}): BlockshopStage {
     bricks: [{ id: 'only', column: 5, row: 0, material: 'paint', hits: 1, power: null }],
     ...overrides,
   };
+}
+
+function mutableState(engine: BlockshopEngine): BlockshopState {
+  return (engine as unknown as { state: BlockshopState }).state;
 }
 
 describe('BlockshopEngine', () => {
@@ -68,6 +78,68 @@ describe('BlockshopEngine', () => {
       ],
     });
     expect(new BlockshopEngine(stage).snapshot().blocksRemaining).toBe(1);
+  });
+
+  it('separates the bearing after one hit on a hardwood block', () => {
+    const engine = new BlockshopEngine(tinyStage({
+      bricks: [{ id: 'wood', column: 7, row: 0, material: 'hardwood', hits: 2, power: null }],
+    }));
+    let contact = null as ReturnType<BlockshopEngine['step']> | null;
+    for (let tick = 0; tick < 120; tick += 1) {
+      const result = engine.step({ move: 0, action: tick === 0 });
+      if (result.events.some((event) => event.type === 'brick_hit')) {
+        contact = result;
+        break;
+      }
+    }
+
+    expect(contact).not.toBeNull();
+    expect(contact!.events.filter((event) => event.type === 'brick_hit')).toHaveLength(1);
+    expect(contact!.state.bricks[0]).toMatchObject({ alive: true, hitsRemaining: 1 });
+    const separated = engine.step({ move: 0, action: false });
+    expect(separated.events.some((event) => event.type === 'brick_hit')).toBe(false);
+  });
+
+  it('reflects away from steel without repeated contact', () => {
+    const engine = new BlockshopEngine(tinyStage({
+      bricks: [
+        { id: 'steel', column: 7, row: 0, material: 'steel', hits: 99, power: null },
+        { id: 'target', column: 0, row: 6, material: 'paint', hits: 1, power: null },
+      ],
+    }));
+    let contact = null as ReturnType<BlockshopEngine['step']> | null;
+    for (let tick = 0; tick < 120; tick += 1) {
+      const result = engine.step({ move: 0, action: tick === 0 });
+      if (result.events.some((event) => event.type === 'brick_hit' && event.brickId === 'steel')) {
+        contact = result;
+        break;
+      }
+    }
+
+    expect(contact).not.toBeNull();
+    expect(contact!.events.filter((event) => event.type === 'brick_hit' && event.brickId === 'steel')).toHaveLength(1);
+    const contactY = contact!.state.balls[0]!.y;
+    const separated = engine.step({ move: 0, action: false });
+    expect(separated.events.some((event) => event.type === 'brick_hit' && event.brickId === 'steel')).toBe(false);
+    expect(separated.state.balls[0]!.y).toBeGreaterThan(contactY);
+  });
+
+  it('collects a power tag when its visible edge overlaps the tray', () => {
+    const engine = new BlockshopEngine(tinyStage());
+    const state = mutableState(engine);
+    const paddleLeft = state.paddleX - state.paddleWidth / 2;
+    state.powerDrops = [{
+      id: 1,
+      kind: 'extra',
+      x: paddleLeft - POWER_DROP_WIDTH / 2 + 1,
+      y: PADDLE_Y - POWER_DROP_HEIGHT / 2 - POWER_DROP_SPEED,
+      vy: POWER_DROP_SPEED,
+    }];
+
+    const result = engine.step({ move: 0, action: false });
+    expect(result.events).toContainEqual({ tick: 1, type: 'power_collected', power: 'extra' });
+    expect(result.state.lives).toBe(4);
+    expect(result.state.powerDrops).toHaveLength(0);
   });
 
   it('starts every catalog stage with its authored number of breakable blocks', () => {

@@ -14,7 +14,8 @@ import {
   PADDLE_SPEED,
   PADDLE_WIDE_WIDTH,
   PADDLE_Y,
-  POWER_DROP_SIZE,
+  POWER_DROP_HEIGHT,
+  POWER_DROP_WIDTH,
   POWER_DROP_SPEED,
   SLOW_DURATION,
   WIDE_DURATION,
@@ -173,15 +174,16 @@ export class BlockshopEngine {
     const survivors: PowerDropState[] = [];
     for (const drop of this.state.powerDrops) {
       drop.y += drop.vy;
-      const half = POWER_DROP_SIZE / 2;
-      const caught = drop.y + half >= PADDLE_Y
-        && drop.y - half <= PADDLE_Y + PADDLE_HEIGHT
-        && drop.x + half >= paddleLeft
-        && drop.x - half <= paddleRight;
+      const halfWidth = POWER_DROP_WIDTH / 2;
+      const halfHeight = POWER_DROP_HEIGHT / 2;
+      const caught = drop.y + halfHeight >= PADDLE_Y
+        && drop.y - halfHeight <= PADDLE_Y + PADDLE_HEIGHT
+        && drop.x + halfWidth >= paddleLeft
+        && drop.x - halfWidth <= paddleRight;
       if (caught) {
         this.applyPower(drop.kind);
         events.push({ tick: this.state.tick, type: 'power_collected', power: drop.kind });
-      } else if (drop.y - half < FIELD_HEIGHT) {
+      } else if (drop.y - halfHeight < FIELD_HEIGHT) {
         survivors.push(drop);
       }
     }
@@ -309,15 +311,52 @@ export class BlockshopEngine {
         const wasBelow = previousY - ball.radius >= brick.y + brick.height;
         const wasLeft = previousX + ball.radius <= brick.x;
         const wasRight = previousX - ball.radius >= brick.x + brick.width;
-        if (wasAbove || wasBelow) ball.vy *= -1;
-        else if (wasLeft || wasRight) ball.vx *= -1;
-        else ball.vy *= -1;
+        if (wasAbove) {
+          ball.y = brick.y - ball.radius;
+          ball.vy = -Math.abs(ball.vy);
+        } else if (wasBelow) {
+          ball.y = brick.y + brick.height + ball.radius;
+          ball.vy = Math.abs(ball.vy);
+        } else if (wasLeft) {
+          ball.x = brick.x - ball.radius;
+          ball.vx = -Math.abs(ball.vx);
+        } else if (wasRight) {
+          ball.x = brick.x + brick.width + ball.radius;
+          ball.vx = Math.abs(ball.vx);
+        } else {
+          this.resolveEmbeddedBrickCollision(ball, brick);
+        }
       }
 
       if (brick.material === 'steel') return;
       brick.hitsRemaining = penetrates ? 0 : brick.hitsRemaining - 1;
       if (brick.hitsRemaining <= 0) this.breakBrick(brick, events);
       return;
+    }
+  }
+
+  private resolveEmbeddedBrickCollision(ball: BallState, brick: BrickState): void {
+    const exits = [
+      { distance: Math.abs(ball.y - (brick.y - ball.radius)), side: 'top' },
+      { distance: Math.abs(ball.y - (brick.y + brick.height + ball.radius)), side: 'bottom' },
+      { distance: Math.abs(ball.x - (brick.x - ball.radius)), side: 'left' },
+      { distance: Math.abs(ball.x - (brick.x + brick.width + ball.radius)), side: 'right' },
+    ] as const;
+    const exit = exits.reduce((nearest, candidate) => (
+      candidate.distance < nearest.distance ? candidate : nearest
+    ));
+    if (exit.side === 'top') {
+      ball.y = brick.y - ball.radius;
+      ball.vy = -Math.abs(ball.vy);
+    } else if (exit.side === 'bottom') {
+      ball.y = brick.y + brick.height + ball.radius;
+      ball.vy = Math.abs(ball.vy);
+    } else if (exit.side === 'left') {
+      ball.x = brick.x - ball.radius;
+      ball.vx = -Math.abs(ball.vx);
+    } else {
+      ball.x = brick.x + brick.width + ball.radius;
+      ball.vx = Math.abs(ball.vx);
     }
   }
 

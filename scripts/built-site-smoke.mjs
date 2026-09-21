@@ -53,12 +53,16 @@ function htmlValue(contents, pattern) {
 function inspectHtml(contents, route, titles, failures) {
   const title = htmlValue(contents, /<title>([^<]+)<\/title>/u);
   const description = htmlValue(contents, /<meta\s+name="description"\s+content="([^"]+)"\s*\/?>/u);
+  const robots = htmlValue(contents, /<meta\s+name="robots"\s+content="([^"]+)"\s*\/?>/u);
   const actualCanonical = htmlValue(contents, /<link\s+rel="canonical"\s+href="([^"]+)"\s*\/?>/u);
   check(title !== null && title.trim().length > 0, `${route.pathname} lacks a title`, failures);
   check(description !== null && description.trim().length > 0, `${route.pathname} lacks a description`, failures);
   check(actualCanonical === route.canonical, `${route.pathname} canonical was ${actualCanonical ?? 'missing'}`, failures);
   check((contents.match(/<link\s+rel="canonical"/gu) ?? []).length === 1,
     `${route.pathname} must contain exactly one canonical`, failures);
+  const noindex = robots?.split(',').some((directive) => directive.trim().toLowerCase() === 'noindex') ?? false;
+  check(route.indexable ? !noindex : noindex,
+    `${route.pathname} ${route.indexable ? 'must be indexable' : 'must declare noindex'}`, failures);
   if (title !== null) {
     check(!titles.has(title), `${route.pathname} reuses title ${title}`, failures);
     titles.add(title);

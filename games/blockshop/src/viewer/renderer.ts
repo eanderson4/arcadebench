@@ -4,7 +4,8 @@ import {
   FIELD_WIDTH,
   PADDLE_HEIGHT,
   PADDLE_Y,
-  POWER_DROP_SIZE,
+  POWER_DROP_HEIGHT,
+  POWER_DROP_WIDTH,
 } from '../core/constants';
 import type {
   BlockshopEvent,
@@ -231,7 +232,13 @@ export class BlockshopRenderer {
       context.fillStyle = POWER_COLOR[drop.kind];
       context.shadowColor = 'rgba(34, 44, 40, .32)';
       context.shadowOffsetY = 5;
-      this.roundRect(-55, -POWER_DROP_SIZE / 2, 110, POWER_DROP_SIZE, 4);
+      this.roundRect(
+        -POWER_DROP_WIDTH / 2,
+        -POWER_DROP_HEIGHT / 2,
+        POWER_DROP_WIDTH,
+        POWER_DROP_HEIGHT,
+        4,
+      );
       context.fill();
       context.shadowColor = 'transparent';
       context.strokeStyle = '#17383e';

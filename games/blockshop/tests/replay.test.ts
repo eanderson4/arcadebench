@@ -37,4 +37,49 @@ describe('Blockshop replays', () => {
     };
     expect(() => replayBlockshop(BLOCKSHOP_STAGES[0]!, replay)).toThrow(/does not match/);
   });
+
+  it('rejects controls outside the replay protocol', () => {
+    const stage = BLOCKSHOP_STAGES[0]!;
+    const base: BlockshopReplay = {
+      schema: 1,
+      stageId: stage.id,
+      startingScore: 0,
+      startingLives: 3,
+      inputs: [],
+    };
+    const invalidMove = {
+      ...base,
+      inputs: [{ move: 999, action: false }],
+    } as unknown as BlockshopReplay;
+    const invalidAction = {
+      ...base,
+      inputs: [{ move: 0, action: 1 }],
+    } as unknown as BlockshopReplay;
+
+    expect(() => replayBlockshop(stage, invalidMove)).toThrow(/invalid control input/);
+    expect(() => replayBlockshop(stage, invalidAction)).toThrow(/invalid control input/);
+  });
+
+  it('rejects invalid starting score and ball counts', () => {
+    const stage = BLOCKSHOP_STAGES[0]!;
+    const base: BlockshopReplay = {
+      schema: 1,
+      stageId: stage.id,
+      startingScore: 0,
+      startingLives: 3,
+      inputs: [],
+    };
+    const invalidReplays = [
+      { ...base, startingScore: -1 },
+      { ...base, startingScore: Number.NaN },
+      { ...base, startingScore: 1_000_000_001 },
+      { ...base, startingLives: 0 },
+      { ...base, startingLives: 6 },
+      { ...base, startingLives: 2.5 },
+    ];
+
+    for (const replay of invalidReplays) {
+      expect(() => replayBlockshop(stage, replay)).toThrow(/invalid starting/);
+    }
+  });
 });
