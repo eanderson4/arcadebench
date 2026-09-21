@@ -202,16 +202,15 @@ export class RollSignalEngine {
     this.resolveSolids(previous, events);
     const onDeck = this.deckAt(this.position) !== undefined;
     if (!onDeck) this.resolveFall(events);
-    else {
+
+    if (this.tickNumber + this.penaltyTicks >= this.course.timeLimitTicks) {
+      this.status = 'time_up';
+      events.push({ tick: this.tickNumber, type: 'time_expired' });
+    } else if (onDeck) {
       this.resolveCheckpoint(events);
       this.resolveRings(events);
       this.resolveRelayPads(events);
       this.resolveGoal(events);
-    }
-
-    if (this.status === 'running' && this.tickNumber + this.penaltyTicks >= this.course.timeLimitTicks) {
-      this.status = 'time_up';
-      events.push({ tick: this.tickNumber, type: 'time_expired' });
     }
     return { state: this.snapshot(), events };
   }

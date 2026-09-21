@@ -176,6 +176,8 @@ canvas { display: block; width: 100%; height: 100%; }
 .course-diagram i { background: var(--cobalt); box-shadow: 0 0 0 5px rgba(85,119,226,.16); }
 .course-diagram span { width: 150px; height: 5px; background: linear-gradient(90deg,var(--cobalt),var(--teal),var(--brass)); transform: skewY(-8deg); }
 .course-diagram b { border: 6px solid var(--brass); }
+.course-start-button { min-width: 180px; margin-top: 8px; background: var(--cobalt); border-color: var(--cobalt); color: #fff; }
+.course-start-button:hover { background: #3f60c8; color: #fff; }
 .panel-button { min-height: 42px; padding: 0 20px; border: 1px solid var(--ink); border-radius: 4px; background: transparent; color: var(--ink); font: 900 10px ui-monospace, monospace; letter-spacing: .08em; cursor: pointer; }
 .panel-button:hover { background: var(--ink); color: var(--bone); }
 
@@ -232,11 +234,12 @@ canvas { display: block; width: 100%; height: 100%; }
   .brace-meter { width: 180px; margin: 0 auto; }
   .touch-controls { display: flex; align-items: center; justify-content: space-between; padding: 8px 18px; background: #171a3b; border-top: 1px solid var(--line); }
   .touch-pad { width: 96px; height: 86px; display: grid; grid-template: repeat(3,1fr)/repeat(3,1fr); }
-  .touch-pad button, .touch-brace { border: 1px solid var(--line); background: rgba(242,234,215,.08); color: var(--bone); touch-action: none; }
+  .touch-pad button, .touch-pause, .touch-brace { border: 1px solid var(--line); background: rgba(242,234,215,.08); color: var(--bone); touch-action: none; }
   .touch-pad button[data-direction="up"] { grid-area: 1/2; }
   .touch-pad button[data-direction="left"] { grid-area: 2/1; }
   .touch-pad button[data-direction="right"] { grid-area: 2/3; }
   .touch-pad button[data-direction="down"] { grid-area: 3/2; }
+  .touch-pause { min-height: 40px; padding: 0 13px; border-radius: 4px; font: 900 9px ui-monospace,monospace; letter-spacing: .08em; }
   .touch-brace { width: 78px; height: 78px; border: 3px solid var(--teal); border-radius: 50%; font: 900 10px ui-monospace,monospace; letter-spacing: .08em; }
 }
 

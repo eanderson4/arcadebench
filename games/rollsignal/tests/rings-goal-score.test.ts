@@ -40,3 +40,18 @@ it('allows courses with no tone rings to finish normally', () => {
   expect(result.state.status).toBe('won');
   expect(result.state.score).toBe(FINISH_SCORE - 50);
 });
+
+it('expires before awarding a goal reached on the exact deadline', () => {
+  const source = ROLLSIGNAL_COURSES[0]!;
+  const engine = new RollSignalEngine({
+    ...source,
+    timeLimitTicks: 1,
+    parTicks: 1,
+    referenceMaxTicks: 1,
+    goal: { ...source.goal, x: source.spawn.x, y: source.spawn.y },
+  });
+  const result = engine.step({ steerX: 0, steerY: 0, brace: false });
+  expect(result.state.status).toBe('time_up');
+  expect(result.state.score).toBe(0);
+  expect(result.events).toEqual([{ tick: 1, type: 'time_expired' }]);
+});

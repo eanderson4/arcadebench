@@ -65,6 +65,9 @@ export function validateRollSignalCourse(course: RollSignalCourse): CourseValida
   for (const ring of course.rings) {
     registerId(ring.id, 'ring');
     checkCircle(course, ring, `ring ${ring.id}`, errors);
+    if (ring.points !== undefined && (!Number.isSafeInteger(ring.points) || ring.points < 0 || ring.points > 1_000_000)) {
+      errors.push(`ring ${ring.id} points must be a non-negative safe integer no greater than 1000000`);
+    }
   }
   registerId(course.goal.id, 'goal');
   checkCircle(course, course.goal, `goal ${course.goal.id}`, errors);
@@ -72,6 +75,7 @@ export function validateRollSignalCourse(course: RollSignalCourse): CourseValida
   for (const zone of course.zones ?? []) {
     registerId(zone.id, 'zone');
     checkRectangle(zone, `zone ${zone.id}`, errors);
+    if (zone.kind !== 'wind' && zone.kind !== 'conveyor') errors.push(`zone ${zone.id} has an unknown kind`);
     if (!Number.isInteger(zone.forceX) || !Number.isInteger(zone.forceY)) {
       errors.push(`zone ${zone.id} force must use integer fixed-point acceleration`);
     }
@@ -87,6 +91,16 @@ export function validateRollSignalCourse(course: RollSignalCourse): CourseValida
     }
     if (obstacle.motion && (!Number.isFinite(obstacle.motion.range) || obstacle.motion.range < 0)) {
       errors.push(`obstacle ${obstacle.id} motion range must be non-negative`);
+    }
+    if (obstacle.motion && obstacle.motion.axis !== 'x' && obstacle.motion.axis !== 'y') {
+      errors.push(`obstacle ${obstacle.id} motion axis must be x or y`);
+    }
+    if (obstacle.motion?.phaseTicks !== undefined && !Number.isInteger(obstacle.motion.phaseTicks)) {
+      errors.push(`obstacle ${obstacle.id} motion phase must use integer ticks`);
+    }
+    if (obstacle.penaltyTicks !== undefined
+      && (!Number.isSafeInteger(obstacle.penaltyTicks) || obstacle.penaltyTicks < 0 || obstacle.penaltyTicks > course.timeLimitTicks)) {
+      errors.push(`obstacle ${obstacle.id} penalty must be a non-negative safe integer no greater than the time limit`);
     }
   }
   const gateIds = new Set((course.gates ?? []).map((gate) => gate.id));

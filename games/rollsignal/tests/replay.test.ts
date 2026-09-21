@@ -26,4 +26,29 @@ describe('versioned bounded replay', () => {
     expect(() => parseRollSignalReplay(JSON.stringify({ ...replay, ticks: [{ ...replay.ticks[0], input: { steerX: 7, steerY: 0, brace: false } }] }))).toThrow(/steerX/);
     expect(() => replayRollSignal({ ...replay, finalState: { ...replay.finalState, score: 99 } })).toThrow(/final state/);
   });
+
+  it('rejects unsafe optional fields embedded in replay courses', () => {
+    const replay = recordRollSignalReplay(getRollSignalCourse('signal-crown'), [IDLE_INPUT]);
+    const malformed = (mutate: (course: typeof replay.course) => void): string => {
+      const copy = structuredClone(replay);
+      mutate(copy.course);
+      return JSON.stringify(copy);
+    };
+
+    expect(() => parseRollSignalReplay(malformed((course) => {
+      course.rings[0]!.points = 'oops' as never;
+    }))).toThrow(/points/);
+    expect(() => parseRollSignalReplay(malformed((course) => {
+      course.zones![0]!.kind = 'lava' as never;
+    }))).toThrow(/kind/);
+    expect(() => parseRollSignalReplay(malformed((course) => {
+      course.obstacles![0]!.penaltyTicks = -1;
+    }))).toThrow(/penalty/);
+    expect(() => parseRollSignalReplay(malformed((course) => {
+      course.obstacles![0]!.motion!.axis = 'z' as never;
+    }))).toThrow(/axis/);
+    expect(() => parseRollSignalReplay(malformed((course) => {
+      course.obstacles![0]!.motion!.phaseTicks = 1.5;
+    }))).toThrow(/phase/);
+  });
 });

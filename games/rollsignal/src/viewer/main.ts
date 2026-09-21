@@ -17,7 +17,9 @@ const replayButton = byId<HTMLButtonElement>('replay-button');
 const soundToggle = byId<HTMLButtonElement>('sound-toggle');
 const leaveButton = byId<HTMLButtonElement>('leave-button');
 const pauseButton = byId<HTMLButtonElement>('pause-button');
+const courseStartButton = byId<HTMLButtonElement>('course-start-button');
 const resumeButton = byId<HTMLButtonElement>('resume-button');
+const touchPauseButton = byId<HTMLButtonElement>('touch-pause');
 const leaveDialog = byId<HTMLDialogElement>('leave-dialog');
 const courseOverlay = byId<HTMLElement>('course-overlay');
 const pauseOverlay = byId<HTMLElement>('pause-overlay');
@@ -149,6 +151,8 @@ function togglePause(force?: boolean): void {
   playMode = shouldPause ? 'paused' : 'playing';
   pauseOverlay.hidden = !shouldPause;
   pauseButton.textContent = shouldPause ? 'RESUME' : 'PAUSE';
+  touchPauseButton.textContent = shouldPause ? 'RESUME' : 'PAUSE';
+  touchPauseButton.setAttribute('aria-pressed', String(shouldPause));
   resetControls();
   if (!shouldPause) gameCanvas.focus({ preventScroll: true });
   announce(shouldPause ? 'Paused.' : 'Course resumed.');
@@ -382,7 +386,9 @@ for (const eventName of ['pointerup', 'pointercancel', 'lostpointercapture']) {
 
 startButton.addEventListener('click', () => { void audio.unlock(); newRun(); });
 replayButton.addEventListener('click', () => { void audio.unlock(); newRun(); });
+courseStartButton.addEventListener('click', startCourse);
 pauseButton.addEventListener('click', () => togglePause());
+touchPauseButton.addEventListener('click', () => togglePause());
 resumeButton.addEventListener('click', () => togglePause(false));
 soundToggle.addEventListener('click', () => {
   soundEnabled = !soundEnabled;
