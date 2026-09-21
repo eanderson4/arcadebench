@@ -25,6 +25,7 @@ export const SITE_CONTRACT = deepFreeze({
     { pathname: '/games/partition/', output: 'games/partition/index.html', source: 'games/partition/dist/src/viewer/index.html', canonical: 'https://arcadebench.org/games/partition/', indexable: true, social: true },
     { pathname: '/games/maltline/', output: 'games/maltline/index.html', source: 'games/maltline/dist/src/viewer/index.html', canonical: 'https://arcadebench.org/games/maltline/', indexable: true, social: true },
     { pathname: '/games/smilefall/', output: 'games/smilefall/index.html', source: 'games/smilefall/dist/src/viewer/index.html', canonical: 'https://arcadebench.org/games/smilefall/', indexable: true, social: true },
+    { pathname: '/games/blockshop/', output: 'games/blockshop/index.html', source: 'games/blockshop/dist/src/viewer/index.html', canonical: 'https://arcadebench.org/games/blockshop/', indexable: false, social: true },
     { pathname: '/about/', output: 'about/index.html', source: 'deploy/about.html', canonical: 'https://arcadebench.org/about/', indexable: true, social: true },
     { pathname: '/privacy/', output: 'privacy/index.html', source: 'deploy/privacy.html', canonical: 'https://arcadebench.org/privacy/', indexable: true, social: false },
     { pathname: '/terms/', output: 'terms/index.html', source: 'deploy/terms.html', canonical: 'https://arcadebench.org/terms/', indexable: true, social: false },
@@ -35,6 +36,7 @@ export const SITE_CONTRACT = deepFreeze({
     { output: 'carousel.js', source: 'deploy/carousel.js' },
     { output: 'covers/smilefall.png', source: 'deploy/covers/smilefall.png' },
     { output: 'smilefall/favicon.svg', source: 'games/smilefall/dist/favicon.svg' },
+    { output: 'blockshop/favicon.svg', source: 'games/blockshop/dist/favicon.svg' },
     { output: 'activity.js', source: 'deploy/activity.js' },
     { output: 'arcade.css', source: 'deploy/arcade.css' },
     { output: 'about.css', source: 'deploy/about.css' },
@@ -59,6 +61,17 @@ export const SITE_CONTRACT = deepFreeze({
     { output: '_redirects', source: 'deploy/_redirects' },
   ],
   assetGroups: [
+    {
+      id: 'blockshop',
+      source: 'games/blockshop/dist/assets',
+      output: 'blockshop/assets',
+      referenceSources: ['games/blockshop/index.html', 'blockshop/assets/*.css', 'blockshop/assets/*.js'],
+      referencePrefix: '/blockshop/assets/',
+      files: [
+        { expression: '^index-[A-Za-z0-9_-]+\\.js$', count: 1 },
+        { expression: '^index-[A-Za-z0-9_-]+\\.css$', count: 1 },
+      ],
+    },
     {
       id: 'smilefall',
       source: 'games/smilefall/dist/assets',
@@ -109,6 +122,9 @@ export const SITE_CONTRACT = deepFreeze({
     { from: '/src/viewer/index.html', to: '/games/partition/', status: 301 },
   ],
   cacheRules: [
+    { path: '/blockshop/assets/*', value: 'public, max-age=31536000, immutable' },
+    { path: '/blockshop/favicon.svg', value: 'public, max-age=0, must-revalidate' },
+    { path: '/games/blockshop/', value: 'public, max-age=0, must-revalidate' },
     { path: '/smilefall/assets/*', value: 'public, max-age=31536000, immutable' },
     { path: '/smilefall/favicon.svg', value: 'public, max-age=0, must-revalidate' },
     { path: '/games/smilefall/', value: 'public, max-age=0, must-revalidate' },
@@ -144,7 +160,7 @@ export const SITE_CONTRACT = deepFreeze({
     ['Content-Security-Policy', "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'self'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; worker-src 'self'; media-src 'self'"],
   ],
   limits: {
-    maximumFiles: 48,
+    maximumFiles: 56,
     maximumTotalBytes: 2 * 1024 * 1024,
     maximumBytesByExtension: {
       '': 32 * 1024,
