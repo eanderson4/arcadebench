@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#11142f" />
+    <meta name="description" content="Roll Signal is a free ArcadeBench momentum game across eight hand-built isometric relay courses." />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta property="og:title" content="Roll Signal — ArcadeBench" />
+    <meta property="og:description" content="Guide a luminous signal orb through eight kinetic relay courses." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ArcadeBench" />
+    <meta property="og:url" content="https://arcadebench.org/games/rollsignal/" />
+    <meta name="twitter:card" content="summary" />
+    <link rel="canonical" href="https://arcadebench.org/games/rollsignal/" />
+    <title>Roll Signal — ArcadeBench</title>
+    <link rel="icon" href="%BASE_URL%favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-screen="home">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ArcadeBench home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2H20V22H16V6H8V22H4Z M2 12H22V16H2Z" /></svg>
+        <b>ARCADEBENCH</b><i>/</i><span>ROLL SIGNAL</span>
+      </a>
+      <button id="sound-toggle" class="utility-button" type="button" aria-pressed="true">SOUND ON</button>
+    </header>
+
+    <main>
+      <section id="home-screen" class="screen home" aria-labelledby="home-title">
+        <div class="home-copy">
+          <p class="eyebrow"><span>Relay line open</span> · Single player</p>
+          <h1 id="home-title" tabindex="-1"><span>ROLL</span><em>SIGNAL</em></h1>
+          <p class="lede">Carry the light across eight kinetic courses. Read the slope, hold your line, and strike every receiver before the clock runs out.</p>
+          <button id="start-button" class="start-button" type="button">
+            <span>START THE SIGNAL</span><small>Eight courses · One continuous run</small>
+          </button>
+          <div class="controls-card" aria-label="Controls">
+            <span><kbd>ARROWS</kbd> Steer</span>
+            <span><kbd>SPACE</kbd> Hold to brace</span>
+          </div>
+        </div>
+
+        <div class="preview-column">
+          <div class="course-plate"><span>LINE 04</span><b>CROSSWIND CAUSEWAY</b><i>LIVE COURSE MODEL</i></div>
+          <div class="canvas-shell preview-shell">
+            <canvas id="preview-canvas" width="1200" height="760" aria-label="Animated Roll Signal gameplay preview"></canvas>
+          </div>
+        </div>
+
+        <ol class="signal-key" aria-label="Course signals">
+          <li><i class="key-orb"></i><span><b>Carry</b><small>Protect the signal</small></span></li>
+          <li><i class="key-ring"></i><span><b>Collect</b><small>Risk the tone rings</small></span></li>
+          <li><i class="key-brace"></i><span><b>Brace</b><small>Trade speed for grip</small></span></li>
+          <li><i class="key-goal"></i><span><b>Strike</b><small>Reach the receiver</small></span></li>
+        </ol>
+      </section>
+
+      <section id="play-screen" class="screen play" aria-label="Roll Signal game">
+        <header class="hud">
+          <button id="leave-button" class="utility-button back-button" type="button">ARCADEBENCH</button>
+          <div class="course-name"><small id="course-number">COURSE 01 / 08</small><b id="course-title">First Chime</b></div>
+          <div class="hud-stat clock-stat"><small>TIME</small><b id="time">00:50</b></div>
+          <div class="hud-stat"><small>SCORE</small><b id="score">000000</b></div>
+          <div class="hud-stat rings-stat"><small>RINGS</small><b id="rings">0 / 3</b></div>
+          <button id="pause-button" class="utility-button" type="button">PAUSE</button>
+        </header>
+
+        <div class="game-layout">
+          <div class="model-frame">
+            <div class="frame-label"><span>ROLL SIGNAL MUNICIPAL RELAY</span><b id="status-line">SIGNAL STABLE</b></div>
+            <canvas id="game-canvas" width="1200" height="760" tabindex="0" aria-label="Roll Signal isometric course"></canvas>
+            <div class="frame-lamps" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+            <div id="course-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="course-overlay-title">
+              <div class="overlay-card course-card">
+                <p id="course-overlay-number" class="eyebrow">Course 01 of 08</p>
+                <h2 id="course-overlay-title">First Chime</h2>
+                <p id="course-overlay-lesson">Steer with momentum. Hold Action to brace.</p>
+                <div class="course-diagram" aria-hidden="true"><i></i><span></span><b></b></div>
+                <button id="course-start-button" class="panel-button course-start-button" type="button">START COURSE</button>
+                <small>OR PRESS ACTION TO ROLL</small>
+              </div>
+            </div>
+
+            <div id="pause-overlay" class="overlay" hidden role="dialog" aria-modal="true" aria-labelledby="pause-title">
+              <div class="overlay-card compact-card">
+                <p class="eyebrow">Line held</p>
+                <h2 id="pause-title">Paused</h2>
+                <p>Press P, Escape, or the pause button to continue.</p>
+                <button id="resume-button" class="panel-button" type="button">RESUME</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="play-footer">
+            <p><b>STEER</b> Keep momentum through the bends.</p>
+            <div class="brace-meter" aria-label="Brace input"><span id="brace-fill"></span><b>BRACE</b></div>
+            <p id="checkpoint-label"><b>CHECKPOINT</b> Start relay</p>
+          </div>
+        </div>
+
+        <div class="touch-controls" aria-label="Touch controls">
+          <div class="touch-pad">
+            <button type="button" data-direction="up" aria-label="Steer up">▲</button>
+            <button type="button" data-direction="left" aria-label="Steer left">◀</button>
+            <button type="button" data-direction="right" aria-label="Steer right">▶</button>
+            <button type="button" data-direction="down" aria-label="Steer down">▼</button>
+          </div>
+          <button id="touch-pause" class="touch-pause" type="button">PAUSE</button>
+          <button id="touch-brace" class="touch-brace" type="button">BRACE</button>
+        </div>
+      </section>
+
+      <section id="result-screen" class="screen result" aria-labelledby="result-title">
+        <div class="result-panel">
+          <p id="result-kicker" class="eyebrow">Relay complete</p>
+          <h2 id="result-title">Signal delivered.</h2>
+          <p id="result-copy">Eight receivers answered.</p>
+          <dl class="result-stats">
+            <div><dt>COURSES</dt><dd id="result-courses">8 / 8</dd></div>
+            <div><dt>RINGS</dt><dd id="result-rings">0 / 24</dd></div>
+            <div><dt>SCORE</dt><dd id="result-score">000000</dd></div>
+          </dl>
+          <div class="result-actions">
+            <button id="replay-button" class="start-button" type="button"><span>RUN IT AGAIN</span><small>Return to Course 01</small></button>
+            <a href="/">BACK TO ARCADEBENCH</a>
+          </div>
+        </div>
+        <canvas id="result-canvas" width="1200" height="760" aria-hidden="true"></canvas>
+      </section>
+    </main>
+
+    <dialog id="leave-dialog" class="leave-dialog">
+      <form method="dialog">
+        <p class="eyebrow">Signal in motion</p>
+        <h2>Leave this run?</h2>
+        <p>Your current course and score have not been submitted.</p>
+        <div><button value="cancel" class="panel-button">KEEP ROLLING</button><button value="leave" class="panel-button danger">LEAVE RUN</button></div>
+      </form>
+    </dialog>
+
+    <div id="announcer" class="visually-hidden" aria-live="polite"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
